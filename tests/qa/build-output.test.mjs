@@ -129,8 +129,16 @@ test("public/ has apple-touch-icon.png at 180x180", async () => {
   const p = join(PUBLIC, "apple-touch-icon.png");
   assert.ok(await exists(p), "public/apple-touch-icon.png missing");
   const { width, height } = await readPngDimensions(p);
-  assert.equal(width, 180, `apple-touch-icon width should be 180, got ${width}`);
-  assert.equal(height, 180, `apple-touch-icon height should be 180, got ${height}`);
+  assert.equal(
+    width,
+    180,
+    `apple-touch-icon width should be 180, got ${width}`,
+  );
+  assert.equal(
+    height,
+    180,
+    `apple-touch-icon height should be 180, got ${height}`,
+  );
 });
 
 test("public/og.png is 1200x630 (Open Graph spec)", async () => {

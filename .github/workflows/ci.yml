@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-flight runs for the same branch on rapid pushes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build + Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate environment
+        run: pnpm run validate
+
+      - name: Audit
+        run: pnpm audit --audit-level=high
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Test
+        run: pnpm exec node --test tests/rendered-html.test.mjs 'tests/qa/*.test.mjs'
+
+      - name: Lint
+        run: pnpm run lint
+        continue-on-error: false

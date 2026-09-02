@@ -1,0 +1,25 @@
+# ─── pnpm 11: control de build scripts por paquete ───────────────
+# En pnpm 11+, los build scripts se controlan con `allowBuilds` aquí,
+# NO con `onlyBuiltDependencies` en .npmrc.
+# Solo los paquetes listados como `true` corren install scripts.
+allowBuilds:
+  sharp: true # binario nativo libvips, requerido
+  esbuild: true # bundler runtime
+  unrs-resolver: true # dep de vite/vinext
+  workerd: true # runtime de Cloudflare Workers (wrangler)
+  # Todo lo demás queda BLOQUEADO por seguridad.
+  koffi: false
+  protobufjs: false
+  "@google/genai": false
+
+minimumReleaseAgeExclude:
+  - vinext@1.0.0-beta.9
+
+# ─── Security overrides (pnpm 11+) ────────────────────────────────
+# `overrides` en pnpm 11+ vive en pnpm-workspace.yaml, no en
+# package.json#pnpm ni en .npmrc.
+# Forzamos esbuild >=0.25 para eliminar la vuln moderada
+# GHSA-67mh-4wv8-2f99 reachable transitivamente desde
+# drizzle-kit>@esbuild-kit/* (build-time only, via pnpm db:generate).
+overrides:
+  esbuild: ">=0.25.0"

@@ -1,0 +1,28 @@
+PÁGINA WEB DE COMINORSA S.A.C.
+================================
+
+Este archivo contiene el código fuente completo de la página web de COMINORSA.
+
+Contenido principal:
+- Página corporativa responsive.
+- Logotipo oficial y paleta verde, negro verdoso y dorado.
+- Lista completa de servicios mineros y ambientales.
+- Formulario de consulta profesional por S/ 50.
+- Envío directo a WhatsApp, con elección entre 987 817 100 y 910 728 575.
+- Imágenes para logotipo, icono y vista previa social.
+
+Vista publicada:
+https://cominorsa-mineria-ambiental.crystellgranda.chatgpt.site
+
+Para ejecutar el proyecto:
+1. Instalar Node.js 22 o posterior.
+2. Abrir una terminal dentro de esta carpeta.
+3. Ejecutar: npm install
+4. En Windows, ejecutar: npx vinext dev
+5. Abrir: http://localhost:3000
+
+Para crear una versión de producción:
+npx vinext build
+
+No se incluyen contraseñas, correos personales, credenciales de publicación,
+dependencias instaladas ni archivos temporales.

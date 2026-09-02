@@ -44,9 +44,7 @@ function fmtKb(bytes) {
 }
 
 const files = await walk(STATIC);
-const targets = files.filter(
-  (f) => f.endsWith(".js") || f.endsWith(".css"),
-);
+const targets = files.filter((f) => f.endsWith(".js") || f.endsWith(".css"));
 
 if (targets.length === 0) {
   process.stdout.write(

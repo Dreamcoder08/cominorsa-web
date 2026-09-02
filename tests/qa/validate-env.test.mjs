@@ -29,9 +29,7 @@ test("scripts/validate-env.mjs exits 0 with current project state", () => {
 
 test("package.json declares the `validate` script", async () => {
   const { readFile } = await import("node:fs/promises");
-  const pkg = JSON.parse(
-    await readFile(resolve(ROOT, "package.json"), "utf8"),
-  );
+  const pkg = JSON.parse(await readFile(resolve(ROOT, "package.json"), "utf8"));
   assert.ok(
     typeof pkg.scripts?.validate === "string",
     "package.json scripts.validate missing",

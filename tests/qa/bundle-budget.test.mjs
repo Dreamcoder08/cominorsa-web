@@ -48,10 +48,7 @@ test("JS bundle total is under 600 KB", async () => {
   let total = 0;
   for (const f of js) total += (await stat(f)).size;
   const kb = total / 1024;
-  assert.ok(
-    kb < 600,
-    `JS total ${kb.toFixed(1)} KB exceeds 600 KB budget`,
-  );
+  assert.ok(kb < 600, `JS total ${kb.toFixed(1)} KB exceeds 600 KB budget`);
 });
 
 test("CSS bundle total is under 50 KB", async () => {
@@ -60,10 +57,7 @@ test("CSS bundle total is under 50 KB", async () => {
   let total = 0;
   for (const f of css) total += (await stat(f)).size;
   const kb = total / 1024;
-  assert.ok(
-    kb < 50,
-    `CSS total ${kb.toFixed(1)} KB exceeds 50 KB budget`,
-  );
+  assert.ok(kb < 50, `CSS total ${kb.toFixed(1)} KB exceeds 50 KB budget`);
 });
 
 test("largest JS chunk (framework) is under 250 KB", async () => {

@@ -26,16 +26,25 @@ LIST_ONLY=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --preview) ENVIRONMENT="preview"; shift ;;
-    --list) LIST_ONLY=true; shift ;;
-    -h|--help)
-      echo "Uso: $0 [--preview] [--list]"
-      echo ""
-      echo "  --preview  Rollback del último preview deploy"
-      echo "  --list     Solo listar los deploys disponibles"
-      exit 0
-      ;;
-    *) echo "Flag desconocida: $1" >&2; exit 1 ;;
+  --preview)
+    ENVIRONMENT="preview"
+    shift
+    ;;
+  --list)
+    LIST_ONLY=true
+    shift
+    ;;
+  -h | --help)
+    echo "Uso: $0 [--preview] [--list]"
+    echo ""
+    echo "  --preview  Rollback del último preview deploy"
+    echo "  --list     Solo listar los deploys disponibles"
+    exit 0
+    ;;
+  *)
+    echo "Flag desconocida: $1" >&2
+    exit 1
+    ;;
   esac
 done
 

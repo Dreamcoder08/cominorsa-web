@@ -15,21 +15,33 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 ZONE="cominorsa.com.pe"
 INTERVAL=60
-MAX_SECONDS=3600  # 1 hora
+MAX_SECONDS=3600 # 1 hora
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --interval) INTERVAL="$2"; shift 2 ;;
-    --max) MAX_SECONDS="$2"; shift 2 ;;
-    --zone) ZONE="$2"; shift 2 ;;
-    -h|--help)
-      echo "Uso: $0 [--interval N] [--max N] [--zone dominio.com]"
-      echo ""
-      echo "  --interval N  Segundos entre checks (default: 60)"
-      echo "  --max N       Tiempo máximo de espera en segundos (default: 3600)"
-      exit 0
-      ;;
-    *) echo "Flag desconocida: $1" >&2; exit 1 ;;
+  --interval)
+    INTERVAL="$2"
+    shift 2
+    ;;
+  --max)
+    MAX_SECONDS="$2"
+    shift 2
+    ;;
+  --zone)
+    ZONE="$2"
+    shift 2
+    ;;
+  -h | --help)
+    echo "Uso: $0 [--interval N] [--max N] [--zone dominio.com]"
+    echo ""
+    echo "  --interval N  Segundos entre checks (default: 60)"
+    echo "  --max N       Tiempo máximo de espera en segundos (default: 3600)"
+    exit 0
+    ;;
+  *)
+    echo "Flag desconocida: $1" >&2
+    exit 1
+    ;;
   esac
 done
 

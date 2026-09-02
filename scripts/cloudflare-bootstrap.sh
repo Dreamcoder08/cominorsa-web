@@ -23,10 +23,16 @@ cd "$SCRIPT_DIR/.." || exit 1
 ERRORS=0
 WARNINGS=0
 
-ok()   { printf "  [OK] %s\n" "$1"; }
-fail() { printf "  [FAIL] %s\n" "$1"; ERRORS=$((ERRORS + 1)); }
-warn() { printf "  [WARN] %s\n" "$1"; WARNINGS=$((WARNINGS + 1)); }
-hr()   { echo "----------------------------------------"; }
+ok() { printf "  [OK] %s\n" "$1"; }
+fail() {
+  printf "  [FAIL] %s\n" "$1"
+  ERRORS=$((ERRORS + 1))
+}
+warn() {
+  printf "  [WARN] %s\n" "$1"
+  WARNINGS=$((WARNINGS + 1))
+}
+hr() { echo "----------------------------------------"; }
 
 echo ""
 echo "Pre-vuelo de cominorsa-web"

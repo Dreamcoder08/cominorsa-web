@@ -27,17 +27,26 @@ MODE="guide"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --check) MODE="check"; shift ;;
-    --add)   MODE="add"; shift ;;
-    -h|--help)
-      echo "Uso: $0 [--check | --add]"
-      echo ""
-      echo "  (sin flags)  Modo guiado con checks y explicaciones"
-      echo "  --check      Solo verificar estado actual"
-      echo "  --add        Agregar dominio sin guía"
-      exit 0
-      ;;
-    *) echo "✗ Flag desconocida: $1" >&2; exit 1 ;;
+  --check)
+    MODE="check"
+    shift
+    ;;
+  --add)
+    MODE="add"
+    shift
+    ;;
+  -h | --help)
+    echo "Uso: $0 [--check | --add]"
+    echo ""
+    echo "  (sin flags)  Modo guiado con checks y explicaciones"
+    echo "  --check      Solo verificar estado actual"
+    echo "  --add        Agregar dominio sin guía"
+    exit 0
+    ;;
+  *)
+    echo "✗ Flag desconocida: $1" >&2
+    exit 1
+    ;;
   esac
 done
 

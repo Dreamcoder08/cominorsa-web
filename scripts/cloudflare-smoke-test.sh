@@ -21,12 +21,18 @@ TEST_URL=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --url) TEST_URL="$2"; shift 2 ;;
-    -h|--help)
-      echo "Uso: $0 [--url https://example.com]"
-      exit 0
-      ;;
-    *) echo "✗ Flag desconocida: $1" >&2; exit 1 ;;
+  --url)
+    TEST_URL="$2"
+    shift 2
+    ;;
+  -h | --help)
+    echo "Uso: $0 [--url https://example.com]"
+    exit 0
+    ;;
+  *)
+    echo "✗ Flag desconocida: $1" >&2
+    exit 1
+    ;;
   esac
 done
 

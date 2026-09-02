@@ -19,7 +19,8 @@
     "cf:setup": "bash scripts/cloudflare-setup.sh",
     "cf:deploy": "bash scripts/cloudflare-deploy.sh",
     "cf:domain": "bash scripts/cloudflare-domain.sh",
-    "cf:smoke": "bash scripts/cloudflare-smoke-test.sh"
+    "cf:smoke": "bash scripts/cloudflare-smoke-test.sh",
+    "cf:status": "bash scripts/cloudflare-status.sh"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Pre-commit hook for COMINORSA-web.
+# Runs the env validator before every commit. Bypass with --no-verify.
+
+set -e
+
+echo "[pre-commit] running pnpm validate..."
+pnpm run validate
+
+echo "[pre-commit] OK"

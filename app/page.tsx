@@ -106,6 +106,7 @@ export default function Home() {
       <header className="site-header">
         <a className="brand" href="#inicio" aria-label="COMINORSA, inicio">
           <span className="brand-mark brand-logo-wrap" aria-hidden="true">
+{/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="" width="44" height="44" />
           </span>
           <span className="brand-copy">
@@ -413,6 +414,7 @@ export default function Home() {
       <footer>
         <a className="brand footer-brand" href="#inicio">
           <span className="brand-mark brand-logo-wrap" aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="" width="44" height="44" />
           </span>
           <span className="brand-copy">

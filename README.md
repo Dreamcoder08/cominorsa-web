@@ -163,4 +163,6 @@ pnpm test
 
 ## Licencia
 
-Propietario. © COMINORSA S.A.C. — RUC 20614147131.
+Propietario. © COMINORSA S.A.C. — RUC 20614147131. Ver `LICENSE` para los
+términos completos (All Rights Reserved). El código fuente no puede ser
+copiado, modificado ni distribuido sin autorización escrita de COMINORSA.

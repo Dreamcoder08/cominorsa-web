@@ -14,6 +14,7 @@
     "test": "pnpm run build && node --test tests/rendered-html.test.mjs 'tests/qa/*.test.mjs'",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "validate": "node scripts/validate-env.mjs",
+    "bundle:report": "node scripts/bundle-report.mjs",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

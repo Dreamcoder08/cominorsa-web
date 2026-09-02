@@ -64,7 +64,11 @@ const serviceGroups = [
     title: "Trámites institucionales",
     description:
       "Orientación y gestión documental ante las principales autoridades del sector minero.",
-    items: ["Trámites ante MINEM", "Trámites ante INGEMMET", "Trámites ante DREM"],
+    items: [
+      "Trámites ante MINEM",
+      "Trámites ante INGEMMET",
+      "Trámites ante DREM",
+    ],
   },
 ];
 
@@ -106,7 +110,7 @@ export default function Home() {
       <header className="site-header">
         <a className="brand" href="#inicio" aria-label="COMINORSA, inicio">
           <span className="brand-mark brand-logo-wrap" aria-hidden="true">
-{/* eslint-disable-next-line @next/next/no-img-element */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="" width="44" height="44" />
           </span>
           <span className="brand-copy">
@@ -430,11 +434,7 @@ export default function Home() {
           <span>Piura · Perú</span>
         </div>
 
-        <a
-          className="back-to-top"
-          href="#inicio"
-          aria-label="Volver al inicio"
-        >
+        <a className="back-to-top" href="#inicio" aria-label="Volver al inicio">
           ↑
         </a>
       </footer>

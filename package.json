@@ -15,7 +15,11 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "validate": "node scripts/validate-env.mjs",
     "bundle:report": "node scripts/bundle-report.mjs",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "cf:setup": "bash scripts/cloudflare-setup.sh",
+    "cf:deploy": "bash scripts/cloudflare-deploy.sh",
+    "cf:domain": "bash scripts/cloudflare-domain.sh",
+    "cf:smoke": "bash scripts/cloudflare-smoke-test.sh"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

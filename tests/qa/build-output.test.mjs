@@ -99,3 +99,58 @@ test("RSC build id is set", async () => {
   assert.ok(await exists(join(SERVER, "RSC_BUILD_ID")));
   assert.ok(await exists(join(SERVER, "BUILD_ID")));
 });
+
+// --- Asset integrity (favicon, OG, apple-touch-icon) ---
+
+const PUBLIC = join(ROOT, "public");
+
+/** Reads width/height from a PNG file header (IHDR chunk). */
+async function readPngDimensions(filePath) {
+  const buf = await readFile(filePath);
+  if (buf.length < 24 || buf.toString("ascii", 1, 4) !== "PNG") {
+    throw new Error(`${filePath} is not a PNG`);
+  }
+  // IHDR is the first chunk: 4 bytes length, 4 bytes "IHDR", 4 width, 4 height
+  const width = buf.readUInt32BE(16);
+  const height = buf.readUInt32BE(20);
+  return { width, height };
+}
+
+test("public/ has favicon.ico (multi-resolution)", async () => {
+  const p = join(PUBLIC, "favicon.ico");
+  assert.ok(await exists(p), "public/favicon.ico missing");
+  const buf = await readFile(p);
+  // ICO header: 6 bytes (reserved=0, type=1, count)
+  const count = buf.readUInt16LE(4);
+  assert.ok(count >= 2, `favicon.ico should have >= 2 sub-icons, got ${count}`);
+});
+
+test("public/ has apple-touch-icon.png at 180x180", async () => {
+  const p = join(PUBLIC, "apple-touch-icon.png");
+  assert.ok(await exists(p), "public/apple-touch-icon.png missing");
+  const { width, height } = await readPngDimensions(p);
+  assert.equal(width, 180, `apple-touch-icon width should be 180, got ${width}`);
+  assert.equal(height, 180, `apple-touch-icon height should be 180, got ${height}`);
+});
+
+test("public/og.png is 1200x630 (Open Graph spec)", async () => {
+  const p = join(PUBLIC, "og.png");
+  assert.ok(await exists(p), "public/og.png missing");
+  const { width, height } = await readPngDimensions(p);
+  assert.equal(width, 1200, `og.png width should be 1200, got ${width}`);
+  assert.equal(height, 630, `og.png height should be 630, got ${height}`);
+});
+
+test("public/og.png size is under 1 MB", async () => {
+  const p = join(PUBLIC, "og.png");
+  const s = await stat(p);
+  assert.ok(s.size < 1024 * 1024, `og.png too heavy: ${s.size} bytes`);
+});
+
+test("metadata declares the new favicon set", async () => {
+  const layoutPath = join(ROOT, "app", "layout.tsx");
+  const raw = await readFile(layoutPath, "utf8");
+  assert.match(raw, /favicon\.ico/);
+  assert.match(raw, /apple-touch-icon\.png/);
+  assert.match(raw, /favicon-32x32\.png/);
+});

@@ -20,7 +20,10 @@
     "cf:deploy": "bash scripts/cloudflare-deploy.sh",
     "cf:domain": "bash scripts/cloudflare-domain.sh",
     "cf:smoke": "bash scripts/cloudflare-smoke-test.sh",
-    "cf:status": "bash scripts/cloudflare-status.sh"
+    "cf:status": "bash scripts/cloudflare-status.sh",
+    "cf:watch": "bash scripts/cloudflare-watch.sh",
+    "cf:bootstrap": "bash scripts/cloudflare-bootstrap.sh",
+    "cf:rollback": "bash scripts/cloudflare-rollback.sh"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

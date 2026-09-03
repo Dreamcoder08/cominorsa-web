@@ -150,7 +150,11 @@ echo ""
 hr
 echo "8. Files críticos"
 hr
-for f in public/favicon.ico public/og.png public/robots.txt public/sitemap.xml; do
+# robots.txt y sitemap.xml se sirven dinámicamente vía app/robots.ts y
+# app/sitemap.ts (detectan host/protocolo reales) — no deben existir como
+# archivos estáticos en public/, o el estático gana y sirve el dominio
+# equivocado. Se verifican en la sección 9 (DNS/HTTP), no acá.
+for f in public/favicon.ico public/og.png; do
   if [[ -f "$f" ]]; then
     SIZE=$(stat -c%s "$f" 2>/dev/null)
     ok "$f ($SIZE bytes)"

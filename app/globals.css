@@ -555,7 +555,9 @@ blockquote {
   align-items: center;
   gap: 0 0.5rem;
   border-top: 1px solid rgba(255, 253, 247, 0.2);
-  color: rgba(255, 253, 247, 0.56);
+  /* Was 0.56 — measured ~4.67:1 against the gradient here, barely above the
+     4.5:1 AA floor for text this small (11px). 0.68 gives real margin. */
+  color: rgba(255, 253, 247, 0.68);
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.14em;

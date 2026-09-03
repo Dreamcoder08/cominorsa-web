@@ -136,11 +136,16 @@ blockquote {
 }
 
 .site-header {
-  position: absolute;
+  /* Was position:absolute — looked like a floating card, but that also
+     meant it left the flow entirely and scrolled away with the hero, with
+     no way back to nav or the WhatsApp CTA past the first screen. Sticky
+     keeps the same floating-card look (background + shadow) while staying
+     reachable at any scroll position. */
+  position: sticky;
   top: 0;
-  left: 50%;
   z-index: 10;
   width: min(100% - 2 * var(--container-margin), var(--container-max));
+  margin-inline: auto;
   min-height: 92px;
   display: flex;
   align-items: center;
@@ -150,7 +155,6 @@ blockquote {
   background: var(--white);
   color: var(--ink);
   box-shadow: 0 16px 40px rgba(11, 35, 24, 0.1);
-  transform: translateX(-50%);
 }
 
 .brand {
@@ -349,7 +353,10 @@ blockquote {
   width: min(100% - 2 * var(--container-margin), var(--container-max));
   min-height: 720px;
   margin: 0 auto;
-  padding: 155px 0 75px;
+  /* Top padding used to also cover the header's own height (it was
+     position:absolute, out of flow). Now the header is sticky and in
+     flow, so this is just breathing room below it. */
+  padding: var(--space-8) 0 75px;
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.62fr);
   align-items: center;
@@ -580,6 +587,7 @@ blockquote {
 
 .section {
   padding: var(--section-y) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
+  scroll-margin-top: 92px;
 }
 
 .section-kicker {
@@ -936,6 +944,7 @@ blockquote {
 
 .contact {
   padding: var(--section-y) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
+  scroll-margin-top: 92px;
   background:
     repeating-radial-gradient(circle at 100% 100%, transparent 0 45px, rgba(23, 51, 45, 0.08) 46px 47px),
     var(--sand);

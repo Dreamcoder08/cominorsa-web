@@ -1061,6 +1061,85 @@ blockquote {
   text-transform: uppercase;
 }
 
+.legal-page {
+  padding: var(--section-y) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.legal-page-header {
+  max-width: 70ch;
+  margin: 0 auto var(--space-9);
+}
+
+.legal-page-header h1 {
+  font-size: var(--display-2);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.legal-page-header p {
+  margin-top: var(--space-4);
+  color: var(--muted);
+  font-size: var(--text-lg);
+}
+
+.legal-page-body {
+  max-width: 70ch;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-7);
+}
+
+.legal-page-body section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.legal-page-body h2 {
+  font-size: var(--text-2xl);
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+.legal-page-body p,
+.legal-page-body li {
+  color: var(--muted);
+  font-size: var(--text-base);
+  line-height: 1.7;
+}
+
+.legal-page-body ul {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: 1.2rem;
+}
+
+.legal-page-body strong {
+  color: var(--ink);
+}
+
+.legal-page-body a {
+  color: var(--copper-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.legal-page-body a:hover,
+.legal-page-body a:focus-visible {
+  color: var(--ink);
+}
+
+.legal-page-footer {
+  max-width: 70ch;
+  margin: var(--space-9) auto 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
 footer {
   min-height: 150px;
   display: grid;

@@ -20,5 +20,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         languages: { "es-PE": `${baseUrl}/` },
       },
     },
+    {
+      url: `${baseUrl}/privacidad`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/terminos`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
   ];
 }

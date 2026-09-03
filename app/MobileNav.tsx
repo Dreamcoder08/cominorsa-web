@@ -9,7 +9,13 @@ const links = [
   { href: "#contacto", label: "Contacto" },
 ];
 
-export function MobileNav({ whatsappHref }: { whatsappHref: string }) {
+export function MobileNav({
+  whatsappHref,
+  basePath = "",
+}: {
+  whatsappHref: string;
+  basePath?: string;
+}) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -93,7 +99,7 @@ export function MobileNav({ whatsappHref }: { whatsappHref: string }) {
           {links.map((link, index) => (
             <a
               key={link.href}
-              href={link.href}
+              href={`${basePath}${link.href}`}
               ref={index === 0 ? firstLinkRef : undefined}
               onClick={close}
             >

@@ -78,17 +78,55 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const incomingHeaders = await headers();
+  const host = incomingHeaders.get("host") ?? "localhost:3000";
+  const protocol =
+    incomingHeaders.get("x-forwarded-proto") ??
+    (host.includes("localhost") ? "http" : "https");
+  const baseUrl = `${protocol}://${host}`;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ProfessionalService",
+    name: "COMINORSA S.A.C.",
+    alternateName: "COMINORSA",
+    description:
+      "Consultoría minera y ambiental: formalización minera (IGAFOM, REINFO), instrumentos ambientales, ingeniería y asistencia técnica desde Piura, Perú.",
+    url: baseUrl,
+    telephone: "+51910728575",
+    taxID: "20614147131",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "Calle B N.º 12, Urb. Santa Margarita",
+      addressLocality: "Veintiséis de Octubre",
+      addressRegion: "Piura",
+      addressCountry: "PE",
+    },
+    areaServed: {
+      "@type": "AdministrativeArea",
+      name: "Piura, Perú",
+    },
+  };
+
   return (
     <html
       lang="es"
       className={`${archivo.variable} ${newsreader.variable} ${geistMono.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+          }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,5 +1,7 @@
 import { ConsultationForm } from "./ConsultationForm";
-import { MobileNav } from "./MobileNav";
+import { SiteFooter } from "./SiteFooter";
+import { SiteHeader } from "./SiteHeader";
+import { WHATSAPP_INFORMATION, WHATSAPP_SECONDARY } from "./constants";
 
 const serviceGroups = [
   {
@@ -96,11 +98,6 @@ const steps = [
   },
 ];
 
-const whatsappInformation =
-  "https://wa.me/51910728575?text=Hola%20COMINORSA%2C%20deseo%20informaci%C3%B3n%20sobre%20sus%20servicios.";
-const whatsappSecondary =
-  "https://wa.me/51987817100?text=Hola%20COMINORSA%2C%20deseo%20informaci%C3%B3n%20sobre%20sus%20servicios.";
-
 export default function Home() {
   return (
     <main>
@@ -108,37 +105,7 @@ export default function Home() {
         Ir al contenido
       </a>
 
-      <header className="site-header">
-        <a className="brand" href="#inicio" aria-label="COMINORSA, inicio">
-          <span className="brand-mark brand-logo-wrap" aria-hidden="true">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="" width="44" height="44" />
-          </span>
-          <span className="brand-copy">
-            <strong translate="no">COMINORSA</strong>
-            <small>Consultoría minera y ambiental</small>
-          </span>
-        </a>
-
-        <nav className="nav-links" aria-label="Navegación principal">
-          <a href="#nosotros">Nosotros</a>
-          <a href="#servicios">Servicios</a>
-          <a href="#consulta">Consulta</a>
-          <a href="#contacto">Contacto</a>
-        </nav>
-
-        <a
-          className="header-cta"
-          href={whatsappInformation}
-          target="_blank"
-          rel="noreferrer"
-        >
-          WhatsApp
-          <span aria-hidden="true">↗</span>
-        </a>
-
-        <MobileNav whatsappHref={whatsappInformation} />
-      </header>
+      <SiteHeader />
 
       <section className="hero" id="inicio">
         <div className="hero-contours" aria-hidden="true" />
@@ -160,7 +127,7 @@ export default function Home() {
             <div className="hero-actions">
               <a
                 className="button button-primary"
-                href={whatsappInformation}
+                href={WHATSAPP_INFORMATION}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -393,7 +360,7 @@ export default function Home() {
                 </a>
                 <a
                   className="whatsapp-link"
-                  href={whatsappInformation}
+                  href={WHATSAPP_INFORMATION}
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -402,7 +369,7 @@ export default function Home() {
                 </a>
                 <a
                   className="whatsapp-link"
-                  href={whatsappSecondary}
+                  href={WHATSAPP_SECONDARY}
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -431,39 +398,7 @@ export default function Home() {
         </section>
       </div>
 
-      <footer>
-        <a className="brand footer-brand" href="#inicio">
-          <span className="brand-mark brand-logo-wrap" aria-hidden="true">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo.png"
-              alt=""
-              width="44"
-              height="44"
-              loading="lazy"
-            />
-          </span>
-          <span className="brand-copy">
-            <strong translate="no">COMINORSA</strong>
-            <small>Consultoría minera y soluciones ambientales</small>
-          </span>
-        </a>
-
-        <div className="footer-meta">
-          <span className="footer-ruc">RUC 20614147131</span>
-          <a href="tel:+51910728575" aria-label="Llamar al +51 910 728 575">
-            +51 910 728 575
-          </a>
-          <a href="tel:+51987817100" aria-label="Llamar al +51 987 817 100">
-            +51 987 817 100
-          </a>
-          <span>Piura · Perú</span>
-        </div>
-
-        <a className="back-to-top" href="#inicio" aria-label="Volver al inicio">
-          ↑
-        </a>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

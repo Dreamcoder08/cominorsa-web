@@ -2,78 +2,7 @@ import { ConsultationForm } from "./ConsultationForm";
 import { SiteFooter } from "./SiteFooter";
 import { SiteHeader } from "./SiteHeader";
 import { WHATSAPP_INFORMATION } from "./constants";
-
-const serviceGroups = [
-  {
-    number: "01",
-    title: "¿Tu operación aún no está formalizada?",
-    description:
-      "Acompañamiento para regularizar y mantener en orden las obligaciones de la pequeña minería y minería artesanal.",
-    items: [
-      "IGAFOM Preventivo — Instrumento de Gestión Ambiental para la Formalización Minera",
-      "IGAFOM Correctivo",
-      "IGAFOM de Cierre",
-      "Asesoría integral en formalización minera (REINFO — Registro Integral de Formalización Minera)",
-      "Modificación de coordenadas para REINFO",
-      "Declaraciones semestrales REINFO",
-    ],
-  },
-  {
-    number: "02",
-    title: "¿Ya operas y necesitas cumplir con el ambiente?",
-    description:
-      "Instrumentos y estudios que conectan la operación minera con el cumplimiento y el cuidado del entorno.",
-    items: [
-      "DIA — Declaración de Impacto Ambiental",
-      "PAMA — Programa de Adecuación y Manejo Ambiental",
-      "Instrumentos de Gestión Ambiental",
-    ],
-  },
-  {
-    number: "03",
-    title: "¿Necesitas presentar declaraciones y registros obligatorios?",
-    description:
-      "Preparación y presentación ordenada de información obligatoria para la actividad minera.",
-    items: [
-      "Declaración Anual Consolidada (DAC)",
-      "Registro y declaraciones en ESTAMIN",
-    ],
-  },
-  {
-    number: "04",
-    title: "¿Buscas sustento técnico para tu operación?",
-    description:
-      "Documentación técnica para planificar, sustentar y ejecutar operaciones con mayor claridad.",
-    items: [
-      "Informes Técnicos Mineros",
-      "Expedientes Técnicos",
-      "Planes de Minado",
-      "Mapas y Planos Técnicos",
-    ],
-  },
-  {
-    number: "05",
-    title: "¿Necesitas fortalecer tu seguridad operativa?",
-    description:
-      "Asistencia para fortalecer la gestión preventiva y el desempeño técnico de la operación.",
-    items: [
-      "Planes de Seguridad y Salud Ocupacional",
-      "Supervisión y Asistencia Técnica Minera",
-      "Consultoría mensual para operaciones mineras",
-    ],
-  },
-  {
-    number: "06",
-    title: "¿Necesitas gestionar trámites ante el Estado?",
-    description:
-      "Orientación y gestión documental ante las principales autoridades del sector minero.",
-    items: [
-      "Trámites ante MINEM",
-      "Trámites ante INGEMMET",
-      "Trámites ante DREM",
-    ],
-  },
-];
+import { serviceGroups } from "./services-data";
 
 const steps = [
   {
@@ -241,7 +170,11 @@ export default function Home() {
 
           <div className="detailed-services-grid">
             {serviceGroups.map((service) => (
-              <article className="detailed-service-card" key={service.number}>
+              <a
+                className="detailed-service-card"
+                href={`/${service.slug}`}
+                key={service.number}
+              >
                 <div className="detailed-service-head">
                   <span>{service.number}</span>
                   <i aria-hidden="true">↗</i>
@@ -253,7 +186,7 @@ export default function Home() {
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
-              </article>
+              </a>
             ))}
           </div>
         </section>

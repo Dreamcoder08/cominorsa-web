@@ -517,15 +517,6 @@ blockquote {
   padding: 1.6rem;
 }
 
-.card-index {
-  display: block;
-  margin-bottom: 0.9rem;
-  color: var(--copper-light);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-}
-
 .hero-card-copy h2 {
   max-width: 380px;
   font-size: clamp(1.45rem, 2vw, 2rem);

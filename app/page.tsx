@@ -178,8 +178,7 @@ export default function Home() {
               <span>Atención directa</span>
             </div>
             <div className="hero-card-copy">
-              <span className="card-index">WhatsApp</span>
-              <h2>Atención directa por WhatsApp.</h2>
+              <h2>Escríbenos por WhatsApp.</h2>
               <p>
                 Resolvemos dudas sobre formalización minera, gestión ambiental
                 y asistencia técnica.

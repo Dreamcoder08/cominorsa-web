@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Archivo, Newsreader, Geist_Mono } from "next/font/google";
+import { CookieConsent } from "./CookieConsent";
 import "./globals.css";
 
 const archivo = Archivo({
@@ -126,6 +127,7 @@ export default async function RootLayout({
           }}
         />
         {children}
+        <CookieConsent />
       </body>
     </html>
   );

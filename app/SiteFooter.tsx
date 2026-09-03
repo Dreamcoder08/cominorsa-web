@@ -1,3 +1,5 @@
+import { CookiePreferencesButton } from "./CookiePreferencesButton";
+
 export function SiteFooter({ basePath = "" }: { basePath?: string }) {
   return (
     <footer>
@@ -29,6 +31,7 @@ export function SiteFooter({ basePath = "" }: { basePath?: string }) {
         <span>Piura · Perú</span>
         <a href="/privacidad">Privacidad</a>
         <a href="/terminos">Términos</a>
+        <CookiePreferencesButton />
       </div>
 
       <a className="back-to-top" href={`${basePath}#inicio`} aria-label="Volver al inicio">

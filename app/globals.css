@@ -1061,6 +1061,61 @@ blockquote {
   text-transform: uppercase;
 }
 
+/* The banner is fixed to the viewport bottom, so on a short page it can
+   permanently cover the footer's last links with no room left to scroll
+   past it. Reserve that space on the footer while the banner is up. */
+body.has-cookie-banner footer {
+  padding-bottom: 220px;
+}
+
+.cookie-consent {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 90;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
+  background: var(--ink-deep);
+  color: var(--white);
+  border-top: 1px solid rgba(255, 253, 247, 0.18);
+}
+
+.cookie-consent p {
+  max-width: 640px;
+  margin: 0;
+  color: rgba(255, 253, 247, 0.75);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.cookie-consent p a {
+  color: var(--copper-light);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.cookie-consent-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-3);
+}
+
+.cookie-consent .button {
+  min-height: 44px;
+  min-width: 0;
+  padding: 0.7rem 1.3rem;
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cookie-consent .button-quiet {
+  background: transparent;
+}
+
 .legal-page {
   padding: var(--section-y) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
   background: var(--paper);
@@ -1177,6 +1232,20 @@ footer > .brand {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+}
+
+.footer-meta button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
 }
 
 .footer-ruc {

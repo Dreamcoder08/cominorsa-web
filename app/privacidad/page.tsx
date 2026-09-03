@@ -41,9 +41,11 @@ export default function PrivacidadPage() {
               Cuando escribes por WhatsApp o completas el formulario de
               consulta, nos compartes directamente: nombre, ciudad o región,
               el servicio de tu interés, el número de WhatsApp por el que
-              prefieres que te contactemos, y el contenido de tu consulta. No
-              recopilamos ningún dato tuyo de forma automática ni oculta —
-              solo lo que tú mismo escribes.
+              prefieres que te contactemos, y el contenido de tu consulta. Eso
+              es todo lo que recopilamos de forma directa — solo lo que tú
+              mismo escribes. Aparte de eso, si aceptas el aviso de cookies,
+              también recibimos datos de uso agregados y anónimos a través de
+              Google Analytics (ver sección 3).
             </p>
           </section>
 
@@ -70,9 +72,15 @@ export default function PrivacidadPage() {
           <section>
             <h2>3. Cookies y rastreo</h2>
             <p>
-              Este sitio no usa cookies de seguimiento ni herramientas de
-              analítica o publicidad de terceros. No te rastreamos entre
-              sitios ni construimos un perfil de tu navegación.
+              Usamos Google Analytics 4 para entender de forma agregada cómo
+              se navega este sitio (páginas visitadas, tiempo de permanencia,
+              origen de la visita). Esta herramienta solo se activa si aceptas
+              el aviso de cookies que aparece al ingresar; si lo rechazas, no
+              se carga ningún script de analítica y no se genera ninguna
+              cookie de este tipo. Puedes cambiar tu decisión en cualquier
+              momento desde &quot;Preferencias de cookies&quot;, en el pie de
+              página. No usamos píxeles de publicidad de terceros ni
+              construimos perfiles de navegación fuera de este sitio.
             </p>
           </section>
 
@@ -82,9 +90,11 @@ export default function PrivacidadPage() {
               Usamos los datos que nos compartes por WhatsApp o el formulario
               únicamente para responder tu consulta, coordinar el servicio
               que solicitas y dar seguimiento a la relación profesional, en
-              caso de que decidas continuar con nosotros. No vendemos ni
-              compartimos tu información con terceros para fines
-              comerciales ajenos a tu consulta.
+              caso de que decidas continuar con nosotros. Los datos de uso
+              agregados de Google Analytics (cuando los aceptas) los usamos
+              solo para entender qué páginas funcionan mejor y mejorar el
+              sitio. No vendemos ni compartimos tu información con terceros
+              para fines comerciales ajenos a tu consulta.
             </p>
           </section>
 

@@ -4,21 +4,21 @@ import { MobileNav } from "./MobileNav";
 const serviceGroups = [
   {
     number: "01",
-    title: "Formalización minera",
+    title: "¿Tu operación aún no está formalizada?",
     description:
       "Acompañamiento para regularizar y mantener en orden las obligaciones de la pequeña minería y minería artesanal.",
     items: [
-      "IGAFOM Preventivo",
+      "IGAFOM Preventivo — Instrumento de Gestión Ambiental para la Formalización Minera",
       "IGAFOM Correctivo",
       "IGAFOM de Cierre",
-      "Asesoría integral en formalización minera (REINFO)",
+      "Asesoría integral en formalización minera (REINFO — Registro Integral de Formalización Minera)",
       "Modificación de coordenadas para REINFO",
       "Declaraciones semestrales REINFO",
     ],
   },
   {
     number: "02",
-    title: "Gestión ambiental",
+    title: "¿Ya operas y necesitas cumplir con el ambiente?",
     description:
       "Instrumentos y estudios que conectan la operación minera con el cumplimiento y el cuidado del entorno.",
     items: [
@@ -29,7 +29,7 @@ const serviceGroups = [
   },
   {
     number: "03",
-    title: "Declaraciones y registros",
+    title: "¿Necesitas presentar declaraciones y registros obligatorios?",
     description:
       "Preparación y presentación ordenada de información obligatoria para la actividad minera.",
     items: [
@@ -39,7 +39,7 @@ const serviceGroups = [
   },
   {
     number: "04",
-    title: "Ingeniería y planeamiento",
+    title: "¿Buscas sustento técnico para tu operación?",
     description:
       "Documentación técnica para planificar, sustentar y ejecutar operaciones con mayor claridad.",
     items: [
@@ -51,7 +51,7 @@ const serviceGroups = [
   },
   {
     number: "05",
-    title: "Seguridad y operación",
+    title: "¿Necesitas fortalecer tu seguridad operativa?",
     description:
       "Asistencia para fortalecer la gestión preventiva y el desempeño técnico de la operación.",
     items: [
@@ -62,7 +62,7 @@ const serviceGroups = [
   },
   {
     number: "06",
-    title: "Trámites institucionales",
+    title: "¿Necesitas gestionar trámites ante el Estado?",
     description:
       "Orientación y gestión documental ante las principales autoridades del sector minero.",
     items: [

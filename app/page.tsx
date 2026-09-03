@@ -137,7 +137,7 @@ export default function Home() {
           <span aria-hidden="true">↗</span>
         </a>
 
-        <MobileNav />
+        <MobileNav whatsappHref={whatsappInformation} />
       </header>
 
       <section className="hero" id="inicio">

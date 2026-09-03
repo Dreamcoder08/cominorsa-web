@@ -57,6 +57,8 @@
   --grid-gutter: clamp(16px, 1.6vw, 28px);
   --container-margin: clamp(20px, 6vw, 120px);
   --container-max: 1440px;
+
+  --header-height: 92px;
 }
 
 /* Shared full-bleed container: background can go edge to edge on the parent,
@@ -146,7 +148,7 @@ blockquote {
   z-index: 10;
   width: min(100% - 2 * var(--container-margin), var(--container-max));
   margin-inline: auto;
-  min-height: 92px;
+  min-height: var(--header-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -274,38 +276,66 @@ blockquote {
   background: rgba(11, 35, 24, 0.06);
 }
 
+/* Full-screen takeover, not a corner dropdown — same surface as the header
+   it drops from (--white), so the two read as one continuous piece instead
+   of a light bar with a dark box glued under it. Sits right below the
+   sticky header and fills the rest of the viewport. Always mounted;
+   visibility/opacity/transform toggle on --open so both the open and the
+   close get a transition, not just the open. */
 .mobile-nav-panel {
-  position: absolute;
-  top: calc(100% + 0.75rem);
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
   right: 0;
-  z-index: 20;
-  display: grid;
-  min-width: 220px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 253, 247, 0.24);
-  background: var(--ink-deep);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  bottom: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--white);
+  color: var(--ink);
+  opacity: 0;
+  transform: translateY(-8px);
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out),
+    visibility 0s linear var(--dur-base);
+}
+
+.mobile-nav-panel[data-open="true"] {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+
+.mobile-nav-panel-links {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-6) var(--container-margin) 0;
 }
 
 .mobile-nav-panel a {
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid rgba(255, 253, 247, 0.14);
-  color: var(--white);
-  font-size: 0.8rem;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: clamp(1.1rem, 5vw, 1.4rem);
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  transition: background 160ms ease, color 160ms ease;
-}
-
-.mobile-nav-panel a:last-child {
-  border-bottom: 0;
+  letter-spacing: -0.01em;
+  transition: color 160ms ease;
 }
 
 .mobile-nav-panel a:hover,
 .mobile-nav-panel a:focus-visible {
-  background: rgba(255, 253, 247, 0.08);
-  color: var(--copper-light);
+  color: var(--copper-ink);
+}
+
+.mobile-nav-panel-cta {
+  margin: auto var(--container-margin) var(--space-6);
 }
 
 .hero {
@@ -578,7 +608,7 @@ blockquote {
 
 .section {
   padding: var(--section-y) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
-  scroll-margin-top: 92px;
+  scroll-margin-top: var(--header-height);
 }
 
 .section-kicker {
@@ -935,7 +965,7 @@ blockquote {
 
 .contact {
   padding: var(--section-y) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
-  scroll-margin-top: 92px;
+  scroll-margin-top: var(--header-height);
   background:
     repeating-radial-gradient(circle at 100% 100%, transparent 0 45px, rgba(23, 51, 45, 0.08) 46px 47px),
     var(--sand);
@@ -1446,9 +1476,10 @@ footer > .brand {
     display: block;
   }
 
+  /* The full-screen mobile menu has its own WhatsApp CTA — keeping this one
+     too just duplicates it in the header row. */
   .header-cta {
-    padding-left: 0;
-    border-left: 0;
+    display: none;
   }
 
   .hero {
@@ -1570,14 +1601,6 @@ footer > .brand {
     display: none;
   }
 
-  .header-cta {
-    font-size: 0.68rem;
-  }
-
-  .header-cta span {
-    display: none;
-  }
-
   .hero h1 {
     font-size: clamp(3rem, 15vw, 4.5rem);
   }
@@ -1661,12 +1684,6 @@ footer > .brand {
   .footer-meta span + span {
     padding-left: 0;
     border-left: 0;
-  }
-}
-
-@media (max-width: 380px) {
-  .header-cta {
-    display: none;
   }
 }
 

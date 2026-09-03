@@ -1464,8 +1464,15 @@ footer > .brand {
 }
 
 @media (max-width: 820px) {
+  /* Below this width the header stops being a floating card with margin —
+     margin-inline left a visible strip of the (dark) page background on
+     both sides, which reads as a broken/half-width bar, especially once
+     it's sticky and stays visible the whole time you scroll. Full-bleed
+     background, same content inset via padding instead of margin. */
   .site-header {
-    width: calc(100% - 2rem);
+    width: 100%;
+    margin-inline: 0;
+    padding-inline: var(--container-margin);
   }
 
   .nav-links {

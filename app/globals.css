@@ -335,6 +335,9 @@ blockquote {
 }
 
 .mobile-nav-panel-cta {
+  /* width subtracts this element's own inline margin so margin + width
+     add up to exactly the panel's full width, not more. */
+  width: calc(100% - 2 * var(--container-margin));
   margin: auto var(--container-margin) var(--space-6);
 }
 
@@ -1625,8 +1628,14 @@ footer > .brand {
     font-size: clamp(3rem, 15vw, 4.5rem);
   }
 
+  /* Was ".hero-actions, .button" — a bare ".button" hits every button
+     anywhere, including .mobile-nav-panel-cta, which also has its own
+     inline margin. width:100% there ignores that margin (percentage
+     widths don't subtract an item's own margin), so the box ends up
+     margin-wider than the viewport — exactly the horizontal scroll this
+     was reported as. Scope this to hero buttons only. */
   .hero-actions,
-  .button {
+  .hero-actions .button {
     width: 100%;
   }
 

@@ -89,6 +89,9 @@
 
 * {
   box-sizing: border-box;
+  /* Every interactive element already has explicit hover/focus-visible/active
+     states — the browser's default gray tap flash on mobile just fights them. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
@@ -1075,6 +1078,13 @@ footer > .brand {
   place-items: center;
   border: 1px solid rgba(255, 253, 247, 0.3);
   color: var(--copper-light);
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.back-to-top:hover,
+.back-to-top:focus-visible {
+  border-color: var(--copper-light);
+  background: rgba(255, 253, 247, 0.08);
 }
 
 :focus-visible {
@@ -1263,9 +1273,9 @@ footer > .brand {
   min-height: 125px;
 }
 
-.consultation-form input:focus,
-.consultation-form select:focus,
-.consultation-form textarea:focus {
+.consultation-form input:focus-visible,
+.consultation-form select:focus-visible,
+.consultation-form textarea:focus-visible {
   border-color: var(--copper-ink);
   box-shadow: 0 0 0 3px rgba(224, 184, 74, 0.16);
 }
@@ -1345,6 +1355,12 @@ footer > .brand {
   font-size: clamp(1.5rem, 3vw, 2.4rem);
   font-weight: 750;
   letter-spacing: -0.04em;
+  transition: color 160ms ease;
+}
+
+.phone-link:hover,
+.phone-link:focus-visible {
+  color: var(--copper-ink);
 }
 
 .phone-link + .phone-link {
@@ -1363,6 +1379,13 @@ footer > .brand {
   font-weight: 800;
   letter-spacing: 0.07em;
   text-transform: uppercase;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.whatsapp-link:hover,
+.whatsapp-link:focus-visible {
+  background: var(--ink);
+  transform: translateY(-2px);
 }
 
 .whatsapp-link + .whatsapp-link {

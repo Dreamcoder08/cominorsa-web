@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Archivo, Newsreader, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -24,6 +24,10 @@ const geistMono = Geist_Mono({
   variable: "--font-mono",
   display: "swap",
 });
+
+export const viewport: Viewport = {
+  themeColor: "#fbf8ef",
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const incomingHeaders = await headers();

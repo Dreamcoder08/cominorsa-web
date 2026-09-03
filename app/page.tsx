@@ -115,7 +115,7 @@ export default function Home() {
             <img src="/logo.png" alt="" width="44" height="44" />
           </span>
           <span className="brand-copy">
-            <strong>COMINORSA</strong>
+            <strong translate="no">COMINORSA</strong>
             <small>Consultoría minera y ambiental</small>
           </span>
         </a>
@@ -415,7 +415,7 @@ export default function Home() {
             <address>
               <span>Sede registrada</span>
               <strong>
-                Calle B N.º 12, Urb. Santa Margarita
+                Calle B N.º&nbsp;12, Urb. Santa Margarita
                 <br />
                 Veintiséis de Octubre, Piura · Perú
               </strong>
@@ -436,10 +436,16 @@ export default function Home() {
         <a className="brand footer-brand" href="#inicio">
           <span className="brand-mark brand-logo-wrap" aria-hidden="true">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="" width="44" height="44" />
+            <img
+              src="/logo.png"
+              alt=""
+              width="44"
+              height="44"
+              loading="lazy"
+            />
           </span>
           <span className="brand-copy">
-            <strong>COMINORSA</strong>
+            <strong translate="no">COMINORSA</strong>
             <small>Consultoría minera y soluciones ambientales</small>
           </span>
         </a>

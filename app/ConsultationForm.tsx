@@ -2,8 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
-const PRIMARY_WHATSAPP = "51987817100";
-const SECONDARY_WHATSAPP = "51910728575";
+const PRIMARY_WHATSAPP = "51910728575";
+const SECONDARY_WHATSAPP = "51987817100";
 
 const serviceOptions = [
   "Formalización minera e IGAFOM",
@@ -34,7 +34,7 @@ export function ConsultationForm() {
         : PRIMARY_WHATSAPP;
 
     const message = [
-      "Hola COMINORSA, quiero realizar una consulta profesional de S/ 50.",
+      "Hola COMINORSA, quiero realizar una consulta profesional.",
       "",
       `Nombre: ${name}`,
       `Ciudad / Región: ${city}`,
@@ -91,8 +91,8 @@ export function ConsultationForm() {
       <label>
         <span>Línea de WhatsApp</span>
         <select name="whatsapp" defaultValue={PRIMARY_WHATSAPP} required>
-          <option value={PRIMARY_WHATSAPP}>987 817 100</option>
-          <option value={SECONDARY_WHATSAPP}>910 728 575</option>
+          <option value={PRIMARY_WHATSAPP}>910 728 575</option>
+          <option value={SECONDARY_WHATSAPP}>987 817 100</option>
         </select>
       </label>
 
@@ -109,8 +109,8 @@ export function ConsultationForm() {
 
       <div className="form-submit">
         <div>
-          <strong>S/ 50</strong>
-          <span>Consulta profesional</span>
+          <strong>Consulta profesional</strong>
+          <span>Te respondemos por WhatsApp</span>
         </div>
         <button type="submit">
           Enviar por WhatsApp

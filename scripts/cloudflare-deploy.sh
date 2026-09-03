@@ -1,42 +1,32 @@
 #!/usr/bin/env bash
-# cloudflare-deploy.sh — Build local + deploy a Cloudflare Pages vía wrangler
+# cloudflare-deploy.sh — Build local + deploy a Cloudflare Workers vía wrangler
+#
+# vinext emite un Worker SSR (dist/server/index.js + wrangler.json), no HTML
+# estático — por eso el target es "wrangler deploy" contra dist/server/, no
+# "wrangler pages deploy".
 #
 # USO:
 #   ./scripts/cloudflare-deploy.sh                    # deploy a production
-#   ./scripts/cloudflare-deploy.sh --preview           # preview deploy (branch=HEAD)
-#   ./scripts/cloudflare-deploy.sh --branch nombre     # preview con nombre custom
 #
 # Variables opcionales (además de las requeridas en check-env.sh):
-#   CLOUDFLARE_COMMIT_MESSAGE  — mensaje del commit a deployar (default: "Manual deploy")
-#   SKIP_BUILD                  — si está en "1", no corre `pnpm run build`
+#   SKIP_BUILD  — si está en "1", no corre `pnpm run build`
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # shellcheck source=lib/check-env.sh
 source "$SCRIPT_DIR/lib/check-env.sh"
 
-PROJECT_NAME="cominorsa-web"
-PREVIEW=false
-BRANCH_OVERRIDE=""
+WORKER_NAME="cominorsa-web"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-    --preview)
-        PREVIEW=true
-        shift
-        ;;
-    --branch)
-        BRANCH_OVERRIDE="$2"
-        shift 2
-        ;;
     -h | --help)
-        echo "Uso: $0 [--preview] [--branch nombre]"
+        echo "Uso: $0"
         echo ""
-        echo "  (sin flags)    Deploy a production"
-        echo "  --preview      Deploy como preview (URL temporal)"
-        echo "  --branch NAME  Preview con nombre custom de branch"
+        echo "  Build + wrangler deploy contra dist/server/wrangler.json"
         exit 0
         ;;
     *)
@@ -54,36 +44,23 @@ else
     echo "▶ Build salteado (SKIP_BUILD=1)"
 fi
 
-if [[ ! -d "dist" ]]; then
-    echo "✗ No existe ./dist — corré el build primero" >&2
+WRANGLER_CONFIG="$PROJECT_ROOT/dist/server/wrangler.json"
+
+if [[ ! -f "$WRANGLER_CONFIG" ]]; then
+    echo "✗ No existe $WRANGLER_CONFIG — corré el build primero" >&2
     exit 1
 fi
 
-# Deploy
-DEPLOY_ARGS=(
-    pages
-    deploy
-    dist
-    --project-name="$PROJECT_NAME"
-    --commit-dirty=true
-)
-
-if [[ -n "${CLOUDFLARE_COMMIT_MESSAGE:-}" ]]; then
-    DEPLOY_ARGS+=(--commit-message="$CLOUDFLARE_COMMIT_MESSAGE")
-fi
-
-if [[ "$PREVIEW" == "true" ]]; then
-    DEPLOY_ARGS+=(--branch="${BRANCH_OVERRIDE:-$(git rev-parse --abbrev-ref HEAD)}")
-    ENV_LABEL="preview"
-else
-    DEPLOY_ARGS+=(--branch="${BRANCH_OVERRIDE:-main}")
-    ENV_LABEL="production"
-fi
-
+# Must run from the project root with an explicit --config: invoking wrangler
+# from inside dist/server makes it also discover the stale
+# .wrangler/deploy/config.json left by the vite build, which triggers
+# "Found both a user configuration file... and a deploy configuration file"
+# even though both resolve to the same file.
 echo ""
-echo "▶ Deploying a $ENV_LABEL..."
-pnpm exec wrangler "${DEPLOY_ARGS[@]}"
+echo "▶ Deploying a Cloudflare Workers..."
+cd "$PROJECT_ROOT"
+pnpm exec wrangler deploy --config "$WRANGLER_CONFIG" --name "$WORKER_NAME"
 
 echo ""
 echo "✓ Deploy completo. Verificá:"
-echo "  pnpm exec wrangler pages deployment list --project-name=$PROJECT_NAME"
+echo "  pnpm exec wrangler deployments list --name=$WORKER_NAME"

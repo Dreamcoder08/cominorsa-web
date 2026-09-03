@@ -1,4 +1,5 @@
 import { ConsultationForm } from "./ConsultationForm";
+import { MobileNav } from "./MobileNav";
 
 const serviceGroups = [
   {
@@ -96,9 +97,9 @@ const steps = [
 ];
 
 const whatsappInformation =
-  "https://wa.me/51987817100?text=Hola%20COMINORSA%2C%20deseo%20informaci%C3%B3n%20sobre%20sus%20servicios.";
-const whatsappSecondary =
   "https://wa.me/51910728575?text=Hola%20COMINORSA%2C%20deseo%20informaci%C3%B3n%20sobre%20sus%20servicios.";
+const whatsappSecondary =
+  "https://wa.me/51987817100?text=Hola%20COMINORSA%2C%20deseo%20informaci%C3%B3n%20sobre%20sus%20servicios.";
 
 export default function Home() {
   return (
@@ -122,7 +123,7 @@ export default function Home() {
         <nav className="nav-links" aria-label="Navegación principal">
           <a href="#nosotros">Nosotros</a>
           <a href="#servicios">Servicios</a>
-          <a href="#consulta">Consulta S/50</a>
+          <a href="#consulta">Consulta</a>
           <a href="#contacto">Contacto</a>
         </nav>
 
@@ -135,6 +136,8 @@ export default function Home() {
           WhatsApp
           <span aria-hidden="true">↗</span>
         </a>
+
+        <MobileNav />
       </header>
 
       <section className="hero" id="inicio">
@@ -146,8 +149,8 @@ export default function Home() {
               Piura · Norte del Perú
             </p>
             <h1>
-              Técnica que impulsa.
-              <em>Responsabilidad que permanece.</em>
+              <span className="reveal-line">Técnica que impulsa.</span>
+              <em className="reveal-line">Responsabilidad que permanece.</em>
             </h1>
             <p className="hero-intro">
               Formalización minera, instrumentos ambientales, ingeniería y
@@ -155,12 +158,17 @@ export default function Home() {
               sostenible.
             </p>
             <div className="hero-actions">
-              <a className="button button-primary" href="#servicios">
-                Explorar servicios
-                <span aria-hidden="true">↓</span>
+              <a
+                className="button button-primary"
+                href={whatsappInformation}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Hablar por WhatsApp
+                <span aria-hidden="true">↗</span>
               </a>
-              <a className="button button-quiet" href="#consulta">
-                Consulta profesional · S/50
+              <a className="button button-quiet" href="#servicios">
+                Ver servicios
               </a>
             </div>
           </div>
@@ -168,33 +176,36 @@ export default function Home() {
           <aside className="hero-card" aria-label="Enfoque de COMINORSA">
             <div className="hero-card-top">
               <span>Atención directa</span>
-              <span className="status-dot">Disponible</span>
-            </div>
-            <div className="terrain-mark" aria-hidden="true">
-              <span className="terrain-sun" />
-              <span className="terrain-line line-one" />
-              <span className="terrain-line line-two" />
-              <span className="terrain-line line-three" />
             </div>
             <div className="hero-card-copy">
               <span className="card-index">WhatsApp</span>
-              <h2>Conversemos sobre tu operación minera.</h2>
+              <h2>Atención directa por WhatsApp.</h2>
               <p>
-                Escríbenos al{" "}
-                <a href="tel:+51987817100" className="inline-phone">
-                  987 817 100
-                </a>{" "}
-                o{" "}
-                <a href="tel:+51910728575" className="inline-phone">
-                  910 728 575
-                </a>{" "}
-                para orientación y servicios especializados.
+                Resolvemos dudas sobre formalización minera, gestión ambiental
+                y asistencia técnica.
               </p>
+              <div className="hero-card-numbers">
+                <a
+                  href="tel:+51910728575"
+                  className="inline-phone"
+                  aria-label="Llamar al +51 910 728 575"
+                >
+                  +51 910 728 575
+                </a>
+                <a
+                  href="tel:+51987817100"
+                  className="inline-phone"
+                  aria-label="Llamar al +51 987 817 100"
+                >
+                  +51 987 817 100
+                </a>
+              </div>
             </div>
           </aside>
         </div>
 
         <div className="hero-footer">
+          <span className="hero-footer-label">Especialidades</span>
           <span>IGAFOM</span>
           <span>REINFO</span>
           <span>Gestión ambiental</span>
@@ -320,11 +331,6 @@ export default function Home() {
               Describe tu caso y selecciona el servicio relacionado. El mensaje
               llegará directamente a COMINORSA para coordinar la atención.
             </p>
-            <div className="price-card">
-              <span>Precio por consulta</span>
-              <strong>S/ 50</strong>
-              <small>Pago coordinado directamente por WhatsApp</small>
-            </div>
           </div>
 
           <ConsultationForm />
@@ -363,17 +369,28 @@ export default function Home() {
 
           <div className="contact-grid">
             <div className="contact-note">
-              <span className="contact-index">Contacto / 05</span>
-              <div>
+              <div className="section-kicker">
+                <span>05</span>
+                <p>Contacto</p>
+              </div>
+              <div className="contact-note-body">
                 <p>
                   Escríbenos para solicitar información, coordinar una consulta
                   o conversar sobre el servicio que necesitas.
                 </p>
-                <a className="phone-link" href="tel:+51987817100">
-                  +51 987 817 100
-                </a>
-                <a className="phone-link" href="tel:+51910728575">
+                <a
+                  className="phone-link"
+                  href="tel:+51910728575"
+                  aria-label="Llamar al +51 910 728 575"
+                >
                   +51 910 728 575
+                </a>
+                <a
+                  className="phone-link"
+                  href="tel:+51987817100"
+                  aria-label="Llamar al +51 987 817 100"
+                >
+                  +51 987 817 100
                 </a>
                 <a
                   className="whatsapp-link"
@@ -381,7 +398,7 @@ export default function Home() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  WhatsApp 987 817 100
+                  WhatsApp 910 728 575
                   <span aria-hidden="true">↗</span>
                 </a>
                 <a
@@ -390,7 +407,7 @@ export default function Home() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  WhatsApp 910 728 575
+                  WhatsApp 987 817 100
                   <span aria-hidden="true">↗</span>
                 </a>
               </div>
@@ -428,9 +445,13 @@ export default function Home() {
         </a>
 
         <div className="footer-meta">
-          <span>RUC 20614147131</span>
-          <a href="tel:+51987817100">+51 987 817 100</a>
-          <a href="tel:+51910728575">+51 910 728 575</a>
+          <span className="footer-ruc">RUC 20614147131</span>
+          <a href="tel:+51910728575" aria-label="Llamar al +51 910 728 575">
+            +51 910 728 575
+          </a>
+          <a href="tel:+51987817100" aria-label="Llamar al +51 987 817 100">
+            +51 987 817 100
+          </a>
           <span>Piura · Perú</span>
         </div>
 

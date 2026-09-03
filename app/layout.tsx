@@ -1,6 +1,29 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { Archivo, Newsreader, Geist_Mono } from "next/font/google";
 import "./globals.css";
+
+const archivo = Archivo({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  style: ["italic"],
+  variable: "--font-editorial",
+  display: "swap",
+});
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   const incomingHeaders = await headers();
@@ -57,7 +80,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html
+      lang="es"
+      className={`${archivo.variable} ${newsreader.variable} ${geistMono.variable}`}
+    >
       <body>{children}</body>
     </html>
   );

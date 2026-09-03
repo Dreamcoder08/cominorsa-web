@@ -105,7 +105,7 @@ test("form controls have name or aria-label", async () => {
 
 test("decorative content is hidden from assistive tech", async () => {
   const { html } = await fetchHtml();
-  assert.match(html, /class="terrain-mark"[^>]*aria-hidden="true"/);
+  assert.match(html, /class="hero-contours"[^>]*aria-hidden="true"/);
 });
 
 test("page is in Spanish", async () => {

@@ -1,17 +1,90 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #082d24;
-  --ink-deep: #001713;
-  --forest: #003f2b;
-  --copper: #d7a52f;
-  --copper-light: #f3cf59;
-  --sand: #e8d28d;
-  --cream: #f4eed9;
-  --paper: #fbf9ed;
-  --white: #fffdf7;
+  --ink: #0b2318;
+  --ink-deep: #061410;
+  --forest: #123322;
+  --copper: #e0b84a;
+  --copper-light: #ebce7e;
+  /* forest-700 — WCAG 8.94:1 / APCA 85.0 against --paper, 8.25:1 / 79.8 against
+     --cream. Replaces the old dark-gold value: gold is border/icon-only in this
+     palette, never small text, so accent text on light surfaces moved to the
+     forest family instead. */
+  --copper-ink: #1d4a33;
+  --sand: #ebd9a0;
+  --cream: #efe8d4;
+  --paper: #f6f1e2;
+  --white: #fbf8ef;
   --line: rgba(23, 51, 45, 0.18);
-  --muted: #67736d;
+  /* Same value as --copper-ink (forest-700, 8.94:1 / 8.25:1 above) — kept as a
+     separate token because it means something different (secondary body text
+     vs. accent), even though the two currently resolve to the same color. */
+  --muted: #1d4a33;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 20px;
+  --space-5: 32px;
+  --space-6: 48px;
+  --space-7: 64px;
+  --space-8: 80px;
+  --space-9: 96px;
+  --space-10: 128px;
+  --space-11: 176px;
+  --space-12: 240px;
+  --section-y: clamp(96px, 10vw, 176px);
+
+  --text-2xs: clamp(11px, 0.7rem + 0.05vw, 12px);
+  --text-xs: clamp(12px, 0.75rem + 0.05vw, 13px);
+  --text-sm: clamp(14px, 0.85rem + 0.1vw, 15px);
+  --text-base: clamp(16px, 1rem + 0.1vw, 18px);
+  --text-lg: clamp(18px, 1.05rem + 0.2vw, 21px);
+  --text-xl: clamp(22px, 1.2rem + 0.5vw, 26px);
+  --text-2xl: clamp(28px, 1.6rem + 0.8vw, 34px);
+  --text-3xl: clamp(34px, 2rem + 1.2vw, 46px);
+  --display-2: clamp(44px, 2.5rem + 3vw, 88px);
+  --display-1: clamp(52px, 2.5rem + 5vw, 128px);
+
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 480ms;
+  --dur-reveal: 900ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --grid-cols: 12;
+  --grid-gutter: clamp(16px, 1.6vw, 28px);
+  --container-margin: clamp(20px, 6vw, 120px);
+  --container-max: 1440px;
+}
+
+/* Shared full-bleed container: background can go edge to edge on the parent,
+   while content stays centered and capped at --container-max. Used by every
+   section so column starts line up across the page instead of each section
+   inventing its own margin math. */
+.container {
+  width: min(100% - 2 * var(--container-margin), var(--container-max));
+  margin-inline: auto;
+}
+
+.grid-12 {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols), 1fr);
+  column-gap: var(--grid-gutter);
+}
+
+/* Global reduced-motion switch: every duration token collapses to
+   effectively-instant, so every transition/animation that reads --dur-*
+   (including future ones) is covered from one place — no per-component JS
+   branch to remember. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-base: 1ms;
+    --dur-slow: 1ms;
+    --dur-reveal: 1ms;
+  }
 }
 
 * {
@@ -26,7 +99,7 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-display), "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -64,14 +137,16 @@ blockquote {
   top: 0;
   left: 50%;
   z-index: 10;
-  width: min(100% - 3rem, 1440px);
+  width: min(100% - 2 * var(--container-margin), var(--container-max));
   min-height: 92px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 2rem;
-  border-bottom: 1px solid rgba(255, 253, 247, 0.2);
-  color: var(--white);
+  gap: clamp(0.65rem, 4vw, 2rem);
+  border-bottom: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: 0 16px 40px rgba(11, 35, 24, 0.1);
   transform: translateX(-50%);
 }
 
@@ -87,7 +162,6 @@ blockquote {
   display: grid;
   place-items: center;
   border: 1px solid currentColor;
-  border-radius: 50%;
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -95,7 +169,7 @@ blockquote {
 
 .brand-logo-wrap {
   overflow: hidden;
-  border: 1px solid rgba(243, 207, 89, 0.55);
+  border: 1px solid rgba(235, 206, 126, 0.55);
   background: var(--ink-deep);
 }
 
@@ -141,24 +215,90 @@ blockquote {
 
 .nav-links a:hover,
 .nav-links a:focus-visible {
-  color: var(--copper-light);
+  color: var(--copper-ink);
 }
 
 .header-cta {
   display: inline-flex;
   align-items: center;
-  gap: 0.85rem;
-  padding: 0.85rem 0 0.85rem 1.2rem;
-  border-left: 1px solid rgba(255, 253, 247, 0.28);
-  font-size: 0.8rem;
+  gap: 0.6rem;
+  padding: 0.75rem 1.3rem;
+  background: var(--forest);
+  color: var(--white);
+  font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.header-cta:hover,
+.header-cta:focus-visible {
+  background: var(--ink);
+  transform: translateY(-1px);
 }
 
 .header-cta span {
   color: var(--copper-light);
-  font-size: 1.05rem;
+  font-size: 0.95rem;
+}
+
+.mobile-nav {
+  position: relative;
+  display: none;
+}
+
+.mobile-nav-toggle {
+  width: 2.75rem;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 1.1rem;
+  touch-action: manipulation;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.mobile-nav-toggle:hover,
+.mobile-nav-toggle:focus-visible {
+  border-color: var(--forest);
+  background: rgba(11, 35, 24, 0.06);
+}
+
+.mobile-nav-panel {
+  position: absolute;
+  top: calc(100% + 0.75rem);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  min-width: 220px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 253, 247, 0.24);
+  background: var(--ink-deep);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.mobile-nav-panel a {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 253, 247, 0.14);
+  color: var(--white);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.mobile-nav-panel a:last-child {
+  border-bottom: 0;
+}
+
+.mobile-nav-panel a:hover,
+.mobile-nav-panel a:focus-visible {
+  background: rgba(255, 253, 247, 0.08);
+  color: var(--copper-light);
 }
 
 .hero {
@@ -178,15 +318,18 @@ blockquote {
   bottom: -30vw;
   width: 65vw;
   aspect-ratio: 1;
+  /* Decorative radial glow, not a UI component — exempt from the radius-0 rule,
+     which applies to buttons/cards/icons. */
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(215, 165, 47, 0.26), transparent 66%);
+  background: radial-gradient(circle, rgba(224, 184, 74, 0.26), transparent 66%);
   filter: blur(5px);
 }
 
 .hero-contours {
   position: absolute;
   inset: 0;
-  opacity: 0.22;
+  /* was 0.22 — the pattern was competing with hero text instead of sitting behind it. */
+  opacity: 0.13;
   background:
     repeating-radial-gradient(
       ellipse at 88% 42%,
@@ -200,7 +343,7 @@ blockquote {
 .hero-grid {
   position: relative;
   z-index: 2;
-  width: min(100% - 3rem, 1440px);
+  width: min(100% - 2 * var(--container-margin), var(--container-max));
   min-height: 720px;
   margin: 0 auto;
   padding: 155px 0 75px;
@@ -236,11 +379,31 @@ blockquote {
   text-wrap: balance;
 }
 
+/* The one orchestrated moment on the page: the two hero lines reveal
+   upward behind a clip-path mask, staggered, once on load. Everything else
+   on the page is static on entry. */
+.hero h1 .reveal-line {
+  display: block;
+  clip-path: inset(0 0 100% 0);
+  animation: reveal-up var(--dur-reveal) var(--ease-out) forwards;
+}
+
+.hero h1 .reveal-line + .reveal-line {
+  animation-delay: 90ms;
+}
+
+@keyframes reveal-up {
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
 .hero h1 em,
 .contact h2 em {
   display: block;
   color: var(--copper-light);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-editorial), Georgia, "Times New Roman", serif;
+  font-style: italic;
   font-weight: 400;
   letter-spacing: -0.045em;
 }
@@ -283,13 +446,14 @@ blockquote {
 .button-primary {
   min-width: 220px;
   background: var(--copper);
-  color: var(--white);
+  /* forest-900 on gold-500 — approved pair, 8.77:1 / APCA 65.5. */
+  color: var(--ink);
 }
 
 .button-primary:hover,
 .button-primary:focus-visible {
   background: var(--copper-light);
-  color: var(--ink-deep);
+  color: var(--ink);
 }
 
 .button-quiet {
@@ -304,10 +468,8 @@ blockquote {
 
 .hero-card {
   position: relative;
-  min-height: 490px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   overflow: hidden;
   border: 1px solid rgba(255, 253, 247, 0.3);
   background:
@@ -341,66 +503,6 @@ blockquote {
   text-transform: uppercase;
 }
 
-.status-dot {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  color: rgba(255, 253, 247, 0.72);
-}
-
-.status-dot::before {
-  content: "";
-  width: 0.45rem;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: var(--copper-light);
-  box-shadow: 0 0 0 4px rgba(239, 156, 101, 0.15);
-}
-
-.terrain-mark {
-  position: absolute;
-  top: 70px;
-  right: 0;
-  left: 0;
-  height: 210px;
-  overflow: hidden;
-}
-
-.terrain-sun {
-  position: absolute;
-  top: 2rem;
-  right: 3rem;
-  width: 4.5rem;
-  aspect-ratio: 1;
-  border: 1px solid rgba(239, 156, 101, 0.65);
-  border-radius: 50%;
-  background: rgba(215, 165, 47, 0.14);
-}
-
-.terrain-line {
-  position: absolute;
-  left: -10%;
-  width: 120%;
-  height: 170px;
-  border: 1px solid rgba(255, 253, 247, 0.32);
-  border-radius: 50%;
-  transform: rotate(-8deg);
-}
-
-.line-one {
-  top: 90px;
-}
-
-.line-two {
-  top: 120px;
-  transform: rotate(-5deg);
-}
-
-.line-three {
-  top: 150px;
-  transform: rotate(-2deg);
-}
-
 .hero-card-copy {
   padding: 1.6rem;
 }
@@ -429,15 +531,29 @@ blockquote {
   line-height: 1.55;
 }
 
+.hero-card-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 253, 247, 0.16);
+}
+
+.hero-card-numbers .inline-phone {
+  font-size: 1.05rem;
+}
+
 .hero-footer {
   position: relative;
   z-index: 3;
-  width: min(100% - 3rem, 1440px);
+  width: min(100% - 2 * var(--container-margin), var(--container-max));
   min-height: 80px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: auto repeat(4, 1fr);
   align-items: center;
+  gap: 0 0.5rem;
   border-top: 1px solid rgba(255, 253, 247, 0.2);
   color: rgba(255, 253, 247, 0.56);
   font-size: 0.7rem;
@@ -451,8 +567,14 @@ blockquote {
   border-left: 1px solid rgba(255, 253, 247, 0.2);
 }
 
+.hero-footer .hero-footer-label {
+  padding-left: 0;
+  border-left: 0;
+  color: var(--copper-light);
+}
+
 .section {
-  padding: clamp(6rem, 10vw, 10rem) max(1.5rem, calc((100vw - 1440px) / 2));
+  padding: var(--section-y) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
 }
 
 .section-kicker {
@@ -472,6 +594,16 @@ blockquote {
   padding-right: 0.8rem;
   border-right: 1px solid var(--copper);
   color: var(--copper);
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+/* .about and .method-intro sit on light backgrounds (--paper / --cream) where
+   plain --copper text measures ~2:1 — fails WCAG AA. The .light and
+   .consultation-kicker variants stay on dark backgrounds and keep --copper. */
+.about .section-kicker span,
+.method-intro .section-kicker span {
+  border-right-color: var(--copper-ink);
+  color: var(--copper-ink);
 }
 
 .section-title {
@@ -484,14 +616,15 @@ blockquote {
 }
 
 .about {
-  background:
-    linear-gradient(90deg, transparent 49.95%, rgba(23, 51, 45, 0.08) 50%, transparent 50.05%),
-    var(--paper);
+  background: var(--paper);
 }
 
 .about-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* 5/7, not 50/50 — a symmetric split with a full-bleed center divider read
+     as two dead halves. The title carries less width than the copy column,
+     which also holds the three-item principles list. */
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   gap: clamp(4rem, 9vw, 10rem);
 }
 
@@ -529,7 +662,7 @@ blockquote {
 }
 
 .principles span {
-  color: var(--copper);
+  color: var(--copper-ink);
   font-size: 0.7rem;
   font-weight: 800;
 }
@@ -551,7 +684,10 @@ blockquote {
 
 .section-heading {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(240px, 0.7fr);
+  /* Same kicker/title/description ratio as .method-intro — same component,
+     same grid, so both section intros line up instead of each inventing
+     its own proportions. */
+  grid-template-columns: minmax(230px, 2fr) minmax(0, 6fr) minmax(240px, 4fr);
   align-items: end;
   gap: 3rem;
   margin-bottom: 5rem;
@@ -629,7 +765,6 @@ blockquote {
 .service-tags span {
   padding: 0.55rem 0.75rem;
   border: 1px solid rgba(255, 253, 247, 0.2);
-  border-radius: 100px;
   color: rgba(255, 253, 247, 0.66);
   font-size: 0.67rem;
   letter-spacing: 0.05em;
@@ -641,7 +776,6 @@ blockquote {
   width: 2.65rem;
   aspect-ratio: 1;
   border: 1px solid rgba(255, 253, 247, 0.28);
-  border-radius: 50%;
   color: var(--copper-light);
 }
 
@@ -655,7 +789,7 @@ blockquote {
 
 .method-intro {
   display: grid;
-  grid-template-columns: minmax(180px, 0.4fr) minmax(0, 1.4fr) minmax(250px, 0.55fr);
+  grid-template-columns: minmax(230px, 2fr) minmax(0, 6fr) minmax(240px, 4fr);
   align-items: end;
   gap: 3rem;
 }
@@ -667,10 +801,43 @@ blockquote {
 }
 
 .steps {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   margin-top: 7rem;
-  border-top: 1px solid var(--line);
+}
+
+.steps::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--line);
+  transform-origin: left center;
+}
+
+/* Progressive line draw as the section scrolls into view — native
+   scroll-driven animation, no JS/library. Base state (no transform) is the
+   fallback for browsers without view() support and for reduced-motion. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .steps::before {
+      transform: scaleX(0);
+      animation-name: draw-line;
+      animation-timing-function: var(--ease-out);
+      animation-fill-mode: forwards;
+      animation-timeline: view();
+      animation-range: entry 10% cover 55%;
+    }
+  }
+}
+
+@keyframes draw-line {
+  to {
+    transform: scaleX(1);
+  }
 }
 
 .step {
@@ -685,7 +852,8 @@ blockquote {
 }
 
 .step > span {
-  color: var(--copper);
+  color: var(--copper-ink);
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 0.7rem;
   font-weight: 800;
 }
@@ -696,7 +864,6 @@ blockquote {
   left: -0.35rem;
   width: 0.7rem;
   aspect-ratio: 1;
-  border-radius: 50%;
   background: var(--copper);
   box-shadow: 0 0 0 6px var(--cream);
 }
@@ -763,7 +930,7 @@ blockquote {
 }
 
 .contact {
-  padding: clamp(6rem, 10vw, 10rem) max(1.5rem, calc((100vw - 1440px) / 2));
+  padding: var(--section-y) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
   background:
     repeating-radial-gradient(circle at 100% 100%, transparent 0 45px, rgba(23, 51, 45, 0.08) 46px 47px),
     var(--sand);
@@ -782,7 +949,7 @@ blockquote {
 }
 
 .contact h2 em {
-  color: var(--copper);
+  color: var(--copper-ink);
 }
 
 .contact-grid {
@@ -800,13 +967,25 @@ blockquote {
   gap: 2rem;
 }
 
-.contact-index,
 .contact address > span {
   color: var(--muted);
   font-size: 0.68rem;
   font-weight: 750;
   letter-spacing: 0.13em;
   text-transform: uppercase;
+}
+
+.contact-note .section-kicker {
+  align-self: start;
+  margin: 0;
+}
+
+/* --sand is a light/warm surface like --paper and --cream — plain --copper
+   as border/text fails contrast here too, same reasoning as the .about and
+   .method-intro overrides above. */
+.contact .section-kicker span {
+  border-right-color: var(--copper-ink);
+  color: var(--copper-ink);
 }
 
 .contact-note p {
@@ -836,8 +1015,8 @@ blockquote {
   gap: 3rem;
   margin-top: 2rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--copper);
-  color: var(--copper);
+  border-bottom: 1px solid var(--copper-ink);
+  color: var(--copper-ink);
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.09em;
@@ -850,9 +1029,13 @@ footer {
   grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 3rem;
-  padding: 2rem max(1.5rem, calc((100vw - 1440px) / 2));
+  padding: 2rem max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
   background: var(--ink-deep);
   color: var(--white);
+}
+
+footer > .brand {
+  min-width: 0;
 }
 
 .footer-meta {
@@ -865,9 +1048,22 @@ footer {
   text-transform: uppercase;
 }
 
-.footer-meta span + span {
+/* Was `span + span`: with the RUC/phone/phone/city markup order (span, a, a,
+   span) no two spans ever sit next to each other, so the separator never
+   rendered. `> * + *` applies it between every item regardless of tag. */
+.footer-meta > * + * {
   padding-left: 1.5rem;
   border-left: 1px solid rgba(255, 253, 247, 0.18);
+}
+
+.footer-meta a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.footer-ruc {
+  font-family: var(--font-mono), ui-monospace, monospace;
 }
 
 .back-to-top {
@@ -876,13 +1072,17 @@ footer {
   display: grid;
   place-items: center;
   border: 1px solid rgba(255, 253, 247, 0.3);
-  border-radius: 50%;
   color: var(--copper-light);
 }
 
 :focus-visible {
-  outline: 2px solid var(--copper-light);
-  outline-offset: 4px;
+  /* forest ring + a light halo keeps the ring visible on both the dark
+     sections (hero, services, consultation) and the light ones (about,
+     method, contact, navbar) — a single flat color failed one side or the
+     other (copper-light on light backgrounds measured ~1.4:1, invisible). */
+  outline: 2px solid var(--forest);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(255, 253, 247, 0.75);
 }
 
 .inline-phone {
@@ -908,7 +1108,7 @@ footer {
 }
 
 .detailed-service-card:hover {
-  background: rgba(243, 207, 89, 0.07);
+  background: rgba(235, 206, 126, 0.07);
   transform: translateY(-3px);
 }
 
@@ -927,8 +1127,7 @@ footer {
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(243, 207, 89, 0.4);
-  border-radius: 50%;
+  border: 1px solid rgba(235, 206, 126, 0.4);
   font-style: normal;
 }
 
@@ -978,7 +1177,7 @@ footer {
   align-items: start;
   gap: clamp(4rem, 9vw, 9rem);
   background:
-    repeating-radial-gradient(circle at 0 100%, transparent 0 48px, rgba(243, 207, 89, 0.11) 49px 50px),
+    repeating-radial-gradient(circle at 0 100%, transparent 0 48px, rgba(235, 206, 126, 0.11) 49px 50px),
     linear-gradient(125deg, var(--ink-deep), var(--forest));
   color: var(--white);
 }
@@ -998,7 +1197,8 @@ footer {
 .consultation-intro h2 em {
   display: block;
   color: var(--copper-light);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-editorial), Georgia, "Times New Roman", serif;
+  font-style: italic;
   font-weight: 400;
 }
 
@@ -1008,39 +1208,6 @@ footer {
   color: rgba(255, 253, 247, 0.65);
   font-size: 1rem;
   line-height: 1.7;
-}
-
-.price-card {
-  max-width: 430px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 0.5rem 2rem;
-  margin-top: 3rem;
-  padding: 1.4rem;
-  border: 1px solid rgba(243, 207, 89, 0.42);
-  background: rgba(243, 207, 89, 0.08);
-}
-
-.price-card > span {
-  color: rgba(255, 253, 247, 0.62);
-  font-size: 0.72rem;
-  font-weight: 750;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.price-card strong {
-  grid-row: 1 / 3;
-  grid-column: 2;
-  color: var(--copper-light);
-  font-size: 2.3rem;
-  letter-spacing: -0.05em;
-}
-
-.price-card small {
-  color: rgba(255, 253, 247, 0.48);
-  font-size: 0.74rem;
 }
 
 .consultation-form {
@@ -1074,10 +1241,10 @@ footer {
 .consultation-form select,
 .consultation-form textarea {
   width: 100%;
-  border: 1px solid rgba(8, 45, 36, 0.22);
+  border: 1px solid rgba(11, 35, 24, 0.22);
   border-radius: 0;
   padding: 0.95rem 1rem;
-  background: #fffdf7;
+  background: var(--white);
   color: var(--ink);
   font: inherit;
   outline: 0;
@@ -1097,8 +1264,8 @@ footer {
 .consultation-form input:focus,
 .consultation-form select:focus,
 .consultation-form textarea:focus {
-  border-color: var(--copper);
-  box-shadow: 0 0 0 3px rgba(215, 165, 47, 0.16);
+  border-color: var(--copper-ink);
+  box-shadow: 0 0 0 3px rgba(224, 184, 74, 0.16);
 }
 
 .form-submit {
@@ -1117,8 +1284,9 @@ footer {
 
 .form-submit strong {
   color: var(--forest);
-  font-size: 2rem;
-  letter-spacing: -0.05em;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
 }
 
 .form-submit > div span {
@@ -1134,7 +1302,7 @@ footer {
   gap: 2rem;
   padding: 0.9rem 1.25rem;
   border: 0;
-  background: #087a3f;
+  background: var(--forest);
   color: var(--white);
   font: inherit;
   font-size: 0.76rem;
@@ -1146,7 +1314,7 @@ footer {
 }
 
 .form-submit button:hover {
-  background: #056534;
+  background: var(--ink);
   transform: translateY(-2px);
 }
 
@@ -1158,12 +1326,12 @@ footer {
 
 .form-status {
   min-height: 1.1rem;
-  color: #087a3f;
+  color: var(--forest);
   font-size: 0.75rem;
   font-weight: 700;
 }
 
-.contact-note > div {
+.contact-note-body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -1187,7 +1355,7 @@ footer {
   gap: 2rem;
   margin-top: 1.3rem;
   padding: 0.9rem 1.1rem;
-  background: #087a3f;
+  background: var(--forest);
   color: var(--white);
   font-size: 0.72rem;
   font-weight: 800;
@@ -1249,6 +1417,10 @@ footer {
     display: none;
   }
 
+  .mobile-nav {
+    display: block;
+  }
+
   .header-cta {
     padding-left: 0;
     border-left: 0;
@@ -1264,19 +1436,21 @@ footer {
     grid-template-columns: 1fr;
   }
 
-  .hero-card {
-    min-height: 430px;
-  }
 
   .hero-footer {
     width: calc(100% - 2rem);
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    gap: 0.75rem 1rem;
     padding: 1.25rem 0;
   }
 
   .hero-footer span {
     padding-left: 0.8rem;
+  }
+
+  .hero-footer .hero-footer-label {
+    grid-column: 1 / -1;
+    padding-left: 0;
   }
 
   .about {
@@ -1344,6 +1518,14 @@ footer {
     display: none;
   }
 
+  .step {
+    min-height: 0;
+  }
+
+  .step h3 {
+    margin-top: 0.75rem;
+  }
+
   .contact-grid {
     margin-top: 4rem;
   }
@@ -1378,10 +1560,6 @@ footer {
   .hero-actions,
   .button {
     width: 100%;
-  }
-
-  .hero-card {
-    min-height: 400px;
   }
 
   .section {
@@ -1458,6 +1636,12 @@ footer {
   .footer-meta span + span {
     padding-left: 0;
     border-left: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .header-cta {
+    display: none;
   }
 }
 

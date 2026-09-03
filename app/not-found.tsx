@@ -24,15 +24,15 @@ export default function NotFound() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             href="/"
-            className="inline-flex items-center justify-center rounded-md bg-amber-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+            className="inline-flex items-center justify-center rounded-md bg-amber-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-700 focus:ring-offset-2"
           >
             Volver al inicio
           </Link>
           <a
-            href="https://wa.me/51987817100?text=Hola%2C%20llegu%C3%A9%20a%20un%20enlace%20roto%20en%20su%20web"
+            href="https://wa.me/51910728575?text=Hola%2C%20llegu%C3%A9%20a%20un%20enlace%20roto%20en%20su%20web"
             target="_blank"
             rel="noopener"
-            className="inline-flex items-center justify-center rounded-md border border-amber-600 bg-white px-6 py-3 text-base font-medium text-amber-700 shadow-sm hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+            className="inline-flex items-center justify-center rounded-md border border-amber-600 bg-white px-6 py-3 text-base font-medium text-amber-700 shadow-sm hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-700 focus:ring-offset-2"
           >
             Avisar por WhatsApp
           </a>

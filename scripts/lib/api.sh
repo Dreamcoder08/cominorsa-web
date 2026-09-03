@@ -11,6 +11,8 @@
 #   cf_list_pages_projects
 #   cf_list_pages_deployments <project>
 #   cf_list_zones
+#   cf_get_zone_by_name <domain>
+#   cf_list_pages_domains <project>
 
 # cf_api <method> <path> [json_body]
 # Llama a la API de Cloudflare y devuelve solo el body JSON.
@@ -33,12 +35,10 @@ cf_api() {
 
   local response
   response="$(curl "${args[@]}")"
-  local code
-  code="$(echo "$response" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("result",{}).get("code", 200) if isinstance(json.load(sys.stdin).get("result"), dict) and "code" in json.load(sys.stdin).get("result",{}) else 200)' 2>/dev/null || echo "0")"
 
   # Si la respuesta tiene "success": false, fallar
   local success
-  success="$(echo "$response" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("success", False))')"
+  success="$(CF_JSON="$response" python3 -c "import os, json; print(json.loads(os.environ['CF_JSON']).get('success', False))" 2>/dev/null)"
   if [[ "$success" != "True" && "$success" != "true" ]]; then
     echo "✗ API call failed: $method $path" >&2
     echo "$response" | python3 -m json.tool >&2
@@ -48,22 +48,33 @@ cf_api() {
   echo "$response"
 }
 
+# Helper: ejecuta un script Python con un JSON pasado via env var CF_JSON
+_cf_py() {
+  CF_JSON="$1" python3 <<'PYEOF'
+import os, json
+try:
+    d = json.loads(os.environ["CF_JSON"])
+except Exception:
+    sys.exit(1)
+PYEOF
+}
+
 # cf_verify_token — Verifica que el token funcione
 cf_verify_token() {
   local response
   response="$(cf_api GET "/user/tokens/verify")"
   local status
-  status="$(echo "$response" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["result"]["status"] if d.get("success") else "invalid")')"
+  status="$(CF_JSON="$response" python3 -c "import os, json; d=json.loads(os.environ['CF_JSON']); print(d['result']['status'] if d.get('success') else 'invalid')")"
   if [[ "$status" == "active" ]]; then
     echo "✓ Token activo"
-    echo "$response" | python3 -c '
-import sys, json
-d = json.load(sys.stdin)
+    CF_JSON="$response" python3 <<'PYEOF'
+import os, json
+d = json.loads(os.environ["CF_JSON"])
 r = d.get("result", {})
-print(f"  ID:       {r.get(\"id\", \"?\")}")
-print(f"  Name:     {r.get(\"name\", \"?\")}")
-print(f"  Expires:  {r.get(\"expires_on\", \"never\")}")
-'
+print(f"  ID:       {r.get('id', '?')}")
+print(f"  Name:     {r.get('name', '?')}")
+print(f"  Expires:  {r.get('expires_on', 'never')}")
+PYEOF
     return 0
   else
     echo "✗ Token no está activo: $status" >&2
@@ -75,24 +86,24 @@ print(f"  Expires:  {r.get(\"expires_on\", \"never\")}")
 cf_list_pages_projects() {
   local response
   response="$(cf_api GET "/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects")"
-  echo "$response" | python3 -c '
-import sys, json
-d = json.load(sys.stdin)
+  CF_JSON="$response" python3 <<'PYEOF'
+import os, json
+d = json.loads(os.environ["CF_JSON"])
 projects = d.get("result", [])
 if not projects:
     print("(no hay proyectos Pages)")
-    sys.exit(0)
+    exit(0)
 print(f"{len(projects)} proyecto(s):")
 for p in projects:
     name = p.get("name", "?")
     pid = p.get("id", "?")
     subdomain = p.get("subdomain", "?")
     created = p.get("created_on", "?")[:10]
-    print(f"  • {name}")
+    print(f"  - {name}")
     print(f"      subdomain: {subdomain}.pages.dev")
     print(f"      id:        {pid}")
     print(f"      created:   {created}")
-'
+PYEOF
 }
 
 # cf_list_pages_deployments <project>
@@ -100,68 +111,69 @@ cf_list_pages_deployments() {
   local project="$1"
   local response
   response="$(cf_api GET "/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${project}/deployments")"
-  echo "$response" | python3 -c '
-import sys, json
-d = json.load(sys.stdin)
+  CF_JSON="$response" python3 <<'PYEOF'
+import os, json
+d = json.loads(os.environ["CF_JSON"])
 deploys = d.get("result", [])
 if not deploys:
     print("(no hay deployments)")
-    sys.exit(0)
+    exit(0)
 print(f"{len(deploys)} deployment(s):")
-for dep in deploys[:10]:  # últimos 10
+for dep in deploys[:10]:
     did = dep.get("id", "?")
     env = dep.get("environment", "?")
     branch = dep.get("deployment_trigger", {}).get("metadata", {}).get("branch", "?")
     commit = dep.get("deployment_trigger", {}).get("metadata", {}).get("commit_hash", "?")[:7]
     url = dep.get("url", "?")
     created = dep.get("created_on", "?")[:19]
-    print(f"  • {did}")
+    print(f"  - {did}")
     print(f"      env:    {env}")
     print(f"      branch: {branch} @ {commit}")
     print(f"      url:    {url}")
     print(f"      when:   {created}")
-'
+PYEOF
 }
 
 # cf_list_zones — Lista dominios (zonas) en la cuenta
 cf_list_zones() {
   local response
   response="$(cf_api GET "/zones?per_page=50")"
-  echo "$response" | python3 -c '
-import sys, json
-d = json.load(sys.stdin)
+  CF_JSON="$response" python3 <<'PYEOF'
+import os, json
+d = json.loads(os.environ["CF_JSON"])
 zones = d.get("result", [])
 if not zones:
-    print("(no hay zonas — agregá un dominio a Cloudflare primero)")
-    sys.exit(0)
+    print("(no hay zonas - agrega un dominio a Cloudflare primero)")
+    exit(0)
 print(f"{len(zones)} zona(s):")
 for z in zones:
     name = z.get("name", "?")
     status = z.get("status", "?")
     zid = z.get("id", "?")
     ns = z.get("name_servers", [])
-    print(f"  • {name}")
+    print(f"  - {name}")
     print(f"      status:  {status}")
     print(f"      id:      {zid}")
-    print(f"      ns:      {\", \".join(ns[:2])}")
-'
+    print(f"      ns:      {', '.join(ns[:2])}")
+PYEOF
 }
 
 # cf_get_zone_by_name <domain>
+# Devuelve el zone ID o "NOT_FOUND"
 cf_get_zone_by_name() {
   local domain="$1"
   local response
   response="$(cf_api GET "/zones?name=${domain}")"
-  echo "$response" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-zones = d.get('result', [])
+  CF_JSON="$response" python3 <<'PYEOF'
+import os, json
+d = json.loads(os.environ["CF_JSON"])
+zones = d.get("result", [])
 if not zones:
-    print('NOT_FOUND')
-    sys.exit(0)
+    print("NOT_FOUND")
+    exit(0)
 z = zones[0]
-print(z.get('id', ''))
-"
+print(z.get("id", ""))
+PYEOF
 }
 
 # cf_list_pages_domains <project> — Lista custom domains configurados en Pages
@@ -169,16 +181,16 @@ cf_list_pages_domains() {
   local project="$1"
   local response
   response="$(cf_api GET "/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${project}/domains")"
-  echo "$response" | python3 -c '
-import sys, json
-d = json.load(sys.stdin)
+  CF_JSON="$response" python3 <<'PYEOF'
+import os, json
+d = json.loads(os.environ["CF_JSON"])
 domains = d.get("result", [])
 if not domains:
     print("(no hay custom domains)")
-    sys.exit(0)
+    exit(0)
 for dom in domains:
     name = dom.get("name", "?")
     status = dom.get("status", "?")
-    print(f"  • {name} — {status}")
-'
+    print(f"  - {name} -- {status}")
+PYEOF
 }

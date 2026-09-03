@@ -43,9 +43,9 @@ test(".env.example exists and is committed (not gitignored)", async () => {
   const p = resolve(ROOT, ".env.example");
   assert.ok(existsSync(p), ".env.example missing");
   const raw = await readFile(p, "utf8");
-  // Must mention the hosting binding names so devs know where they live
-  assert.match(raw, /SITE_CREATOR_DB/);
-  assert.match(raw, /SITE_CREATOR_BUCKET/);
+  // Must document the bindings policy so devs do not reintroduce D1/R2 stubs
+  assert.match(raw, /\.openai\/hosting\.json/);
+  assert.match(raw, /must NOT declare.+d1.+r2/s);
   // Should be a real file, not a symlink
   const s = await stat(p);
   assert.ok(s.size > 200, ".env.example too short to be useful");

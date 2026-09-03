@@ -139,19 +139,25 @@ check(
   "run `pnpm install` first",
 );
 
-// 8. Hosting stub still has placeholder names
+// 8. Hosting stub does NOT declare D1/R2 bindings
+// cominorsa-web is a static SSR Worker with no persistent storage
+// (form is WhatsApp-based, no DB). `.openai/hosting.json` must omit
+// `d1` and `r2` so that `vinext build` produces a clean
+// `dist/server/wrangler.json` with empty `d1_databases` / `r2_buckets`.
+// If those keys reappear, the deploy will fail with code 10042
+// ("Please enable R2 through the Cloudflare Dashboard").
 if (existsSync(join(ROOT, ".openai/hosting.json"))) {
   const hosting = readJson("hosting.json", join(ROOT, ".openai/hosting.json"));
   if (hosting) {
     check(
-      ".openai/hosting.json has d1 binding name",
-      typeof hosting.d1 === "string",
-      "missing d1 binding name",
+      ".openai/hosting.json has no d1 binding",
+      !("d1" in hosting) || hosting.d1 === null || hosting.d1 === "",
+      "project does not use D1 — remove d1 from .openai/hosting.json",
     );
     check(
-      ".openai/hosting.json has r2 binding name",
-      typeof hosting.r2 === "string",
-      "missing r2 binding name",
+      ".openai/hosting.json has no r2 binding",
+      !("r2" in hosting) || hosting.r2 === null || hosting.r2 === "",
+      "project does not use R2 — remove r2 from .openai/hosting.json",
     );
   }
 }

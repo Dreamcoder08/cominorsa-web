@@ -38,20 +38,29 @@ WAIT_SSL_SECONDS=300
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --domain) DOMAIN="$2"; shift 2 ;;
-    --project) PROJECT="$2"; shift 2 ;;
-    -h|--help)
-      echo "Uso: $0 [--domain dominio.com] [--project proyecto-pages]"
-      echo ""
-      echo "  --domain    Dominio custom (default: cominorsa.com)"
-      echo "  --project   Nombre del Pages project (default: cominorsa-web)"
-      echo ""
-      echo "Variables de entorno requeridas:"
-      echo "  CLOUDFLARE_API_TOKEN   API Token con Pages:Edit + DNS:Edit + Account Settings:Read"
-      echo "  CLOUDFLARE_ACCOUNT_ID  Account ID (32 hex chars)"
-      exit 0
-      ;;
-    *) echo "Flag desconocida: $1" >&2; exit 1 ;;
+  --domain)
+    DOMAIN="$2"
+    shift 2
+    ;;
+  --project)
+    PROJECT="$2"
+    shift 2
+    ;;
+  -h | --help)
+    echo "Uso: $0 [--domain dominio.com] [--project proyecto-pages]"
+    echo ""
+    echo "  --domain    Dominio custom (default: cominorsa.com)"
+    echo "  --project   Nombre del Pages project (default: cominorsa-web)"
+    echo ""
+    echo "Variables de entorno requeridas:"
+    echo "  CLOUDFLARE_API_TOKEN   API Token con Pages:Edit + DNS:Edit + Account Settings:Read"
+    echo "  CLOUDFLARE_ACCOUNT_ID  Account ID (32 hex chars)"
+    exit 0
+    ;;
+  *)
+    echo "Flag desconocida: $1" >&2
+    exit 1
+    ;;
   esac
 done
 
@@ -65,25 +74,15 @@ echo ""
 
 # 1. Verificar credenciales
 echo "[1/6] Verificando credenciales..."
-check_env_token
+cf_verify_token
 echo "  OK - Token valido"
 echo ""
 
 # 2. Verificar que el dominio esta en la cuenta
 echo "[2/6] Verificando que $DOMAIN esta en tu cuenta de Cloudflare..."
-ZONE_ID=$(cf_get_zone_by_name "$DOMAIN" | python3 -c '
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    if isinstance(d, list) and len(d) > 0:
-        print(d[0].get("id", ""))
-    else:
-        print("")
-except Exception:
-    print("")
-')
+ZONE_ID=$(cf_get_zone_by_name "$DOMAIN")
 
-if [[ -z "$ZONE_ID" ]]; then
+if [[ -z "$ZONE_ID" || "$ZONE_ID" == "NOT_FOUND" ]]; then
   echo "  ERROR: $DOMAIN no se encontro en tu cuenta de Cloudflare"
   echo ""
   echo "Opciones:"
@@ -100,30 +99,32 @@ echo "[3/6] Configurando DNS records..."
 
 # A record para apex (apex domains usan CNAME flattening en CF cuando Proxied)
 echo "  - A @ → 192.0.2.1 (Proxied via Cloudflare)"
-cf_api "zones/$ZONE_ID/dns_records" POST '{
-  "type": "A",
-  "name": "@",
-  "content": "192.0.2.1",
-  "proxied": true,
-  "comment": "Apex domain for Cloudflare Pages"
-}' >/dev/null 2>&1 || echo "    (A record puede ya existir, ok)"
+A_RESULT=$(cf_api "POST" "/zones/$ZONE_ID/dns_records" '{"type":"A","name":"@","content":"192.0.2.1","proxied":true,"comment":"Apex domain for Cloudflare Pages"}' 2>&1) || true
+if echo "$A_RESULT" | grep -q '"success":true'; then
+  echo "    OK"
+elif echo "$A_RESULT" | grep -qi "already exists"; then
+  echo "    Ya existia, OK"
+else
+  echo "    Aviso: $A_RESULT" | head -3
+fi
 
 # CNAME para www
 echo "  - CNAME www → $PAGES_DOMAIN (Proxied)"
-cf_api "zones/$ZONE_ID/dns_records" POST "{
-  \"type\": \"CNAME\",
-  \"name\": \"www\",
-  \"content\": \"$PAGES_DOMAIN\",
-  \"proxied\": true,
-  \"comment\": \"www redirect for Cloudflare Pages\"
-}" >/dev/null 2>&1 || echo "    (CNAME puede ya existir, ok)"
+CNAME_RESULT=$(cf_api "POST" "/zones/$ZONE_ID/dns_records" "{\"type\":\"CNAME\",\"name\":\"www\",\"content\":\"$PAGES_DOMAIN\",\"proxied\":true,\"comment\":\"www redirect for Cloudflare Pages\"}" 2>&1) || true
+if echo "$CNAME_RESULT" | grep -q '"success":true'; then
+  echo "    OK"
+elif echo "$CNAME_RESULT" | grep -qi "already exists"; then
+  echo "    Ya existia, OK"
+else
+  echo "    Aviso: $CNAME_RESULT" | head -3
+fi
 
 echo "  OK - DNS records configurados"
 echo ""
 
 # 4. Conectar custom domain al Pages project
 echo "[4/6] Conectando $DOMAIN al Pages project $PROJECT..."
-RESULT=$(cf_api "accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT/domains" POST "{
+RESULT=$(cf_api "POST" "/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT/domains" "{
   \"name\": \"$DOMAIN\"
 }" 2>&1 || echo "")
 
@@ -160,7 +161,15 @@ echo ""
 # 6. Smoke test
 echo "[6/6] Corriendo smoke test final..."
 if [[ -x "$SCRIPT_DIR/cloudflare-smoke-test.sh" ]]; then
-  "$SCRIPT_DIR/cloudflare-smoke-test.sh" --url "https://$DOMAIN" 2>&1 | tail -20
+  # Intentar primero el custom domain, fallback a pages.dev si DNS no resolvio
+  if curl -sS -o /dev/null --max-time 5 "https://$DOMAIN" 2>/dev/null; then
+    "$SCRIPT_DIR/cloudflare-smoke-test.sh" --url "https://$DOMAIN" 2>&1 | tail -20
+  else
+    echo "  Aviso: $DOMAIN no resuelve desde esta red (DNS aun propagando)"
+    echo "  Probando $PAGES_DOMAIN como fallback..."
+    echo ""
+    "$SCRIPT_DIR/cloudflare-smoke-test.sh" --url "https://$PAGES_DOMAIN" 2>&1 | tail -20
+  fi
 else
   echo "  smoke-test no encontrado, saltando"
 fi

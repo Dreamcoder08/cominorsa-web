@@ -1,5 +1,3 @@
 {
-  "_comment": "Stub local de bindings Cloudflare para vinext dev/build. Reemplazar con IDs reales antes de deploy a produccion.",
-  "d1": "SITE_CREATOR_DB",
-  "r2": "SITE_CREATOR_BUCKET"
+  "_comment": "Stub local de bindings Cloudflare para vinext dev/build. vacio intencionalmente: el proyecto cominorsa-web NO usa D1 ni R2 (formulario basado en WhatsApp, contenido estatico)."
 }

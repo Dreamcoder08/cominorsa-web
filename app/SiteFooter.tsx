@@ -29,6 +29,7 @@ export function SiteFooter({ basePath = "" }: { basePath?: string }) {
           +51 987 817 100
         </a>
         <span>Piura · Perú</span>
+        <a href="/preguntas-frecuentes">FAQ</a>
         <a href="/privacidad">Privacidad</a>
         <a href="/terminos">Términos</a>
         <CookiePreferencesButton />

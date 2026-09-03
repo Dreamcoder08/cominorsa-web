@@ -28,6 +28,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     })),
     {
+      url: `${baseUrl}/preguntas-frecuentes`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
       url: `${baseUrl}/privacidad`,
       lastModified: now,
       changeFrequency: "yearly",

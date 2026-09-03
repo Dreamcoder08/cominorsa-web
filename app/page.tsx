@@ -1,7 +1,7 @@
 import { ConsultationForm } from "./ConsultationForm";
 import { SiteFooter } from "./SiteFooter";
 import { SiteHeader } from "./SiteHeader";
-import { WHATSAPP_INFORMATION, WHATSAPP_SECONDARY } from "./constants";
+import { WHATSAPP_INFORMATION } from "./constants";
 
 const serviceGroups = [
   {
@@ -325,7 +325,7 @@ export default function Home() {
           <div className="contact-top">
             <p className="eyebrow contact-eyebrow">
               <span />
-              Atención directa
+              Coordinemos
             </p>
             <h2>
               Hablemos de tu proyecto
@@ -364,16 +364,7 @@ export default function Home() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  WhatsApp 910 728 575
-                  <span aria-hidden="true">↗</span>
-                </a>
-                <a
-                  className="whatsapp-link"
-                  href={WHATSAPP_SECONDARY}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  WhatsApp 987 817 100
+                  Escríbenos por WhatsApp
                   <span aria-hidden="true">↗</span>
                 </a>
               </div>

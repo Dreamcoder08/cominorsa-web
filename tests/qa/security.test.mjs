@@ -33,7 +33,13 @@ test("HTML does not expose server-internal stack info", async () => {
 
 test("WhatsApp link contains expected phone numbers", async () => {
   const { html } = await fetchHtml();
-  assert.match(html, /wa\.me\/51987817100/);
+  // Only the primary number has a static wa.me anchor now — the contact
+  // section used to have one WhatsApp button per number (redundant with
+  // the tel: link right above each), collapsed to a single CTA. The
+  // secondary number is still reachable via WhatsApp through the
+  // consultation form's line selector (ConsultationForm.tsx), which
+  // builds that wa.me URL client-side on submit, so it won't appear in
+  // server-rendered HTML — the next test covers its tel: link instead.
   assert.match(html, /wa\.me\/51910728575/);
 });
 

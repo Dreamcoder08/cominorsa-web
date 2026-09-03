@@ -24,7 +24,17 @@ export function MobileNav({ whatsappHref }: { whatsappHref: string }) {
     if (!open) return;
 
     firstLinkRef.current?.focus();
+
+    // On platforms where the scrollbar reserves layout width (most desktop
+    // browsers — not touch/overlay-scrollbar ones, which measure 0 here),
+    // hiding it via overflow:hidden widens the viewport and shifts fixed
+    // content sideways. Compensate with matching padding so nothing moves.
+    // Real phones compute 0 and get no padding, so there's no cost there.
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -53,6 +63,7 @@ export function MobileNav({ whatsappHref }: { whatsappHref: string }) {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
     };
   }, [open, close]);
 

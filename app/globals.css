@@ -1464,6 +1464,15 @@ footer > .brand {
 }
 
 @media (max-width: 820px) {
+  /* 92px (the desktop card height) reads as a thick bar on a narrow phone.
+     Redeclared on :root, not just .site-header, so every rule anchored to
+     --header-height — .site-header's own min-height, .mobile-nav-panel's
+     top offset, .section/.contact's scroll-margin-top — follows from one
+     place instead of three separate overrides. */
+  :root {
+    --header-height: 72px;
+  }
+
   /* Below this width the header stops being a floating card with margin —
      margin-inline left a visible strip of the (dark) page background on
      both sides, which reads as a broken/half-width bar, especially once
@@ -1495,7 +1504,11 @@ footer > .brand {
 
   .hero-grid {
     width: calc(100% - 2rem);
-    padding: 145px 0 4rem;
+    /* Was 145px — tuned back when .site-header was position:absolute and
+       this padding had to cover the header's own height too. Now the
+       header is sticky/in-flow and reserves its own space, so this is
+       just breathing room below it, same as the desktop fix. */
+    padding: var(--space-7) 0 4rem;
     grid-template-columns: 1fr;
   }
 

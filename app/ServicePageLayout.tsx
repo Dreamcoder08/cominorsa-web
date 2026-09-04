@@ -39,6 +39,8 @@ export function ServicePageLayout({ service }: { service: ServiceGroup }) {
               href={whatsappHref}
               target="_blank"
               rel="noreferrer"
+              data-event="whatsapp_cta_click"
+              data-event-context={service.slug}
             >
               Hablar por WhatsApp
               <span aria-hidden="true">↗</span>

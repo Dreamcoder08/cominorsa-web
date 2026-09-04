@@ -113,6 +113,8 @@ export function MobileNav({
           target="_blank"
           rel="noreferrer"
           onClick={close}
+          data-event="whatsapp_cta_click"
+          data-event-context="mobile-nav"
         >
           Hablar por WhatsApp
           <span aria-hidden="true">↗</span>

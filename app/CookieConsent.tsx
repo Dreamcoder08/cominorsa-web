@@ -26,7 +26,7 @@ function getServerSnapshot(): Consent {
   return null;
 }
 
-export function CookieConsent() {
+export function CookieConsent({ nonce }: { nonce?: string }) {
   const consent = useSyncExternalStore(
     subscribe,
     getSnapshot,
@@ -52,8 +52,9 @@ export function CookieConsent() {
           <Script
             src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
             strategy="afterInteractive"
+            nonce={nonce}
           />
-          <Script id="ga4-init" strategy="afterInteractive">
+          <Script id="ga4-init" strategy="afterInteractive" nonce={nonce}>
             {`
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}

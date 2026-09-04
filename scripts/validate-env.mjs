@@ -84,6 +84,7 @@ const required = [
   "app/error.tsx",
   "app/loading.tsx",
   "app/manifest.ts",
+  "proxy.ts",
   "public/_headers",
   "public/og.png",
   "public/favicon.ico",
@@ -106,19 +107,38 @@ check(
   `${(ogSize / 1024 / 1024).toFixed(2)} MB`,
 );
 
-// 5. _headers file is not empty and contains CSP
+// 5. _headers file is not empty and declares immutable caching for static
+// assets. It intentionally does NOT declare CSP — Cloudflare only applies
+// _headers to responses served directly from the assets binding, and this
+// app is fully SSR'd, so CSP (with a per-request nonce) is set in proxy.ts
+// instead. See proxy.ts's top comment for the full explanation.
 const headersRaw = existsSync(join(ROOT, "public/_headers"))
   ? readFileSync(join(ROOT, "public/_headers"), "utf8")
   : "";
 check(
-  "public/_headers declares CSP",
-  /Content-Security-Policy/i.test(headersRaw),
-  "CSP header missing",
-);
-check(
   "public/_headers declares HSTS",
   /Strict-Transport-Security/i.test(headersRaw),
   "HSTS header missing",
+);
+check(
+  "public/_headers does not redeclare CSP (would be dead weight / a conflicting policy)",
+  !/Content-Security-Policy/i.test(headersRaw),
+  "CSP found in public/_headers — it belongs in proxy.ts instead",
+);
+
+// 5b. proxy.ts sets the real security headers for every SSR'd document.
+const proxyRaw = existsSync(join(ROOT, "proxy.ts"))
+  ? readFileSync(join(ROOT, "proxy.ts"), "utf8")
+  : "";
+check(
+  "proxy.ts declares CSP",
+  /Content-Security-Policy/i.test(proxyRaw),
+  "CSP header missing from proxy.ts",
+);
+check(
+  "proxy.ts uses a per-request nonce, not 'unsafe-inline', in script-src",
+  /'nonce-\$\{nonce\}'/.test(proxyRaw) && !/script-src[^`]*'unsafe-inline'/.test(proxyRaw),
+  "expected a nonce-based script-src in proxy.ts",
 );
 
 // 6. .env files: warn if a real one is committed (should only have .example)

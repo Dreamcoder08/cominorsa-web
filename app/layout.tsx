@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Archivo, Newsreader, Geist_Mono } from "next/font/google";
+import { getBaseUrl } from "./base-url";
 import { CookieConsent } from "./CookieConsent";
+import { PRIMARY_WHATSAPP_NUMBER } from "./constants";
 import "./globals.css";
 
 const archivo = Archivo({
@@ -31,12 +33,7 @@ export const viewport: Viewport = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const incomingHeaders = await headers();
-  const host = incomingHeaders.get("host") ?? "localhost:3000";
-  const protocol =
-    incomingHeaders.get("x-forwarded-proto") ??
-    (host.includes("localhost") ? "http" : "https");
-  const baseUrl = `${protocol}://${host}`;
+  const baseUrl = await getBaseUrl();
   const socialImage = `${baseUrl}/og.png`;
 
   return {
@@ -84,12 +81,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const baseUrl = await getBaseUrl();
   const incomingHeaders = await headers();
-  const host = incomingHeaders.get("host") ?? "localhost:3000";
-  const protocol =
-    incomingHeaders.get("x-forwarded-proto") ??
-    (host.includes("localhost") ? "http" : "https");
-  const baseUrl = `${protocol}://${host}`;
+  const nonce = incomingHeaders.get("x-nonce") ?? undefined;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -99,7 +93,7 @@ export default async function RootLayout({
     description:
       "Consultoría minera y ambiental: formalización minera (IGAFOM, REINFO), instrumentos ambientales, ingeniería y asistencia técnica desde Piura, Perú.",
     url: baseUrl,
-    telephone: "+51910728575",
+    telephone: `+${PRIMARY_WHATSAPP_NUMBER}`,
     taxID: "20614147131",
     address: {
       "@type": "PostalAddress",
@@ -122,12 +116,13 @@ export default async function RootLayout({
       <body>
         <script
           type="application/ld+json"
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
           }}
         />
         {children}
-        <CookieConsent />
+        <CookieConsent nonce={nonce} />
       </body>
     </html>
   );

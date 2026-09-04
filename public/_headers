@@ -1,18 +1,25 @@
 # Headers para Cloudflare Pages / Workers
 # Formato: una línea de path, líneas siguientes con `Header-Name: value`.
-# Aplicar a TODAS las rutas (luego reglas más específicas tienen precedencia).
+#
+# IMPORTANTE: este archivo NUNCA aplica a las páginas HTML del sitio.
+# Cloudflare solo lee _headers para responses servidos directamente desde el
+# binding de assets estáticos (env.ASSETS.fetch). worker/index.ts nunca llama
+# a env.ASSETS.fetch salvo para el endpoint de optimización de imágenes — toda
+# página se genera vía handler.fetch() (SSR de vinext/Next) y esa Response se
+# devuelve tal cual, sin pasar por este archivo. Por eso los headers de
+# seguridad reales (CSP con nonce, HSTS, X-Frame-Options, etc.) se setean en
+# proxy.ts, que corre dentro de ese mismo pipeline de SSR para cada request.
+#
+# Lo de acá abajo solo aplica a archivos estáticos servidos tal cual
+# (imágenes, fuentes, favicons) — sigue siendo útil como defensa en
+# profundidad si alguien pide uno de esos archivos directamente.
 
-/
-  # Seguridad: prevenir XSS, clickjacking, sniffing MIME, fuga de referrer.
-  Content-Security-Policy: default-src 'self'; img-src 'self' data: https://wa.me https://*.whatsapp.net https://*.fbcdn.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self' 'unsafe-inline'; connect-src 'self' https://wa.me; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://wa.me
+/*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   X-XSS-Protection: 0
-  # No cachear el HTML: el contenido puede cambiar con cada deploy.
-  # (Los assets en /_next/static/* sí se cachean por 1 año — ver regla abajo.)
 
 # Override: assets con hash en el nombre son inmutables.
 # Esta regla la agrega Vinext automáticamente, pero la dejamos explícita

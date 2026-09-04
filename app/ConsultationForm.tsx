@@ -1,9 +1,11 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-
-const PRIMARY_WHATSAPP = "51910728575";
-const SECONDARY_WHATSAPP = "51987817100";
+import {
+  CONTACT_SUBMIT_EVENT,
+  PRIMARY_WHATSAPP_NUMBER,
+  SECONDARY_WHATSAPP_NUMBER,
+} from "./constants";
 
 const serviceOptions = [
   "Formalización minera e IGAFOM",
@@ -29,9 +31,9 @@ export function ConsultationForm() {
     const question = String(form.get("question") ?? "").trim();
     const selectedWhatsApp = String(form.get("whatsapp") ?? "");
     const recipient =
-      selectedWhatsApp === SECONDARY_WHATSAPP
-        ? SECONDARY_WHATSAPP
-        : PRIMARY_WHATSAPP;
+      selectedWhatsApp === SECONDARY_WHATSAPP_NUMBER
+        ? SECONDARY_WHATSAPP_NUMBER
+        : PRIMARY_WHATSAPP_NUMBER;
 
     const message = [
       "Hola COMINORSA, quiero realizar una consulta profesional.",
@@ -45,6 +47,8 @@ export function ConsultationForm() {
     ].join("\n");
 
     const url = `https://wa.me/${recipient}?text=${encodeURIComponent(message)}`;
+    event.currentTarget.dataset.event = CONTACT_SUBMIT_EVENT;
+    event.currentTarget.dataset.eventContext = service;
     window.open(url, "_blank", "noopener,noreferrer");
     setSent(true);
   }
@@ -90,9 +94,9 @@ export function ConsultationForm() {
 
       <label>
         <span>Línea de WhatsApp</span>
-        <select name="whatsapp" defaultValue={PRIMARY_WHATSAPP} required>
-          <option value={PRIMARY_WHATSAPP}>910 728 575</option>
-          <option value={SECONDARY_WHATSAPP}>987 817 100</option>
+        <select name="whatsapp" defaultValue={PRIMARY_WHATSAPP_NUMBER} required>
+          <option value={PRIMARY_WHATSAPP_NUMBER}>910 728 575</option>
+          <option value={SECONDARY_WHATSAPP_NUMBER}>987 817 100</option>
         </select>
       </label>
 

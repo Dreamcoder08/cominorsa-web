@@ -1,4 +1,11 @@
 import { CookiePreferencesButton } from "./CookiePreferencesButton";
+import {
+  PRIMARY_WHATSAPP_DISPLAY,
+  PRIMARY_WHATSAPP_NUMBER,
+  SECONDARY_WHATSAPP_DISPLAY,
+  SECONDARY_WHATSAPP_NUMBER,
+  telLink,
+} from "./constants";
 
 export function SiteFooter({ basePath = "" }: { basePath?: string }) {
   return (
@@ -7,7 +14,7 @@ export function SiteFooter({ basePath = "" }: { basePath?: string }) {
         <span className="brand-mark brand-logo-wrap" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/logo.png"
+            src="/logo-44.png"
             alt=""
             width="44"
             height="44"
@@ -22,11 +29,17 @@ export function SiteFooter({ basePath = "" }: { basePath?: string }) {
 
       <div className="footer-meta">
         <span className="footer-ruc">RUC 20614147131</span>
-        <a href="tel:+51910728575" aria-label="Llamar al +51 910 728 575">
-          +51 910 728 575
+        <a
+          href={telLink(PRIMARY_WHATSAPP_NUMBER)}
+          aria-label={`Llamar al ${PRIMARY_WHATSAPP_DISPLAY}`}
+        >
+          {PRIMARY_WHATSAPP_DISPLAY}
         </a>
-        <a href="tel:+51987817100" aria-label="Llamar al +51 987 817 100">
-          +51 987 817 100
+        <a
+          href={telLink(SECONDARY_WHATSAPP_NUMBER)}
+          aria-label={`Llamar al ${SECONDARY_WHATSAPP_DISPLAY}`}
+        >
+          {SECONDARY_WHATSAPP_DISPLAY}
         </a>
         <span>Piura · Perú</span>
         <a href="/preguntas-frecuentes">FAQ</a>

@@ -1,7 +1,14 @@
 import { ConsultationForm } from "./ConsultationForm";
 import { SiteFooter } from "./SiteFooter";
 import { SiteHeader } from "./SiteHeader";
-import { WHATSAPP_INFORMATION } from "./constants";
+import {
+  PRIMARY_WHATSAPP_DISPLAY,
+  PRIMARY_WHATSAPP_NUMBER,
+  SECONDARY_WHATSAPP_DISPLAY,
+  SECONDARY_WHATSAPP_NUMBER,
+  telLink,
+  WHATSAPP_INFORMATION,
+} from "./constants";
 import { serviceGroups } from "./services-data";
 
 const steps = [
@@ -81,18 +88,18 @@ export default function Home() {
               </p>
               <div className="hero-card-numbers">
                 <a
-                  href="tel:+51910728575"
+                  href={telLink(PRIMARY_WHATSAPP_NUMBER)}
                   className="inline-phone"
-                  aria-label="Llamar al +51 910 728 575"
+                  aria-label={`Llamar al ${PRIMARY_WHATSAPP_DISPLAY}`}
                 >
-                  +51 910 728 575
+                  {PRIMARY_WHATSAPP_DISPLAY}
                 </a>
                 <a
-                  href="tel:+51987817100"
+                  href={telLink(SECONDARY_WHATSAPP_NUMBER)}
                   className="inline-phone"
-                  aria-label="Llamar al +51 987 817 100"
+                  aria-label={`Llamar al ${SECONDARY_WHATSAPP_DISPLAY}`}
                 >
-                  +51 987 817 100
+                  {SECONDARY_WHATSAPP_DISPLAY}
                 </a>
               </div>
             </div>
@@ -279,17 +286,17 @@ export default function Home() {
                 </p>
                 <a
                   className="phone-link"
-                  href="tel:+51910728575"
-                  aria-label="Llamar al +51 910 728 575"
+                  href={telLink(PRIMARY_WHATSAPP_NUMBER)}
+                  aria-label={`Llamar al ${PRIMARY_WHATSAPP_DISPLAY}`}
                 >
-                  +51 910 728 575
+                  {PRIMARY_WHATSAPP_DISPLAY}
                 </a>
                 <a
                   className="phone-link"
-                  href="tel:+51987817100"
-                  aria-label="Llamar al +51 987 817 100"
+                  href={telLink(SECONDARY_WHATSAPP_NUMBER)}
+                  aria-label={`Llamar al ${SECONDARY_WHATSAPP_DISPLAY}`}
                 >
-                  +51 987 817 100
+                  {SECONDARY_WHATSAPP_DISPLAY}
                 </a>
                 <a
                   className="whatsapp-link"

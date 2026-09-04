@@ -1,14 +1,9 @@
 import type { MetadataRoute } from "next";
-import { headers } from "next/headers";
+import { getBaseUrl } from "./base-url";
 import { serviceGroups } from "./services-data";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const incomingHeaders = await headers();
-  const host = incomingHeaders.get("host") ?? "localhost:3000";
-  const protocol =
-    incomingHeaders.get("x-forwarded-proto") ??
-    (host.includes("localhost") ? "http" : "https");
-  const baseUrl = `${protocol}://${host}`;
+  const baseUrl = await getBaseUrl();
   const now = new Date();
 
   return [

@@ -81,7 +81,7 @@ test("logo image is preload-hinted", async () => {
   // Allow attribute order to vary; use a flexible pattern.
   assert.match(
     html,
-    /<link[^>]*\bhref=["']\/logo\.png["'][^>]*\bas=["']image["']/,
+    /<link[^>]*\bhref=["']\/logo-44\.png["'][^>]*\bas=["']image["']/,
   );
 });
 

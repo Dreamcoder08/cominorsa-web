@@ -1,7 +1,5 @@
 import { MobileNav } from "./MobileNav";
-
-const WHATSAPP_INFORMATION =
-  "https://wa.me/51910728575?text=Hola%20COMINORSA%2C%20deseo%20informaci%C3%B3n%20sobre%20sus%20servicios.";
+import { WHATSAPP_INFORMATION } from "./constants";
 
 /**
  * basePath: "" on the homepage (bare #anchor scrolls in place), "/" on any
@@ -18,7 +16,7 @@ export function SiteHeader({ basePath = "" }: { basePath?: string }) {
       >
         <span className="brand-mark brand-logo-wrap" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="" width="44" height="44" />
+          <img src="/logo-44.png" alt="" width="44" height="44" />
         </span>
         <span className="brand-copy">
           <strong translate="no">COMINORSA</strong>
@@ -38,6 +36,8 @@ export function SiteHeader({ basePath = "" }: { basePath?: string }) {
         href={WHATSAPP_INFORMATION}
         target="_blank"
         rel="noreferrer"
+        data-event="whatsapp_cta_click"
+        data-event-context="header"
       >
         WhatsApp
         <span aria-hidden="true">↗</span>

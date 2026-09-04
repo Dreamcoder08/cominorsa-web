@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
+import { getBaseUrl } from "../base-url";
 import { SiteFooter } from "../SiteFooter";
 import { SiteHeader } from "../SiteHeader";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const incomingHeaders = await headers();
-  const host = incomingHeaders.get("host") ?? "localhost:3000";
-  const protocol =
-    incomingHeaders.get("x-forwarded-proto") ??
-    (host.includes("localhost") ? "http" : "https");
-  const baseUrl = `${protocol}://${host}`;
+  const baseUrl = await getBaseUrl();
 
   return {
     title: "Términos y Condiciones | COMINORSA",

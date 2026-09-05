@@ -25,7 +25,9 @@
     "cf:watch": "bash scripts/cloudflare-watch.sh",
     "cf:bootstrap": "bash scripts/cloudflare-bootstrap.sh",
     "cf:rollback": "bash scripts/cloudflare-rollback.sh",
-    "cf:full": "bash scripts/cloudflare-full-setup.sh"
+    "cf:full": "bash scripts/cloudflare-full-setup.sh",
+    "twenty:up": "docker compose -f docker/twenty/docker-compose.yml up -d",
+    "twenty:down": "docker compose -f docker/twenty/docker-compose.yml down"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

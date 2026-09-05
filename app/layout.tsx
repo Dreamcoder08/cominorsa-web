@@ -117,6 +117,14 @@ export default async function RootLayout({
         <script
           type="application/ld+json"
           nonce={nonce}
+          // Browsers hide a script's `nonce` attribute from JS (including
+          // React's own hydration check) once the CSP nonce has been
+          // validated, as a defense against nonce exfiltration — so a
+          // client re-render always sees "" here even though the real
+          // nonce did its job server-side. This is a known, documented
+          // React/CSP interaction (see e.g. github.com/kentcdodds/
+          // nonce-hydration-issues), not a bug in the value passed above.
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
           }}

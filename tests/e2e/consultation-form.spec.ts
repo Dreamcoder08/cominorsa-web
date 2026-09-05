@@ -1,17 +1,18 @@
 import { test, expect, type Page, type Request } from "@playwright/test";
 
 /**
- * `context.waitForEvent("page")` (real popup tracking) and
- * `page.waitForRequest()` both proved unreliable against this exact form —
- * ConsultationForm.tsx fires `window.open` then `fetch` synchronously in
- * one submit handler, and under `@playwright/test`'s harness in this
- * environment both promises hung past a 30s timeout even though the app
- * itself behaved correctly (confirmed independently: a plain
- * `page.on("request")` listener saw the POST, and the dev server's own
- * access log recorded it). Stubbing `window.open` at the page level and
- * recording its arguments — rather than tracking a real new tab — is the
- * standard, deterministic way to test this interaction; it needs no
- * browser-level popup/tab machinery at all.
+ * Stubs `window.open` and records its arguments instead of tracking a real
+ * popup via `context.waitForEvent("page")`. Not just a style preference:
+ * while tracking down why that (and `page.waitForRequest`) hung for 30s
+ * against this exact form, the actual cause turned out to be the
+ * pre-hydration native-submission race documented on
+ * `gotoAndWaitForHydration` below — with no submit handler attached yet,
+ * neither `window.open` nor `fetch` ever ran, so there was nothing for
+ * either waiter to catch. That race is now closed at the source
+ * (ConsultationForm.tsx disables its submit button until mounted), but
+ * stubbing `window.open` remains the right approach on its own merits: it
+ * needs no browser-level popup/tab machinery and can't flake on tab-timing
+ * regardless.
  */
 async function stubWindowOpen(page: Page) {
   await page.addInitScript(() => {
@@ -31,9 +32,9 @@ async function getOpenedUrls(page: Page): Promise<string[]> {
   );
 }
 
-/** Same reasoning as stubWindowOpen's doc comment: a manually-collected
- * listener, armed before the click, is what reliably sees the fetch that
- * `page.waitForRequest()` missed. */
+/** Same reasoning as stubWindowOpen's doc comment (see above) — a
+ * manually-collected listener armed before the click, rather than
+ * `page.waitForRequest()`. */
 function captureRequestsTo(page: Page, urlSubstring: string) {
   const requests: Request[] = [];
   page.on("request", (req) => {
@@ -42,40 +43,40 @@ function captureRequestsTo(page: Page, urlSubstring: string) {
   return requests;
 }
 
-// Errors we know about and don't own here — asserting "zero console
-// errors" would otherwise make every run fail on a pre-existing issue
-// instead of whatever this suite is meant to catch.
-//
-// The CSP nonce hydration mismatch on the JSON-LD <script> tag (server
-// renders a real per-request nonce, client re-render computes "") is
-// pre-existing and independent of any change in this session — but it is
-// NOT cosmetic: root-caused here while building this suite, it correlates
-// with a real race where a very fast click (exactly what automated
-// clicking does, and what a real user piling in immediately after paint
-// could also do) lands before React finishes hydrating and attaching
-// ConsultationForm's onSubmit — the browser then runs the form's *native*
-// default submission (GET, every field appended to the URL as a query
-// string) since no JS handler was listening yet. `waitForHydration` below
-// is this suite's guard against that exact race; the underlying nonce bug
-// is unfixed and worth its own follow-up.
+// A known, expected React/CSP interaction, not a bug: browsers hide a
+// script's `nonce` attribute from JS (React's hydration check included)
+// once the CSP nonce has been validated, as a defense against nonce
+// exfiltration — so app/layout.tsx's real per-request nonce always reads
+// back as "" on the client even though it did its job server-side. See
+// app/layout.tsx's suppressHydrationWarning comment on the JSON-LD
+// <script> tag. Asserting "zero console errors" would otherwise make
+// every run fail on this expected warning instead of whatever this suite
+// is meant to catch.
 const KNOWN_UNRELATED_ERROR_SUBSTRINGS = ["hydration-mismatch"];
 
 function isKnownUnrelatedError(text: string) {
   return KNOWN_UNRELATED_ERROR_SUBSTRINGS.some((s) => text.includes(s));
 }
 
-/** See the comment above KNOWN_UNRELATED_ERROR_SUBSTRINGS: interacting
- * with the form before React has hydrated it makes the browser fall back
- * to native form submission. `networkidle` (used in `page.goto`) tracks
- * network activity, not hydration/interactivity, so it does not by itself
- * guarantee this is safe. This is a genuine race, not a fixed delay — 1.5s
- * measurably reduced but did not eliminate it (still saw one flake at that
- * margin), so this is a fixed-timeout mitigation for test stability, not a
- * real fix; a hydration-readiness signal from the app would be the actual
- * fix (see the follow-up this comment recommends filing). */
+/** ConsultationForm's submit button starts `disabled` until the component
+ * mounts client-side (see the `mounted` comment in ConsultationForm.tsx) —
+ * specifically so a click can never land before React has hydrated and
+ * attached the real onSubmit handler. Waiting for that instead of a fixed
+ * delay is what makes this deterministic rather than "probably enough
+ * time" flakiness. */
 async function gotoAndWaitForHydration(page: Page, path = "/") {
   await page.goto(path);
-  await page.waitForTimeout(2500);
+  // Playwright's default 5s expect-timeout assumes normal load; running
+  // this whole suite's browsers in parallel against one shared dev server
+  // (itself an unbundled Vite process, slower to interactive than a
+  // production build) can genuinely push real hydration past that under
+  // CPU contention — this is a generous ceiling for a legitimately slow
+  // environment, not a race being paved over (the button becomes enabled
+  // deterministically once mounted; there's no scenario where waiting
+  // longer changes the outcome).
+  await expect(
+    page.locator('.consultation-form button[type="submit"]'),
+  ).toBeEnabled({ timeout: 15000 });
 }
 
 test.describe("homepage smoke", () => {

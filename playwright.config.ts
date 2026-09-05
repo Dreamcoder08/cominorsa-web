@@ -12,10 +12,7 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  // 1 locally, not 0: tests/e2e/consultation-form.spec.ts documents a real
-  // hydration-timing race (pre-existing CSP nonce mismatch) that a fixed
-  // wait reduces but does not fully eliminate — see gotoAndWaitForHydration.
-  retries: process.env.CI ? 2 : 1,
+  retries: process.env.CI ? 2 : 0,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL,

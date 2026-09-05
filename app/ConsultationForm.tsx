@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   CONTACT_SUBMIT_EVENT,
   PRIMARY_WHATSAPP_NUMBER,
@@ -21,6 +21,20 @@ const serviceOptions = [
 
 export function ConsultationForm() {
   const [sent, setSent] = useState(false);
+  // Server-rendered HTML has no onSubmit wired at all — that's a React
+  // prop, not an HTML attribute — so a submit click landing before this
+  // client component finishes hydrating falls through to the browser's
+  // *native* form submission: GET, every field (including the client's
+  // name/city/question) appended to the URL as a query string. `mounted`
+  // starts false on both server and first client render (so this can't
+  // itself cause a hydration mismatch), then flips true in an effect,
+  // which only fires after hydration has already attached the real
+  // handler — closing the gap instead of just narrowing it with a delay.
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -128,7 +142,7 @@ export function ConsultationForm() {
           <strong>Consulta profesional</strong>
           <span>Te respondemos por WhatsApp</span>
         </div>
-        <button type="submit">
+        <button type="submit" disabled={!mounted}>
           Enviar por WhatsApp
           <span aria-hidden="true">↗</span>
         </button>

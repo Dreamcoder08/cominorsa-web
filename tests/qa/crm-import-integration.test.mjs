@@ -14,13 +14,14 @@ import { fileURLToPath } from "node:url";
 import { parseCsvLine } from "../../scripts/generate-crm-import-csvs.mjs";
 
 // Integration tests spawn the real script as a subprocess against
-// TEMPORARY fixture CSVs — never the real repo-root
-// `empresas-mineras-zona17S-icp.csv` — per the CLI source-path override
-// added in PR1 (see scripts/generate-crm-import-csvs.mjs's header comment
-// and openspec/changes/crm-lead-import/design.md's testing strategy). The
-// script always writes its two output CSVs to the repo root regardless of
-// the source path passed in, so every test cleans those generated files up
-// afterward in addition to its own temp fixture directory.
+// TEMPORARY fixture CSVs and a TEMPORARY output directory — never the real
+// repo-root `empresas-mineras-zona17S-icp.csv` or the real, committed
+// `crm-import-{companies,people}.csv` — per the CLI source-path/outDir
+// overrides (see scripts/generate-crm-import-csvs.mjs's header comment and
+// openspec/changes/crm-lead-import/design.md's testing strategy). Writing
+// outputs into each test's own temp directory means a test run can never
+// overwrite or delete the real output files, and tests never need to clean
+// up repo-root state.
 
 const REPO_ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const SCRIPT_PATH = join(
@@ -28,25 +29,16 @@ const SCRIPT_PATH = join(
   "scripts",
   "generate-crm-import-csvs.mjs",
 );
-const COMPANIES_OUTPUT = join(REPO_ROOT, "crm-import-companies.csv");
-const PEOPLE_OUTPUT = join(REPO_ROOT, "crm-import-people.csv");
 
 const EXPECTED_HEADER_LINE =
   "titular,tipo,perfil_icp,n_concesiones,hectareas_totales,departamentos,provincias,sustancias,estados_concesion";
 
 const BOOLEAN_COLUMNS = ["REINFO", "IGAFOM", "DAC", "ESTAMIN", "revisar_manual"];
 
-/** Deletes both generated output files at the repo root if present. Safe to
- * call before a run (defensive) and always called after, in a `finally`. */
-function cleanOutputs() {
-  for (const path of [COMPANIES_OUTPUT, PEOPLE_OUTPUT]) {
-    if (existsSync(path)) rmSync(path);
-  }
-}
-
 /** Creates a fresh OS temp directory (never the repo root) containing one
- * fixture CSV file. Returns the directory (for cleanup) and the file path
- * to pass as the script's source-path override argument. */
+ * fixture CSV file. Returns the directory (used both for the source
+ * fixture and, via `outputPaths`, as the script's output directory) and
+ * the fixture file path to pass as the script's source-path argument. */
 function makeFixture(name, content) {
   const dir = mkdtempSync(join(tmpdir(), "crm-import-integration-"));
   const filePath = join(dir, name);
@@ -54,15 +46,26 @@ function makeFixture(name, content) {
   return { dir, filePath };
 }
 
-/** Runs the script as a real subprocess against `sourcePath`, cwd'd at the
- * repo root. Never throws on a non-zero exit — returns the exit status,
- * stdout, and stderr so callers can assert fail-closed behavior. */
-function runScript(sourcePath) {
+/** The two output CSV paths the script would write inside `dir` when `dir`
+ * is passed as its outDir argument. */
+function outputPaths(dir) {
+  return {
+    companies: join(dir, "crm-import-companies.csv"),
+    people: join(dir, "crm-import-people.csv"),
+  };
+}
+
+/** Runs the script as a real subprocess against `sourcePath`, writing
+ * outputs into `outDir` (a temp directory, never the repo root). Never
+ * throws on a non-zero exit — returns the exit status, stdout, and stderr
+ * so callers can assert fail-closed behavior. */
+function runScript(sourcePath, outDir) {
   try {
-    const stdout = execFileSync(process.execPath, [SCRIPT_PATH, sourcePath], {
-      cwd: REPO_ROOT,
-      encoding: "utf8",
-    });
+    const stdout = execFileSync(
+      process.execPath,
+      [SCRIPT_PATH, sourcePath, outDir],
+      { cwd: REPO_ROOT, encoding: "utf8" },
+    );
     return { status: 0, stdout, stderr: "" };
   } catch (err) {
     return {
@@ -140,8 +143,11 @@ function fixtureCsv(rows) {
 }
 
 /** Asserts every data row (excluding the header) in a parsed output file has
- * a non-empty `servicio_potencial` and explicit `"true"`/`"false"` string
- * values for all 5 boolean columns, per crm-field-derivation-rules/spec.md. */
+ * a non-empty `servicio_potencial` and explicit `"TRUE"`/`"FALSE"` string
+ * values for all 5 boolean columns, per crm-field-derivation-rules/spec.md.
+ * Uppercase is mandatory: Twenty's CSV import wizard does not recognize
+ * lowercase "true"/"false" (docs.twenty.com/user-guide/data-migration/
+ * how-tos/prepare-your-csv-files). */
 function assertDerivedFieldsPresent(lines) {
   const header = parseCsvLine(lines[0]);
   const servicioIdx = header.indexOf("servicio_potencial");
@@ -162,8 +168,8 @@ function assertDerivedFieldsPresent(lines) {
     );
     for (const col of BOOLEAN_COLUMNS) {
       assert.ok(
-        ["true", "false"].includes(fields[booleanIdx[col]]),
-        `${col} must be an explicit "true"/"false" string in row: ${line}`,
+        ["TRUE", "FALSE"].includes(fields[booleanIdx[col]]),
+        `${col} must be an explicit "TRUE"/"FALSE" string in row: ${line}`,
       );
     }
   }
@@ -171,17 +177,17 @@ function assertDerivedFieldsPresent(lines) {
 
 test("full run against a known fixture produces the correct row-count split with derived fields present", () => {
   const { dir, filePath } = makeFixture("source.csv", fixtureCsv(FIXTURE_ROWS));
+  const { companies: companiesOutput, people: peopleOutput } = outputPaths(dir);
   try {
-    cleanOutputs();
-    const result = runScript(filePath);
+    const result = runScript(filePath, dir);
     assert.equal(result.status, 0, `expected exit 0, stderr: ${result.stderr}`);
-    assert.ok(existsSync(COMPANIES_OUTPUT), "companies CSV must be written");
-    assert.ok(existsSync(PEOPLE_OUTPUT), "people CSV must be written");
+    assert.ok(existsSync(companiesOutput), "companies CSV must be written");
+    assert.ok(existsSync(peopleOutput), "people CSV must be written");
 
-    const companiesLines = readFileSync(COMPANIES_OUTPUT, "utf8")
+    const companiesLines = readFileSync(companiesOutput, "utf8")
       .trim()
       .split("\n");
-    const peopleLines = readFileSync(PEOPLE_OUTPUT, "utf8").trim().split("\n");
+    const peopleLines = readFileSync(peopleOutput, "utf8").trim().split("\n");
 
     // Fixture has 2 retained EMPRESA rows and 2 retained PERSONA_NATURAL
     // rows; the EXCLUIDO_mediana_o_gran_mineria row is dropped from both.
@@ -192,25 +198,23 @@ test("full run against a known fixture produces the correct row-count split with
     assertDerivedFieldsPresent(companiesLines);
     assertDerivedFieldsPresent(peopleLines);
   } finally {
-    cleanOutputs();
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("running twice against the same fixture produces byte-identical output files", () => {
   const { dir, filePath } = makeFixture("source.csv", fixtureCsv(FIXTURE_ROWS));
+  const { companies: companiesOutput, people: peopleOutput } = outputPaths(dir);
   try {
-    cleanOutputs();
-
-    const first = runScript(filePath);
+    const first = runScript(filePath, dir);
     assert.equal(first.status, 0, `expected exit 0, stderr: ${first.stderr}`);
-    const companiesFirst = readFileSync(COMPANIES_OUTPUT);
-    const peopleFirst = readFileSync(PEOPLE_OUTPUT);
+    const companiesFirst = readFileSync(companiesOutput);
+    const peopleFirst = readFileSync(peopleOutput);
 
-    const second = runScript(filePath);
+    const second = runScript(filePath, dir);
     assert.equal(second.status, 0, `expected exit 0, stderr: ${second.stderr}`);
-    const companiesSecond = readFileSync(COMPANIES_OUTPUT);
-    const peopleSecond = readFileSync(PEOPLE_OUTPUT);
+    const companiesSecond = readFileSync(companiesOutput);
+    const peopleSecond = readFileSync(peopleOutput);
 
     assert.ok(
       companiesFirst.equals(companiesSecond),
@@ -221,7 +225,6 @@ test("running twice against the same fixture produces byte-identical output file
       "people CSV must be byte-identical across two runs",
     );
   } finally {
-    cleanOutputs();
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -229,31 +232,29 @@ test("running twice against the same fixture produces byte-identical output file
 test("a missing source file exits non-zero, names the file, and writes no output", () => {
   const dir = mkdtempSync(join(tmpdir(), "crm-import-integration-"));
   const missingPath = join(dir, "does-not-exist.csv");
+  const { companies: companiesOutput, people: peopleOutput } = outputPaths(dir);
   try {
-    cleanOutputs();
-    const result = runScript(missingPath);
+    const result = runScript(missingPath, dir);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /not found/i);
     assert.match(result.stderr, /does-not-exist\.csv/);
-    assert.ok(!existsSync(COMPANIES_OUTPUT), "no companies CSV on failure");
-    assert.ok(!existsSync(PEOPLE_OUTPUT), "no people CSV on failure");
+    assert.ok(!existsSync(companiesOutput), "no companies CSV on failure");
+    assert.ok(!existsSync(peopleOutput), "no people CSV on failure");
   } finally {
-    cleanOutputs();
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("an empty source file exits non-zero and writes no output", () => {
   const { dir, filePath } = makeFixture("empty.csv", "");
+  const { companies: companiesOutput, people: peopleOutput } = outputPaths(dir);
   try {
-    cleanOutputs();
-    const result = runScript(filePath);
+    const result = runScript(filePath, dir);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /no data rows/i);
-    assert.ok(!existsSync(COMPANIES_OUTPUT), "no companies CSV on failure");
-    assert.ok(!existsSync(PEOPLE_OUTPUT), "no people CSV on failure");
+    assert.ok(!existsSync(companiesOutput), "no companies CSV on failure");
+    assert.ok(!existsSync(peopleOutput), "no people CSV on failure");
   } finally {
-    cleanOutputs();
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -263,17 +264,16 @@ test("a malformed header row exits non-zero, lists expected vs. actual columns, 
     "nombre,categoria,perfil,concesiones,hectareas,depto,provincia,sustancia,estado";
   const content = `${badHeaderLine}\n${FIXTURE_ROWS[0].join(",")}\n`;
   const { dir, filePath } = makeFixture("bad-header.csv", content);
+  const { companies: companiesOutput, people: peopleOutput } = outputPaths(dir);
   try {
-    cleanOutputs();
-    const result = runScript(filePath);
+    const result = runScript(filePath, dir);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Unexpected header row/i);
     assert.match(result.stderr, /Expected:/);
     assert.match(result.stderr, /Actual:/);
-    assert.ok(!existsSync(COMPANIES_OUTPUT), "no companies CSV on failure");
-    assert.ok(!existsSync(PEOPLE_OUTPUT), "no people CSV on failure");
+    assert.ok(!existsSync(companiesOutput), "no companies CSV on failure");
+    assert.ok(!existsSync(peopleOutput), "no people CSV on failure");
   } finally {
-    cleanOutputs();
     rmSync(dir, { recursive: true, force: true });
   }
 });

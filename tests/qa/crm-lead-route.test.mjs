@@ -72,7 +72,7 @@ test("env-gate: empty-string env vars also no-op (never calls fetch)", async (t)
   assert.equal(fetchSpy.mock.calls.length, 0);
 });
 
-test("happy path: posts to /rest/people with Bearer auth, split name, city, all 4 custom fields, and returns 200", async (t) => {
+test("happy path: posts to /rest/people with Bearer auth, split name, city, all 5 custom fields, and returns 200", async (t) => {
   const calls = [];
   t.mock.method(globalThis, "fetch", async (url, options) => {
     calls.push({ url, options });
@@ -97,7 +97,7 @@ test("happy path: posts to /rest/people with Bearer auth, split name, city, all 
 
   const body = JSON.parse(options.body);
   assert.deepEqual(body.name, { firstName: "Ana", lastName: "Torres" });
-  assert.equal(body.city, "Piura");
+  assert.equal(body.ciudadConsulta, "Piura");
   assert.equal(body.servicioConsulta, "REINFO");
   assert.equal(body.consultaMensaje, VALID_PAYLOAD.question);
   assert.equal(body.lineaWhatsapp, "PRINCIPAL_910728575");

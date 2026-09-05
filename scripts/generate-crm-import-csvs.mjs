@@ -10,10 +10,12 @@
  * No external dependencies — runs with plain `node`, matches the
  * `validate-env.mjs` / `bundle-report.mjs` convention.
  *
- * Usage:  node scripts/generate-crm-import-csvs.mjs [sourcePath]
- *         `sourcePath` is optional and test-only; it overrides the source
- *         CSV location. Output files are always written next to the real
- *         repo-root source CSV.
+ * Usage:  node scripts/generate-crm-import-csvs.mjs [sourcePath] [outDir]
+ *         Both args are optional and test-only. `sourcePath` overrides the
+ *         source CSV location; `outDir` overrides where the two output
+ *         CSVs are written (default: repo root, alongside the real source
+ *         CSV) — tests pass a temp directory here so a test run can never
+ *         overwrite or delete the real, committed repo-root output files.
  * Exit:   0 on success, 1 on any validation/derivation/routing failure.
  *         On failure, neither output CSV is written (all-or-nothing).
  */
@@ -23,8 +25,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const DEFAULT_SOURCE = join(ROOT, "empresas-mineras-zona17S-icp.csv");
-const COMPANIES_OUTPUT = join(ROOT, "crm-import-companies.csv");
-const PEOPLE_OUTPUT = join(ROOT, "crm-import-people.csv");
 
 const FUENTE_DATO = "INGEMMET - Catastro Minero (zona 17S)";
 const EXCLUDED_PERFIL = "EXCLUIDO_mediana_o_gran_mineria";
@@ -189,6 +189,14 @@ function readLines(path) {
   return lines;
 }
 
+// Twenty's CSV import wizard requires uppercase "TRUE"/"FALSE" for boolean
+// columns — lowercase "true"/"false" (JS's default String(boolean) output)
+// is not recognized and fails the import (docs.twenty.com/user-guide/
+// data-migration/how-tos/prepare-your-csv-files).
+function csvBoolean(value) {
+  return value ? "TRUE" : "FALSE";
+}
+
 function buildSharedFields(row, derived) {
   return {
     perfil_icp: row.perfil_icp,
@@ -199,11 +207,11 @@ function buildSharedFields(row, derived) {
     sustancias: row.sustancias,
     estados_concesion: row.estados_concesion,
     servicio_potencial: derived.servicio_potencial,
-    REINFO: String(derived.REINFO),
-    IGAFOM: String(derived.IGAFOM),
-    DAC: String(derived.DAC),
-    ESTAMIN: String(derived.ESTAMIN),
-    revisar_manual: String(derived.revisar_manual),
+    REINFO: csvBoolean(derived.REINFO),
+    IGAFOM: csvBoolean(derived.IGAFOM),
+    DAC: csvBoolean(derived.DAC),
+    ESTAMIN: csvBoolean(derived.ESTAMIN),
+    revisar_manual: csvBoolean(derived.revisar_manual),
     ruc: "",
     fuente_dato: FUENTE_DATO,
   };
@@ -308,6 +316,12 @@ function runPipeline(sourcePath) {
 
 function main(argv) {
   const sourcePath = argv[0] ? resolve(argv[0]) : DEFAULT_SOURCE;
+  // Optional second arg: write outputs to a different directory (tests use
+  // this to avoid ever touching the real repo-root CSVs).
+  const outDir = argv[1] ? resolve(argv[1]) : ROOT;
+  const companiesOutput = join(outDir, "crm-import-companies.csv");
+  const peopleOutput = join(outDir, "crm-import-people.csv");
+
   const result = runPipeline(sourcePath);
 
   if (result.errors) {
@@ -318,15 +332,15 @@ function main(argv) {
 
   const { companies, people } = result;
   writeFileSync(
-    COMPANIES_OUTPUT,
+    companiesOutput,
     `${companies.map(toCsvLine).join("\n")}\n`,
     "utf8",
   );
-  writeFileSync(PEOPLE_OUTPUT, `${people.map(toCsvLine).join("\n")}\n`, "utf8");
+  writeFileSync(peopleOutput, `${people.map(toCsvLine).join("\n")}\n`, "utf8");
 
   process.stdout.write(
-    `Wrote ${companies.length - 1} company rows to ${COMPANIES_OUTPUT}\n` +
-      `Wrote ${people.length - 1} people rows to ${PEOPLE_OUTPUT}\n`,
+    `Wrote ${companies.length - 1} company rows to ${companiesOutput}\n` +
+      `Wrote ${people.length - 1} people rows to ${peopleOutput}\n`,
   );
 }
 

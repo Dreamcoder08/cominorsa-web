@@ -55,19 +55,22 @@ APIs & Webhooks) on first login, then add it to `.env` before running
    (`$SERVER_URL` is the value you set in `docker/twenty/.env`, e.g.
    `http://localhost:3000`.)
 
-3. Provision the 15 custom CRM fields on both the Company and Person objects:
+3. Provision the custom CRM fields — 15 shared fields on both Company and
+   Person (from the imported mining-concession data), plus 4 more on Person
+   only (`servicioConsulta`, `consultaMensaje`, `lineaWhatsapp`, `origenLead`
+   — for leads captured via the website's consultation form):
 
    ```bash
    pnpm twenty:fields
    ```
 
    This runs `docker/twenty/scripts/create-fields.mjs`, which reads
-   `SERVER_URL`/`TWENTY_API_KEY` from the environment, diffs the runbook's
-   15-field list against what already exists on each object, and creates
-   only what's missing. It exits `0` only once all 15 fields exist on both
-   objects; any failure (missing env var, unreachable instance, non-2xx
-   response, unparseable body) exits `1` with the real error printed to
-   stderr.
+   `SERVER_URL`/`TWENTY_API_KEY` from the environment, diffs each object's
+   field set (see `OBJECT_FIELD_SETS` in the script) against what already
+   exists, and creates only what's missing. It exits `0` only once every
+   field exists on its assigned object(s) — 15 on Company, 19 on Person; any
+   failure (missing env var, unreachable instance, non-2xx response,
+   unparseable body) exits `1` with the real error printed to stderr.
 
 4. Import the Company records first, then the Person records, via Twenty's
    UI Command Menu (never scripted — both files are well under the wizard's
@@ -119,8 +122,8 @@ instance first:
    until curl -sf "$SERVER_URL/healthz"; do sleep 2; done
    ```
 
-4. Re-provision all 15 fields from scratch (the volumes were wiped, so
-   nothing exists yet on either object):
+4. Re-provision all fields from scratch (the volumes were wiped, so nothing
+   exists yet on either object — 15 on Company, 19 on Person):
 
    ```bash
    pnpm twenty:fields

@@ -24,8 +24,8 @@ never runs in CI or production.
 `docker/twenty/.env.example` documents the required environment variables:
 `ENCRYPTION_KEY`, `PG_DATABASE_PASSWORD`, `SERVER_URL`, `TWENTY_API_KEY`.
 
-Before running `pnpm twenty:up` or `pnpm twenty:fields`, copy that template to
-`docker/twenty/.env` and fill in real values:
+Before running `pnpm twenty:setup`, `pnpm twenty:up`, or `pnpm twenty:fields`,
+copy that template to `docker/twenty/.env` and fill in real values:
 
 ```bash
 cp docker/twenty/.env.example docker/twenty/.env
@@ -40,25 +40,27 @@ APIs & Webhooks) on first login, then add it to `.env` before running
 
 ## Setup
 
-1. Start the stack:
+1. Validate the local configuration, start the stack, and wait for its bounded
+   health check:
 
    ```bash
-   pnpm twenty:up
+   pnpm twenty:setup
    ```
 
-2. Wait for the server to become healthy before doing anything else:
+   The startup script resolves its Compose paths independently of the caller's
+   working directory. It validates the two mandatory secrets without printing
+   them, checks Docker, Compose v2, and the Docker
+   daemon, runs Compose's quiet configuration validation, starts the pinned
+   services, and waits for `http://localhost:3000/healthz`. It fails clearly
+   instead of waiting forever. It never creates or replaces secrets and never
+   starts the Docker daemon. The existing `pnpm twenty:up` command remains
+   available when only the original direct Compose behavior is wanted.
 
-   ```bash
-   until curl -sf "$SERVER_URL/healthz"; do sleep 2; done
-   ```
-
-   (`$SERVER_URL` is the value you set in `docker/twenty/.env`, e.g.
-   `http://localhost:3000`.)
-
-3. Provision the custom CRM fields — 15 shared fields on both Company and
-   Person (from the imported mining-concession data), plus 4 more on Person
-   only (`servicioConsulta`, `consultaMensaje`, `lineaWhatsapp`, `origenLead`
-   — for leads captured via the website's consultation form):
+2. Provision the custom CRM fields — 15 shared fields on both Company and
+   Person (from the imported mining-concession data), plus 5 more on Person
+   only (`ciudadConsulta`, `servicioConsulta`, `consultaMensaje`,
+   `lineaWhatsapp`, `origenLead` — for leads captured via the website's
+   consultation form):
 
    ```bash
    pnpm twenty:fields
@@ -68,11 +70,11 @@ APIs & Webhooks) on first login, then add it to `.env` before running
    `SERVER_URL`/`TWENTY_API_KEY` from the environment, diffs each object's
    field set (see `OBJECT_FIELD_SETS` in the script) against what already
    exists, and creates only what's missing. It exits `0` only once every
-   field exists on its assigned object(s) — 15 on Company, 19 on Person; any
+   field exists on its assigned object(s) — 15 on Company, 20 on Person; any
    failure (missing env var, unreachable instance, non-2xx response,
    unparseable body) exits `1` with the real error printed to stderr.
 
-4. Import the Company records first, then the Person records, via Twenty's
+3. Import the Company records first, then the Person records, via Twenty's
    UI Command Menu (never scripted — both files are well under the wizard's
    10k-row limit):
 

@@ -26,9 +26,10 @@
     "cf:bootstrap": "bash scripts/cloudflare-bootstrap.sh",
     "cf:rollback": "bash scripts/cloudflare-rollback.sh",
     "cf:full": "bash scripts/cloudflare-full-setup.sh",
+    "twenty:setup": "node docker/twenty/scripts/start.mjs",
     "twenty:up": "docker compose -f docker/twenty/docker-compose.yml up -d",
     "twenty:down": "docker compose -f docker/twenty/docker-compose.yml down",
-    "twenty:fields": "node docker/twenty/scripts/create-fields.mjs"
+    "twenty:fields": "node --env-file=docker/twenty/.env docker/twenty/scripts/create-fields.mjs"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

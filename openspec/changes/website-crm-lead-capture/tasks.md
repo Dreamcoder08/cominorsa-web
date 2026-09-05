@@ -47,6 +47,7 @@ Chain strategy: pending
 - [x] 4.3 [UNIT] Twenty non-2xx and network-error cases (mocked `fetch` returns 500 / rejects): response is still `200`, `console.error` is called, nothing throws.
 - [x] 4.4 [UNIT] Malformed JSON body case (`request.json()` rejects): response is `200`, no throw, no `fetch` call.
 - [x] 4.5 [UNIT] Run `pnpm test`; confirm all existing suites plus the two new/updated files pass with zero regressions.
+- [x] 4.6 [UNIT] [FOLLOW-UP from sdd-verify FAIL, CRITICAL] Create `tests/qa/consultation-form-nonblocking.test.mjs`: render `ConsultationForm` in jsdom (`tsx/esm/api` + `@testing-library/react`, same convention as `tests/qa/mobile-nav-interaction.test.mjs`), mock `window.open` and `global.fetch`, submit the form, and assert `window.open` plus the "sent" status text land synchronously while a slow/hanging mocked `fetch` is still pending, and that a rejecting mocked `fetch` is silently absorbed by the existing `.catch(() => {})` without blocking or delaying `window.open`. Closes the "Non-Blocking Lead Capture Call" requirement's zero-runtime-coverage gap identified in `verify-report.md`. `app/ConsultationForm.tsx` was not modified — inspection confirmed the shipped code was already correct; only test coverage was missing.
 
 ## Phase 5: Environment Documentation (likely blocked)
 

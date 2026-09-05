@@ -23,7 +23,7 @@ the live site creates a Person record in a production Twenty instance, reachable
   (`wrangler secret put`, per `DEPLOY.md`'s existing pattern) pointing at the new host.
 - Fresh reprovisioning of CRM data on the new host: re-run `create-fields.mjs`
   against it, then reimport `crm-import-companies.csv`/`crm-import-people.csv`
-  through Twenty's UI wizard (see **Decision 4**).
+  via `pnpm twenty:import` (see **Decision 4**).
 - Baseline operational setup this project has never needed before: SSH key-based
   access, a backup routine for the Postgres volume, and a documented secret/API-key
   rotation procedure (see **Decision 2**).
@@ -71,9 +71,12 @@ the live site creates a Person record in a production Twenty instance, reachable
    DNS record is added to the existing Cloudflare-managed `cominorsa.com` zone.
 4. **Data migration: fresh reprovision-and-reimport, not `pg_dump`/restore.**
    Change 1 never held real production data — re-running `create-fields.mjs`
-   against the new host and reimporting the two tracked CSVs via Twenty's UI wizard
-   (the same procedure already documented in `docker/twenty/README.md`'s
-   wipe-before-reimport section) is simpler and just as correct as migrating a
+   against the new host and reimporting the two tracked CSVs via
+   `pnpm twenty:import` (the same procedure already documented in
+   `docker/twenty/README.md`'s wipe-before-reimport section — the import
+   itself moved from a UI wizard to `docker/twenty/scripts/import-crm-data.mjs`,
+   a scripted GraphQL batch-create, after change 1 already proved out the
+   API shapes it needs) is simpler and just as correct as migrating a
    database that only ever held test data.
 
 ## Approach
@@ -104,7 +107,7 @@ the live site creates a Person record in a production Twenty instance, reachable
 | Reverse proxy config (new, host-side) | New | TLS termination in front of the `server` service, port 3000 |
 | Cloudflare Workers secrets | Modified | `TWENTY_API_KEY`/`TWENTY_API_URL` set to real values via `wrangler secret put` |
 | `docker/twenty/scripts/create-fields.mjs` | Reused, not modified | Re-run against the new host's `SERVER_URL`/`TWENTY_API_KEY` |
-| `crm-import-companies.csv`, `crm-import-people.csv` | Reused, not modified | Reimported via Twenty's UI wizard against the new host |
+| `crm-import-companies.csv`, `crm-import-people.csv` | Reused, not modified | Reimported via `pnpm twenty:import` against the new host |
 | `app/api/crm-lead/route.ts` | Unaffected | Already fully env-driven; zero code changes |
 | DNS (`cominorsa.com` zone) | Unaffected | No new record added per Decision 3 |
 
@@ -146,7 +149,7 @@ remains available for development.
       pointing at the new host.
 - [ ] `create-fields.mjs` run against the new host provisions all 15 shared
       Company/Person fields plus the 5 Person-only lead-capture fields, exiting `0`.
-- [ ] Both CSVs are reimported via Twenty's UI wizard against the new host with
+- [ ] Both CSVs are reimported via `pnpm twenty:import` against the new host with
       correct row counts.
 - [ ] A real consultation-form submission on the live site creates a Person record
       in the production Twenty instance.

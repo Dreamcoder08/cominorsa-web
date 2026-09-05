@@ -84,19 +84,32 @@ APIs & Webhooks) on first login, then add it to `.env` before running
    importing; otherwise the real CRM data ends up mixed with 5 fake
    companies and 5 fake people with no indication they don't belong.
 
-4. Import the Company records first, then the Person records, via Twenty's
-   UI Command Menu (never scripted — both files are well under the wizard's
-   10k-row limit):
+4. Import both CSVs:
 
-   - Open the Command Menu → **Import records** → select the **Company**
-     object → upload `crm-import-companies.csv` (repo root, read-only,
-     ~799 rows) → map columns → confirm.
-   - Open the Command Menu → **Import records** → select the **Person**
-     object → upload `crm-import-people.csv` (repo root, read-only,
-     ~1,222 rows) → map columns → confirm.
+   ```bash
+   pnpm twenty:import
+   ```
 
-   Import Companies before People so any company-linking fields on the
-   Person import can resolve against already-created Company records.
+   This runs `docker/twenty/scripts/import-crm-data.mjs`, which reads
+   `crm-import-companies.csv`/`crm-import-people.csv` (repo root,
+   read-only, 799 + 1,222 rows) and creates the records via Twenty's
+   GraphQL Core API in batches of 60 (its documented per-request limit).
+   It refuses to run — before writing anything — if Company or Person
+   already has any records, since Twenty's `upsert` matches by `id` only,
+   not by name; there is nothing to safely deduplicate against for a fresh
+   CSV. That is also why step 3 (clearing sample data) matters: this script
+   only checks for *any* existing records, sample or real, and treats
+   either as a reason to refuse.
+
+   An earlier version of this step used Twenty's UI import wizard instead.
+   That was the right call when it was made (the row counts are well under
+   the wizard's 10k limit, and no code existed yet to reuse) — it stopped
+   being the right call once this project already had `create-fields.mjs`
+   proving the API shapes work, a live-verified GraphQL batch-create path,
+   and a hard requirement to run this exact step again on a fresh VPS.
+   Needing a human to click through the wizard twice for the same fixed,
+   already-known column mapping was the actual complexity to avoid — a
+   ~300-line script covering it was less complexity, not more.
 
 ## Teardown
 
@@ -108,11 +121,13 @@ pnpm twenty:down
 
 ## Wipe-before-reimport
 
-Twenty has no native upsert. Re-running the CSV import wizard on records
-that already exist creates **duplicate Company/Person records** — it does
-not update or merge them. If you need a clean re-import (e.g. after
-changing the source CSVs or field definitions), you must fully wipe the
-instance first:
+Twenty has no native upsert by business key (live-verified: even
+`upsert: true` on the GraphQL batch-create mutations matches by `id` only).
+`pnpm twenty:import` (see step 4 above) refuses to run at all if Company or
+Person already has any records, specifically to avoid creating
+**duplicate Company/Person records** the way blindly re-running an import
+would. If you need a clean re-import (e.g. after changing the source CSVs
+or field definitions), you must fully wipe the instance first:
 
 1. Destroy the stack **and its volumes** — this deletes the Postgres
    database and all local storage, i.e. **all local Twenty workspace data**
@@ -155,8 +170,12 @@ instance first:
    pnpm twenty:fields
    ```
 
-6. Re-import `crm-import-companies.csv` via Command Menu → Import records.
-7. Re-import `crm-import-people.csv` via Command Menu → Import records.
+6. Re-import both CSVs — Company and Person are both empty again after the
+   wipe, so this succeeds without the pre-flight refusal:
+
+   ```bash
+   pnpm twenty:import
+   ```
 
 Only follow this sequence when you actually want to discard all local
 Twenty data. The source of truth for the CRM data model and content is the

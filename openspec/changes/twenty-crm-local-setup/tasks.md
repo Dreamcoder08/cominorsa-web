@@ -38,12 +38,12 @@ Chain strategy: stacked-to-main
 
 ## Phase 3: create-fields.mjs Script
 
-- [ ] 3.1 [LIVE-VERIFY] Create `docker/twenty/scripts/create-fields.mjs`: validate `SERVER_URL`/`TWENTY_API_KEY`, exit 1 naming the missing var before any network call.
-- [ ] 3.2 [LIVE-VERIFY] Implement `twentyRequest()`: non-2xx logs status+raw body to stderr, exit 1; 2xx `JSON.parse`s defensively, exit 1 on invalid JSON.
-- [ ] 3.3 [LIVE-VERIFY] Implement GET-diff-POST against `/rest/metadata/` for `company`/`person`; exact endpoint/payload shapes are an open design question — confirm against a running instance.
-- [ ] 3.4 [UNIT] Exit 0 only when all 15 fields exist on both objects when the script finishes; exit 1 on any failure above.
-- [ ] 3.5 [UNIT] Write `tests/qa/twenty-create-fields.test.mjs`: mocked-`fetch` diff logic (full/partial/empty existing-fields responses), non-2xx error path, missing-env-var path.
-- [ ] 3.6 Add `twenty:fields` script to `package.json`.
+- [x] 3.1 [LIVE-VERIFY] Create `docker/twenty/scripts/create-fields.mjs`: validate `SERVER_URL`/`TWENTY_API_KEY`, exit 1 naming the missing var before any network call. Fully implemented and unit-tested (`readConfig`); this behavior does not depend on live-instance payload shapes.
+- [x] 3.2 [LIVE-VERIFY] Implement `twentyRequest()`: non-2xx logs status+raw body to stderr, exit 1; 2xx `JSON.parse`s defensively, exit 1 on invalid JSON. Fully implemented and unit-tested (network-error, non-2xx, and unparseable-2xx-body paths); this generic HTTP-defense behavior does not depend on live-instance payload shapes.
+- [ ] 3.3 [LIVE-VERIFY] Implement GET-diff-POST against `/rest/metadata/` for `company`/`person`; exact endpoint/payload shapes are an open design question — confirm against a running instance. **PROVISIONAL, NOT LIVE-VERIFIED**: `getObjectMetadataId`, `getExistingFieldNames`, and `createField` are implemented per design.md's contract sketch and Data Flow section (assumes `GET /rest/metadata/objects` matched by `nameSingular`, `GET /rest/metadata/fields?objectMetadataId=...`, `POST /rest/metadata/fields` with `{objectMetadataId, name, label, type, options?}`), and the diff/idempotency logic around them is unit-tested against those assumed shapes — but the actual request/response JSON shapes remain unverified against a running Twenty instance (design.md Open Questions). Any shape mismatch will fail loudly via `twentyRequest`'s defensive error handling (Phase 6, task 6.2/6.3 is the human step that confirms or corrects these shapes).
+- [x] 3.4 [UNIT] Exit 0 only when all 15 fields exist on both objects when the script finishes; exit 1 on any failure above. Implemented in `run()`, unit-tested for the empty/full/idempotent-rerun cases.
+- [x] 3.5 [UNIT] Write `tests/qa/twenty-create-fields.test.mjs`: mocked-`fetch` diff logic (full/partial/empty existing-fields responses), non-2xx error path, missing-env-var path. 11 `node --test` cases, all pass.
+- [x] 3.6 Add `twenty:fields` script to `package.json`.
 
 ## Phase 4: README
 

@@ -1,9 +1,11 @@
 // docker/twenty/scripts/create-fields.mjs
 //
-// Idempotently provisions the runbook's 15 custom fields (see
-// field-definitions.mjs) on both the Company and Person standard objects of
-// a running Twenty CRM instance, via Twenty's Metadata API
-// (`/rest/metadata/...`).
+// Idempotently provisions custom fields (see field-definitions.mjs) on the
+// Company and Person standard objects of a running Twenty CRM instance, via
+// Twenty's Metadata API (`/rest/metadata/...`). The runbook's 15
+// `CUSTOM_FIELDS` apply to both objects; the 4 `WEBSITE_LEAD_FIELDS` (from
+// the `website-crm-lead-capture` change) apply to Person only — see
+// `OBJECT_FIELD_SETS` below.
 //
 // PROVISIONAL / LIVE-VERIFY (see design.md "Open Questions" and
 // tasks.md Phase 3): the exact Metadata API endpoint paths and
@@ -18,16 +20,26 @@
 // verification, human-required) is the step that confirms or corrects these
 // shapes against a real instance.
 //
-// Exit-code contract: exit 0 only if all 15 fields exist on BOTH objects
-// when the script finishes (whether pre-existing or newly created this
-// run). Exit 1 on any missing/invalid required env var, any non-2xx
-// response, any network failure, or any unparseable 2xx body — no partial
+// Exit-code contract: exit 0 only if every field in each object's field
+// set (see `OBJECT_FIELD_SETS`) exists on that object when the script
+// finishes (whether pre-existing or newly created this run). Exit 1 on any
+// missing/invalid required env var, any non-2xx response, any network
+// failure, or any unparseable 2xx body — no partial
 // silent success.
 
 import { pathToFileURL } from "node:url";
-import { CUSTOM_FIELDS } from "./field-definitions.mjs";
+import { CUSTOM_FIELDS, WEBSITE_LEAD_FIELDS } from "./field-definitions.mjs";
 
 const OBJECT_NAMES = ["company", "person"];
+
+// Which field sets apply to which standard object. `person` additionally
+// gets `WEBSITE_LEAD_FIELDS` (website-crm-lead-capture change) — `company`
+// never does, since those fields describe a `ConsultationForm` submission,
+// not an imported concession holder.
+const OBJECT_FIELD_SETS = {
+  company: [CUSTOM_FIELDS],
+  person: [CUSTOM_FIELDS, WEBSITE_LEAD_FIELDS],
+};
 
 /**
  * Validates required environment variables before any network call is
@@ -159,15 +171,15 @@ export async function createField(config, objectMetadataId, field) {
 
 /**
  * GET-diff-POST for one standard object: fetches its existing fields,
- * diffs them against `CUSTOM_FIELDS` by name, and creates only the missing
- * ones. Returns the set of field names confirmed to exist on the object
- * after this call (pre-existing + newly created).
+ * diffs them against the given `fields` array by name, and creates only
+ * the missing ones. Returns the set of field names confirmed to exist on
+ * the object after this call (pre-existing + newly created).
  */
-export async function ensureFieldsForObject(config, objectName) {
+export async function ensureFieldsForObject(config, objectName, fields) {
   const objectMetadataId = await getObjectMetadataId(config, objectName);
   const existing = await getExistingFieldNames(config, objectMetadataId);
 
-  const missing = CUSTOM_FIELDS.filter((f) => !existing.has(f.name));
+  const missing = fields.filter((f) => !existing.has(f.name));
   for (const field of missing) {
     await createField(config, objectMetadataId, field);
     existing.add(field.name);
@@ -178,17 +190,20 @@ export async function ensureFieldsForObject(config, objectName) {
 
 /**
  * Entry point: validates env, runs GET-diff-POST against both "company"
- * and "person", and only reports success once all 15 fields are confirmed
- * present on both objects.
+ * and "person" using each object's field sets from `OBJECT_FIELD_SETS`,
+ * and only reports success once every required field is confirmed present
+ * on its target object(s).
  */
 export async function run(env = process.env) {
   const config = readConfig(env);
   if (!config) return; // env validation already exited 1
 
-  const requiredNames = new Set(CUSTOM_FIELDS.map((f) => f.name));
-
   for (const objectName of OBJECT_NAMES) {
-    const finalFields = await ensureFieldsForObject(config, objectName);
+    const fieldSets = OBJECT_FIELD_SETS[objectName];
+    const fields = fieldSets.flat();
+    const requiredNames = new Set(fields.map((f) => f.name));
+
+    const finalFields = await ensureFieldsForObject(config, objectName, fields);
     if (!finalFields) return; // an upstream call already exited 1
 
     const missingAfterRun = [...requiredNames].filter(
@@ -203,7 +218,9 @@ export async function run(env = process.env) {
     }
   }
 
-  console.log("All 15 custom fields exist on both Company and Person.");
+  console.log(
+    "All custom fields exist on both Company and Person (Person also carries the website lead fields).",
+  );
 }
 
 // Only auto-run when this file is executed directly (`node create-fields.mjs`

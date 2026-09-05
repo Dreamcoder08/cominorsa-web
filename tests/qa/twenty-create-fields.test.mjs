@@ -6,7 +6,10 @@ import {
   ensureFieldsForObject,
   run,
 } from "../../docker/twenty/scripts/create-fields.mjs";
-import { CUSTOM_FIELDS } from "../../docker/twenty/scripts/field-definitions.mjs";
+import {
+  CUSTOM_FIELDS,
+  WEBSITE_LEAD_FIELDS,
+} from "../../docker/twenty/scripts/field-definitions.mjs";
 
 const CONFIG = { SERVER_URL: "http://localhost:3000", TWENTY_API_KEY: "test-key" };
 
@@ -181,7 +184,7 @@ test("ensureFieldsForObject creates all 15 fields when none exist (empty existin
   const { fetchMock, calls } = makeFetchMock({ existingByObjectId: {} });
   t.mock.method(globalThis, "fetch", fetchMock);
 
-  const finalFields = await ensureFieldsForObject(CONFIG, "company");
+  const finalFields = await ensureFieldsForObject(CONFIG, "company", CUSTOM_FIELDS);
 
   const posted = postedFieldNames(calls, "obj-company");
   assert.equal(posted.length, 15);
@@ -198,7 +201,7 @@ test("ensureFieldsForObject creates only the missing fields (partial existing-fi
   });
   t.mock.method(globalThis, "fetch", fetchMock);
 
-  const finalFields = await ensureFieldsForObject(CONFIG, "company");
+  const finalFields = await ensureFieldsForObject(CONFIG, "company", CUSTOM_FIELDS);
 
   const posted = postedFieldNames(calls, "obj-company");
   assert.equal(posted.length, 10);
@@ -217,13 +220,61 @@ test("ensureFieldsForObject creates nothing when all 15 fields already exist (fu
   });
   t.mock.method(globalThis, "fetch", fetchMock);
 
-  const finalFields = await ensureFieldsForObject(CONFIG, "company");
+  const finalFields = await ensureFieldsForObject(CONFIG, "company", CUSTOM_FIELDS);
 
   assert.equal(postedFieldNames(calls, "obj-company").length, 0);
   assert.equal(finalFields.size, 15);
 });
 
-test("run() provisions all 15 fields on both company and person from an empty state and logs success", async (t) => {
+test("ensureFieldsForObject provisions the 4 WEBSITE_LEAD_FIELDS on person when none exist", async (t) => {
+  t.mock.method(process, "exit", () => {});
+  t.mock.method(console, "error", () => {});
+  const { fetchMock, calls } = makeFetchMock({ existingByObjectId: {} });
+  t.mock.method(globalThis, "fetch", fetchMock);
+
+  const finalFields = await ensureFieldsForObject(
+    CONFIG,
+    "person",
+    WEBSITE_LEAD_FIELDS,
+  );
+
+  const posted = postedFieldNames(calls, "obj-person");
+  assert.equal(posted.length, 4);
+  assert.deepEqual(
+    new Set(posted),
+    new Set(WEBSITE_LEAD_FIELDS.map((f) => f.name)),
+  );
+  assert.equal(finalFields.size, 4);
+});
+
+test("WEBSITE_LEAD_FIELDS has exactly 4 entries and lineaWhatsapp is the only SELECT", () => {
+  assert.equal(WEBSITE_LEAD_FIELDS.length, 4);
+  const selectFields = WEBSITE_LEAD_FIELDS.filter((f) => f.type === "SELECT");
+  assert.equal(selectFields.length, 1);
+  assert.equal(selectFields[0].name, "lineaWhatsapp");
+});
+
+test("run() never posts any of the 4 WEBSITE_LEAD_FIELDS for company", async (t) => {
+  t.mock.method(process, "exit", () => {});
+  t.mock.method(console, "error", () => {});
+  t.mock.method(console, "log", () => {});
+  const { fetchMock, calls } = makeFetchMock({ existingByObjectId: {} });
+  t.mock.method(globalThis, "fetch", fetchMock);
+
+  await run({ SERVER_URL: "http://localhost:3000", TWENTY_API_KEY: "key" });
+
+  const companyPosted = postedFieldNames(calls, "obj-company");
+  const websiteLeadFieldNames = new Set(WEBSITE_LEAD_FIELDS.map((f) => f.name));
+  for (const name of companyPosted) {
+    assert.ok(
+      !websiteLeadFieldNames.has(name),
+      `website lead field "${name}" must never be posted for company`,
+    );
+  }
+  assert.equal(companyPosted.length, CUSTOM_FIELDS.length);
+});
+
+test("run() provisions all fields on both company and person from an empty state and logs success", async (t) => {
   const exitCalls = [];
   const logMessages = [];
   t.mock.method(process, "exit", (code) => exitCalls.push(code));
@@ -236,9 +287,9 @@ test("run() provisions all 15 fields on both company and person from an empty st
 
   assert.deepEqual(exitCalls, []);
   assert.equal(postedFieldNames(calls, "obj-company").length, 15);
-  assert.equal(postedFieldNames(calls, "obj-person").length, 15);
+  assert.equal(postedFieldNames(calls, "obj-person").length, 19);
   assert.ok(
-    logMessages.some((m) => m.includes("All 15 custom fields exist")),
+    logMessages.some((m) => m.includes("All custom fields exist")),
     "expected the final success message to be logged",
   );
 });
@@ -248,9 +299,13 @@ test("run() is idempotent: re-running when both objects are already fully provis
   t.mock.method(process, "exit", (code) => exitCalls.push(code));
   t.mock.method(console, "error", () => {});
   t.mock.method(console, "log", () => {});
-  const allNames = CUSTOM_FIELDS.map((f) => f.name);
+  const allCompanyNames = CUSTOM_FIELDS.map((f) => f.name);
+  const allPersonNames = [
+    ...CUSTOM_FIELDS.map((f) => f.name),
+    ...WEBSITE_LEAD_FIELDS.map((f) => f.name),
+  ];
   const { fetchMock, calls } = makeFetchMock({
-    existingByObjectId: { "obj-company": allNames, "obj-person": allNames },
+    existingByObjectId: { "obj-company": allCompanyNames, "obj-person": allPersonNames },
   });
   t.mock.method(globalThis, "fetch", fetchMock);
 

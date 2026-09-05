@@ -51,6 +51,18 @@ export function ConsultationForm() {
     event.currentTarget.dataset.eventContext = service;
     window.open(url, "_blank", "noopener,noreferrer");
     setSent(true);
+
+    fetch("/api/crm-lead", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        city,
+        service,
+        question,
+        whatsappLine: recipient,
+      }),
+    }).catch(() => {});
   }
 
   return (

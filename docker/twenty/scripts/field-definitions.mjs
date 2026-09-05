@@ -37,3 +37,19 @@ export const CUSTOM_FIELDS = [
   { name: "ruc", label: "RUC", type: "TEXT" },
   { name: "fuenteDato", label: "Fuente Dato", type: "TEXT" },
 ];
+
+// Website lead-capture fields, added by the `website-crm-lead-capture`
+// change. Applied to the "person" standard object ONLY — these describe a
+// visitor's `ConsultationForm` submission, not an imported concession
+// holder, and must never appear on Company.
+export const WEBSITE_LEAD_FIELDS = [
+  { name: "servicioConsulta", label: "Servicio de Consulta", type: "TEXT" },
+  { name: "consultaMensaje", label: "Consulta", type: "TEXT" },
+  {
+    name: "lineaWhatsapp",
+    label: "Línea WhatsApp",
+    type: "SELECT",
+    options: ["PRINCIPAL_910728575", "SECUNDARIA_987817100"],
+  },
+  { name: "origenLead", label: "Origen del Lead", type: "TEXT" },
+];

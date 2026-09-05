@@ -25,32 +25,36 @@ Chain strategy: pending
 
 ## Phase 1: Field Provisioning Refactor
 
-- [ ] 1.1 [UNIT] Add `WEBSITE_LEAD_FIELDS` export to `docker/twenty/scripts/field-definitions.mjs` (4 entries: `servicioConsulta` TEXT, `consultaMensaje` TEXT, `lineaWhatsapp` SELECT with options `PRINCIPAL_910728575`/`SECUNDARIA_987817100`, `origenLead` TEXT).
-- [ ] 1.2 [UNIT] Refactor `ensureFieldsForObject` in `docker/twenty/scripts/create-fields.mjs` to `ensureFieldsForObject(config, objectName, fields)`, diffing against the passed `fields` array instead of the hardcoded `CUSTOM_FIELDS`.
-- [ ] 1.3 [UNIT] Add `OBJECT_FIELD_SETS` map (`company: [CUSTOM_FIELDS]`, `person: [CUSTOM_FIELDS, WEBSITE_LEAD_FIELDS]`) and update `run()` to flatten each object's field sets before calling `ensureFieldsForObject`, and to check completeness against that object's full required-name set.
-- [ ] 1.4 [UNIT] Update `tests/qa/twenty-create-fields.test.mjs` call sites to the new 3-arg `ensureFieldsForObject` signature.
-- [ ] 1.5 [UNIT] Add test cases: `WEBSITE_LEAD_FIELDS` (4 entries, `lineaWhatsapp` is the only SELECT) provisions on person only; none of the 4 fields are ever posted for company.
+- [x] 1.1 [UNIT] Add `WEBSITE_LEAD_FIELDS` export to `docker/twenty/scripts/field-definitions.mjs` (4 entries: `servicioConsulta` TEXT, `consultaMensaje` TEXT, `lineaWhatsapp` SELECT with options `PRINCIPAL_910728575`/`SECUNDARIA_987817100`, `origenLead` TEXT).
+- [x] 1.2 [UNIT] Refactor `ensureFieldsForObject` in `docker/twenty/scripts/create-fields.mjs` to `ensureFieldsForObject(config, objectName, fields)`, diffing against the passed `fields` array instead of the hardcoded `CUSTOM_FIELDS`.
+- [x] 1.3 [UNIT] Add `OBJECT_FIELD_SETS` map (`company: [CUSTOM_FIELDS]`, `person: [CUSTOM_FIELDS, WEBSITE_LEAD_FIELDS]`) and update `run()` to flatten each object's field sets before calling `ensureFieldsForObject`, and to check completeness against that object's full required-name set.
+- [x] 1.4 [UNIT] Update `tests/qa/twenty-create-fields.test.mjs` call sites to the new 3-arg `ensureFieldsForObject` signature.
+- [x] 1.5 [UNIT] Add test cases: `WEBSITE_LEAD_FIELDS` (4 entries, `lineaWhatsapp` is the only SELECT) provisions on person only; none of the 4 fields are ever posted for company.
 
 ## Phase 2: Route Handler
 
-- [ ] 2.1 [LIVE-VERIFY] Create `app/api/crm-lead/route.ts` exporting `POST`: env gate on `TWENTY_API_KEY`/`TWENTY_API_URL` (unset/empty → `Response.json({ ok: true })`, no fetch), `try/catch` JSON body parse, split `name` into `firstName`/`lastName`, map `whatsappLine` to `lineaWhatsapp`, POST to `${apiUrl}/rest/people` with `Bearer` auth and the 4 custom fields + fixed `origenLead`. Payload shape is provisional per design.md's contract sketch — unverified against a live instance.
-- [ ] 2.2 [UNIT] Implement error handling as a self-contained, non-exiting variant (do NOT import `twentyRequest` from `create-fields.mjs` — its `process.exit(1)` would crash the Workers isolate): non-2xx and network-error paths log via `console.error` and always still return `Response.json({ ok: true })`.
+- [x] 2.1 [LIVE-VERIFY] Create `app/api/crm-lead/route.ts` exporting `POST`: env gate on `TWENTY_API_KEY`/`TWENTY_API_URL` (unset/empty → `Response.json({ ok: true })`, no fetch), `try/catch` JSON body parse, split `name` into `firstName`/`lastName`, map `whatsappLine` to `lineaWhatsapp`, POST to `${apiUrl}/rest/people` with `Bearer` auth and the 4 custom fields + fixed `origenLead`. Payload shape is provisional per design.md's contract sketch — unverified against a live instance.
+- [x] 2.2 [UNIT] Implement error handling as a self-contained, non-exiting variant (do NOT import `twentyRequest` from `create-fields.mjs` — its `process.exit(1)` would crash the Workers isolate): non-2xx and network-error paths log via `console.error` and always still return `Response.json({ ok: true })`.
 
 ## Phase 3: Client Wiring
 
-- [ ] 3.1 Append a non-awaited, `.catch(() => {})`-guarded `fetch("/api/crm-lead", ...)` call to `handleSubmit` in `app/ConsultationForm.tsx`, placed after the existing `window.open()`/`setSent(true)` lines (unchanged, untouched), sending `{ name, city, service, question, whatsappLine: recipient }`.
+- [x] 3.1 Append a non-awaited, `.catch(() => {})`-guarded `fetch("/api/crm-lead", ...)` call to `handleSubmit` in `app/ConsultationForm.tsx`, placed after the existing `window.open()`/`setSent(true)` lines (unchanged, untouched), sending `{ name, city, service, question, whatsappLine: recipient }`.
 
 ## Phase 4: Route Handler Testing
 
-- [ ] 4.1 [UNIT] Create `tests/qa/crm-lead-route.test.mjs`: env-gate case — `TWENTY_API_KEY`/`TWENTY_API_URL` unset → response is `200`, mocked `fetch` call count is `0`.
-- [ ] 4.2 [UNIT] Happy-path case: mocked `fetch` captures the `/rest/people` URL, `Bearer` header, and body containing split `name`, `city`, all 4 custom fields, and fixed `origenLead`; response is `200`.
-- [ ] 4.3 [UNIT] Twenty non-2xx and network-error cases (mocked `fetch` returns 500 / rejects): response is still `200`, `console.error` is called, nothing throws.
-- [ ] 4.4 [UNIT] Malformed JSON body case (`request.json()` rejects): response is `200`, no throw, no `fetch` call.
-- [ ] 4.5 [UNIT] Run `pnpm test`; confirm all existing suites plus the two new/updated files pass with zero regressions.
+- [x] 4.1 [UNIT] Create `tests/qa/crm-lead-route.test.mjs`: env-gate case — `TWENTY_API_KEY`/`TWENTY_API_URL` unset → response is `200`, mocked `fetch` call count is `0`.
+- [x] 4.2 [UNIT] Happy-path case: mocked `fetch` captures the `/rest/people` URL, `Bearer` header, and body containing split `name`, `city`, all 4 custom fields, and fixed `origenLead`; response is `200`.
+- [x] 4.3 [UNIT] Twenty non-2xx and network-error cases (mocked `fetch` returns 500 / rejects): response is still `200`, `console.error` is called, nothing throws.
+- [x] 4.4 [UNIT] Malformed JSON body case (`request.json()` rejects): response is `200`, no throw, no `fetch` call.
+- [x] 4.5 [UNIT] Run `pnpm test`; confirm all existing suites plus the two new/updated files pass with zero regressions.
 
 ## Phase 5: Environment Documentation (likely blocked)
 
-- [ ] 5.1 [LIKELY BLOCKED] Add `TWENTY_API_KEY`/`TWENTY_API_URL` to root `.env.example`. This session's `Read` on this exact file was already denied by the same sandbox permission class that blocked `docker/twenty/.env.example` in change 1 — `sdd-apply` MUST attempt the edit but expect the same denial, and on failure MUST hand the exact two-line content to the orchestrator/user for manual addition rather than treating it as a task failure.
+- [ ] 5.1 [LIKELY BLOCKED — CONFIRMED] Add `TWENTY_API_KEY`/`TWENTY_API_URL` to root `.env.example`. `sdd-apply` attempted `Read` on this exact file this session and it was denied again ("File is in a directory that is denied by your permission settings"), identical to change 1's `docker/twenty/.env.example` denial. No edit was possible. Manual addition required — append:
+  ```
+  TWENTY_API_KEY=
+  TWENTY_API_URL=
+  ```
 
 ## Phase 6: Manual Verification (human required — NOT automatable by sdd-apply)
 

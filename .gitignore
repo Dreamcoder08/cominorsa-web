@@ -58,3 +58,5 @@ yarn-error.log*
 
 # TypeScript build info
 *.tsbuildinfo
+testsprite_tests/tmp/
+testsprite_tests/tmp/config.json

@@ -1,0 +1,541 @@
+[
+  {
+    "id": "TC001",
+    "title": "Submit a consultation and start WhatsApp chat",
+    "description": "A visitor can complete the consultation form, submit it successfully, and open WhatsApp with a prefilled message while seeing the confirmation state.",
+    "category": "Consultation form and WhatsApp lead capture",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the consultation section"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the full name field with Ana Torres"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the city or region field with Lima"
+      },
+      {
+        "type": "action",
+        "description": "Select a service of interest"
+      },
+      {
+        "type": "action",
+        "description": "Select a WhatsApp line"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the consultation message field with I need help with a mining consulting project and would like to schedule a call."
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a new WhatsApp chat opens with a prefilled message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a confirmation message is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Open a service page from the services grid and start WhatsApp",
+    "description": "A visitor can open a specific service from the homepage, review its details, and launch a service-specific WhatsApp conversation.",
+    "category": "Service detail pages",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the services section"
+      },
+      {
+        "type": "action",
+        "description": "Open the mining formalization service from the services grid"
+      },
+      {
+        "type": "action",
+        "description": "Review the service details"
+      },
+      {
+        "type": "action",
+        "description": "Click the service WhatsApp conversation link"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a new WhatsApp chat opens with a prefilled message for that service"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the service details are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Open the WhatsApp header contact shortcut",
+    "description": "A visitor can use the header WhatsApp shortcut to open a new chat with a prefilled contact message.",
+    "category": "Site navigation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the header WhatsApp contact shortcut"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a new WhatsApp chat opens with a prefilled contact message"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Accept cookie consent and keep browsing",
+    "description": "A first-time visitor can accept analytics cookies, dismiss the banner, and continue browsing the homepage.",
+    "category": "Cookie consent banner",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cookie consent banner is visible"
+      },
+      {
+        "type": "action",
+        "description": "Accept analytics cookies"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cookie consent banner is dismissed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the homepage remains accessible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Show required service validation on consultation form",
+    "description": "A visitor sees validation when trying to submit the consultation form without choosing a service.",
+    "category": "Consultation form and WhatsApp lead capture",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the consultation section"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the full name field with Ana Torres"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the city or region field with Lima"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the consultation message field with I need help with a mining consulting project and would like to schedule a call."
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a service selection validation error is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Keep cookie choice after revisiting the homepage",
+    "description": "After choosing a cookie preference, a returning visitor can revisit the homepage without seeing the banner again.",
+    "category": "Cookie consent banner",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cookie consent banner is visible"
+      },
+      {
+        "type": "action",
+        "description": "Accept analytics cookies"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cookie consent banner does not appear"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Show minimum message validation on consultation form",
+    "description": "A visitor sees validation when the consultation message is too short to submit.",
+    "category": "Consultation form and WhatsApp lead capture",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the consultation section"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the full name field with Ana Torres"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the city or region field with Lima"
+      },
+      {
+        "type": "action",
+        "description": "Select a service of interest"
+      },
+      {
+        "type": "action",
+        "description": "Select a WhatsApp line"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the consultation message field with Hi"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a consultation message length validation error is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Reject cookie consent and dismiss the banner",
+    "description": "A first-time visitor can reject analytics cookies and see the cookie banner dismissed.",
+    "category": "Cookie consent banner",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cookie consent banner is visible"
+      },
+      {
+        "type": "action",
+        "description": "Reject analytics cookies"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cookie consent banner is dismissed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Jump to the services section from the homepage header",
+    "description": "A visitor can use the homepage navigation to reach the services section without leaving the page.",
+    "category": "Site navigation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the services navigation link"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the services section is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Use the mobile menu and close it with Escape",
+    "description": "A mobile visitor can open the navigation menu, move through the links until focus wraps, and dismiss the panel with Escape.",
+    "category": "Site navigation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open the mobile navigation menu"
+      },
+      {
+        "type": "action",
+        "description": "Press Tab repeatedly until focus wraps to the first menu item"
+      },
+      {
+        "type": "action",
+        "description": "Press Escape"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the mobile navigation panel is dismissed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC011",
+    "title": "Return from a service page to the homepage services section",
+    "description": "A visitor can move from a service page back to the homepage and return to the services section.",
+    "category": "Service detail pages",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /igafom-reinfo"
+      },
+      {
+        "type": "action",
+        "description": "Review the service details"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to return to all services"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the services section is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC012",
+    "title": "Open privacy policy from the cookie banner",
+    "description": "A first-time visitor can open the privacy policy from the cookie banner and read the policy page.",
+    "category": "Cookie consent banner",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cookie consent banner is visible"
+      },
+      {
+        "type": "action",
+        "description": "Open the privacy policy from the banner"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the privacy policy page is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC013",
+    "title": "Read FAQ content",
+    "description": "A visitor can open the FAQ page and read the questions and answers successfully.",
+    "category": "FAQ page",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /preguntas-frecuentes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify FAQ content is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify multiple question and answer entries are visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC014",
+    "title": "Accept cookie consent and continue browsing",
+    "description": "A first-time visitor can accept the cookie banner and continue accessing the homepage content and contact options.",
+    "category": "Site navigation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Accept the cookie consent banner"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the homepage content sections"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cookie consent banner is dismissed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the homepage sections are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC015",
+    "title": "Reject cookie consent and keep browsing available",
+    "description": "A first-time visitor can reject the cookie banner and still browse the homepage normally.",
+    "category": "Site navigation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Reject the cookie consent banner"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the homepage content sections"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cookie consent banner is dismissed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the homepage contact options are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC016",
+    "title": "Read privacy policy",
+    "description": "A visitor can open the privacy policy page and review the legal information.",
+    "category": "Legal pages",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /privacidad"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify privacy policy content is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify legal sections are visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC017",
+    "title": "Read the FAQ page",
+    "description": "A visitor can open the FAQ page and view the informational content.",
+    "category": "FAQ page reading",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /preguntas-frecuentes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify FAQ content is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC018",
+    "title": "Read terms and conditions",
+    "description": "A visitor can open the terms page and review the legal information.",
+    "category": "Legal pages",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /terminos"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify terms and conditions content is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify legal sections are visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC019",
+    "title": "Keep submit disabled before hydration completes",
+    "description": "A visitor cannot submit the consultation form before the client-side form is hydrated.",
+    "category": "Consultation form and WhatsApp lead capture",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the consultation section"
+      },
+      {
+        "type": "action",
+        "description": "Immediately try to submit the form before waiting"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the submit control is disabled"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no confirmation message is visible"
+      }
+    ],
+    "priority": "Low"
+  }
+]

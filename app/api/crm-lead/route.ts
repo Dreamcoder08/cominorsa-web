@@ -71,7 +71,7 @@ export async function POST(request: Request): Promise<Response> {
       },
       body: JSON.stringify({
         name: { firstName: firstName ?? "", lastName },
-        city: body.city ?? "",
+        ciudadConsulta: body.city ?? "",
         servicioConsulta: body.service ?? "",
         consultaMensaje: body.question ?? "",
         lineaWhatsapp,

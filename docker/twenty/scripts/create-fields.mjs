@@ -3,22 +3,20 @@
 // Idempotently provisions custom fields (see field-definitions.mjs) on the
 // Company and Person standard objects of a running Twenty CRM instance, via
 // Twenty's Metadata API (`/rest/metadata/...`). The runbook's 15
-// `CUSTOM_FIELDS` apply to both objects; the 4 `WEBSITE_LEAD_FIELDS` (from
+// `CUSTOM_FIELDS` apply to both objects; the 5 `WEBSITE_LEAD_FIELDS` (from
 // the `website-crm-lead-capture` change) apply to Person only — see
 // `OBJECT_FIELD_SETS` below.
 //
-// PROVISIONAL / LIVE-VERIFY (see design.md "Open Questions" and
-// tasks.md Phase 3): the exact Metadata API endpoint paths and
-// request/response JSON shapes implemented below (object-listing shape,
-// field-listing query parameter, and field-creation payload) are a
-// best-effort implementation grounded in design.md's contract sketch and
-// Data Flow section — they are NOT hands-on verified against a running
-// Twenty instance. If a live instance responds with a different shape,
-// `twentyRequest()`'s defensive error handling is specifically designed to
-// fail loudly with the real HTTP status + raw response body instead of
-// silently reporting false success or corrupting data. Phase 6 (manual
-// verification, human-required) is the step that confirms or corrects these
-// shapes against a real instance.
+// LIVE-VERIFIED against a running Twenty v2.38.1 instance (see
+// getObjectMetadataId/getExistingFieldNames below for the corrected
+// endpoint shapes): `GET /rest/metadata/objects` wraps its array directly
+// as `data` (not `data.objects`), and `GET
+// /rest/metadata/fields?objectMetadataId=...` silently ignores the query
+// filter — listing one object's fields requires `GET
+// /rest/metadata/objects/:id` instead, which nests them correctly scoped
+// under `fields`. `twentyRequest()`'s defensive error handling still fails
+// loudly with the real HTTP status + raw response body on any other
+// mismatch instead of silently reporting false success.
 //
 // Exit-code contract: exit 0 only if every field in each object's field
 // set (see `OBJECT_FIELD_SETS`) exists on that object when the script
@@ -115,16 +113,15 @@ export async function twentyRequest(config, method, path, body) {
 }
 
 /**
- * PROVISIONAL (see file header): resolves the object metadata id for a
- * standard object's singular name (e.g. "company", "person") by listing
- * all object metadata and matching `nameSingular`. Unverified against a
- * live instance — see design.md Open Question "Whether field creation
- * targets built-in objects by singular name directly, or requires
- * resolving an objectMetadataId first."
+ * Resolves the object metadata id for a standard object's singular name
+ * (e.g. "company", "person") by listing all object metadata and matching
+ * `nameSingular`. Live-verified against Twenty v2.38.1: `GET
+ * /rest/metadata/objects` returns `{ data: [...objects], pageInfo,
+ * totalCount }` — the array is `data` itself, not `data.objects`.
  */
 export async function getObjectMetadataId(config, objectName) {
   const data = await twentyRequest(config, "GET", "/rest/metadata/objects");
-  const objects = data?.data?.objects ?? data?.objects ?? [];
+  const objects = Array.isArray(data?.data) ? data.data : [];
   const match = objects.find((o) => o?.nameSingular === objectName);
   if (!match) {
     console.error(
@@ -137,34 +134,50 @@ export async function getObjectMetadataId(config, objectName) {
 }
 
 /**
- * PROVISIONAL (see file header): lists existing custom field names for a
- * given object metadata id. Endpoint/query shape unverified — see
- * design.md Open Question "Exact GET endpoint/query shape for listing a
- * given object's existing fields (assumed
- * /rest/metadata/fields?objectId=... or similar)."
+ * Lists existing custom field names for a given object metadata id.
+ * Live-verified against Twenty v2.38.1: `GET
+ * /rest/metadata/fields?objectMetadataId=...` silently ignores the query
+ * filter and returns every field across every object, so diffing field
+ * names against it produces false "already exists" positives for fields
+ * that only exist on a different object. `GET /rest/metadata/objects/:id`
+ * returns the single object directly (no `data` wrapper) with its own
+ * `fields` array correctly scoped to that object — use that instead.
  */
 export async function getExistingFieldNames(config, objectMetadataId) {
   const data = await twentyRequest(
     config,
     "GET",
-    `/rest/metadata/fields?objectMetadataId=${encodeURIComponent(objectMetadataId)}`,
+    `/rest/metadata/objects/${encodeURIComponent(objectMetadataId)}`,
   );
-  const fields = data?.data?.fields ?? data?.fields ?? [];
+  const fields = Array.isArray(data?.fields) ? data.fields : [];
   return new Set(fields.map((f) => f?.name).filter(Boolean));
 }
 
+// Rotating palette for SELECT option colors, live-verified as accepted by
+// Twenty v2.38.1's Metadata API.
+const SELECT_OPTION_COLORS = ["blue", "green", "orange", "purple", "yellow", "gray"];
+
 /**
- * PROVISIONAL (see file header): creates one custom field on the given
- * object via the Metadata API. Request payload shape unverified against a
- * live instance.
+ * Creates one custom field on the given object via the Metadata API.
+ * Live-verified against Twenty v2.38.1: a SELECT field's `options` must be
+ * an array of `{ value, label, position, color }` objects, not bare
+ * strings — sending strings produces a cryptic "Option value/label is
+ * required" validation error. `field-definitions.mjs` defines `options` as
+ * plain strings for readability, so this maps them here.
  */
 export async function createField(config, objectMetadataId, field) {
+  const options = field.options?.map((value, position) => ({
+    value,
+    label: value.replace(/_/g, " "),
+    position,
+    color: SELECT_OPTION_COLORS[position % SELECT_OPTION_COLORS.length],
+  }));
   const body = {
     objectMetadataId,
     name: field.name,
     label: field.label,
     type: field.type,
-    ...(field.options ? { options: field.options } : {}),
+    ...(options ? { options } : {}),
   };
   await twentyRequest(config, "POST", "/rest/metadata/fields", body);
 }

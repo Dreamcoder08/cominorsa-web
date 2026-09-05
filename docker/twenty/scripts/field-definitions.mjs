@@ -11,17 +11,12 @@
 // provisioning) and its unit tests.
 
 export const CUSTOM_FIELDS = [
-  {
-    name: "perfilIcp",
-    label: "Perfil ICP",
-    type: "SELECT",
-    options: [
-      "PERFIL_1_formalizacion",
-      "PERFIL_2_cumplimiento",
-      "MIXTO_1_y_2",
-      "OTRO_estado",
-    ],
-  },
+  // TEXT, not SELECT: crm-import-companies.csv/crm-import-people.csv (read-only
+  // source data) carry this column's real values in mixed case (e.g.
+  // "MIXTO_1_y_2"), but Twenty's Metadata API requires SELECT option
+  // `value`s to be strict UPPER_SNAKE_CASE — a SELECT here would reject
+  // those literal CSV values at import time.
+  { name: "perfilIcp", label: "Perfil ICP", type: "TEXT" },
   { name: "nConcesiones", label: "N Concesiones", type: "NUMBER" },
   { name: "hectareasTotales", label: "Hectareas Totales", type: "NUMBER" },
   { name: "departamentos", label: "Departamentos", type: "TEXT" },
@@ -43,6 +38,7 @@ export const CUSTOM_FIELDS = [
 // visitor's `ConsultationForm` submission, not an imported concession
 // holder, and must never appear on Company.
 export const WEBSITE_LEAD_FIELDS = [
+  { name: "ciudadConsulta", label: "Ciudad de Consulta", type: "TEXT" },
   { name: "servicioConsulta", label: "Servicio de Consulta", type: "TEXT" },
   { name: "consultaMensaje", label: "Consulta", type: "TEXT" },
   {

@@ -5,9 +5,15 @@ import { CUSTOM_FIELDS } from "../../docker/twenty/scripts/field-definitions.mjs
 // Authoritative source: the "Company custom fields" table in
 // openspec/changes/archive/2026-09-03-crm-lead-import/runbook-twenty-data-model.md
 // (15 rows, reused verbatim for "Person custom fields"). Each entry below is
-// transcribed directly from that table's "Field label" / "Type" columns.
+// transcribed directly from that table's "Field label" / "Type" columns,
+// EXCEPT perfilIcp: the runbook specified SELECT, but crm-import-companies.csv
+// / crm-import-people.csv (read-only source data) carry this column's real
+// values in mixed case (e.g. "MIXTO_1_y_2"), and Twenty's Metadata API
+// requires SELECT option `value`s to be strict UPPER_SNAKE_CASE — live-testing
+// against Twenty v2.38.1 confirmed a SELECT here rejects those literal CSV
+// values, so it is TEXT instead.
 const RUNBOOK_FIELDS = [
-  { name: "perfilIcp", label: "Perfil ICP", type: "SELECT" },
+  { name: "perfilIcp", label: "Perfil ICP", type: "TEXT" },
   { name: "nConcesiones", label: "N Concesiones", type: "NUMBER" },
   { name: "hectareasTotales", label: "Hectareas Totales", type: "NUMBER" },
   { name: "departamentos", label: "Departamentos", type: "TEXT" },
@@ -22,13 +28,6 @@ const RUNBOOK_FIELDS = [
   { name: "revisarManual", label: "Revisar Manual", type: "BOOLEAN" },
   { name: "ruc", label: "RUC", type: "TEXT" },
   { name: "fuenteDato", label: "Fuente Dato", type: "TEXT" },
-];
-
-const PERFIL_ICP_OPTIONS = [
-  "PERFIL_1_formalizacion",
-  "PERFIL_2_cumplimiento",
-  "MIXTO_1_y_2",
-  "OTRO_estado",
 ];
 
 test("CUSTOM_FIELDS has exactly 15 entries", () => {
@@ -47,18 +46,13 @@ test("CUSTOM_FIELDS has no duplicate field names", () => {
   assert.equal(new Set(names).size, names.length);
 });
 
-test("Perfil ICP is the only SELECT field and exposes the runbook's 4 option values", () => {
+test("CUSTOM_FIELDS has no SELECT fields (perfilIcp is TEXT, see RUNBOOK_FIELDS note)", () => {
   const selectFields = CUSTOM_FIELDS.filter((f) => f.type === "SELECT");
-  assert.equal(selectFields.length, 1);
-
-  const perfilIcp = selectFields[0];
-  assert.equal(perfilIcp.name, "perfilIcp");
-  assert.deepEqual(perfilIcp.options, PERFIL_ICP_OPTIONS);
+  assert.equal(selectFields.length, 0);
 });
 
-test("only perfilIcp carries an options array", () => {
+test("no CUSTOM_FIELDS entry carries an options array", () => {
   for (const field of CUSTOM_FIELDS) {
-    if (field.name === "perfilIcp") continue;
     assert.equal(
       "options" in field,
       false,

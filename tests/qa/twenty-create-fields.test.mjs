@@ -28,9 +28,10 @@ function textResponse(status, text) {
 }
 
 /**
- * Builds a mocked `fetch` for the Metadata API contract sketched in
- * design.md: GET /rest/metadata/objects (list objects), GET
- * /rest/metadata/fields?objectMetadataId=... (list existing fields), POST
+ * Builds a mocked `fetch` for the Metadata API contract live-verified
+ * against Twenty v2.38.1: GET /rest/metadata/objects (list objects, array
+ * directly under `data`), GET /rest/metadata/objects/:id (single object,
+ * no `data` wrapper, existing fields nested under `fields`), POST
  * /rest/metadata/fields (create one field).
  *
  * `existingByObjectId` maps an object id to the array of field names that
@@ -45,15 +46,16 @@ function makeFetchMock({ existingByObjectId = {}, postStatus = 200 } = {}) {
     const parsed = new URL(url);
 
     if (method === "GET" && parsed.pathname === "/rest/metadata/objects") {
-      return jsonResponse(200, { data: { objects: OBJECTS } });
+      return jsonResponse(200, { data: OBJECTS });
     }
 
-    if (method === "GET" && parsed.pathname === "/rest/metadata/fields") {
-      const objectMetadataId = parsed.searchParams.get("objectMetadataId");
+    const objectDetailMatch = parsed.pathname.match(
+      /^\/rest\/metadata\/objects\/(.+)$/,
+    );
+    if (method === "GET" && objectDetailMatch) {
+      const objectMetadataId = decodeURIComponent(objectDetailMatch[1]);
       const names = existingByObjectId[objectMetadataId] ?? [];
-      return jsonResponse(200, {
-        data: { fields: names.map((name) => ({ name })) },
-      });
+      return jsonResponse(200, { fields: names.map((name) => ({ name })) });
     }
 
     if (method === "POST" && parsed.pathname === "/rest/metadata/fields") {
@@ -226,7 +228,7 @@ test("ensureFieldsForObject creates nothing when all 15 fields already exist (fu
   assert.equal(finalFields.size, 15);
 });
 
-test("ensureFieldsForObject provisions the 4 WEBSITE_LEAD_FIELDS on person when none exist", async (t) => {
+test("ensureFieldsForObject provisions the 5 WEBSITE_LEAD_FIELDS on person when none exist", async (t) => {
   t.mock.method(process, "exit", () => {});
   t.mock.method(console, "error", () => {});
   const { fetchMock, calls } = makeFetchMock({ existingByObjectId: {} });
@@ -239,22 +241,22 @@ test("ensureFieldsForObject provisions the 4 WEBSITE_LEAD_FIELDS on person when 
   );
 
   const posted = postedFieldNames(calls, "obj-person");
-  assert.equal(posted.length, 4);
+  assert.equal(posted.length, 5);
   assert.deepEqual(
     new Set(posted),
     new Set(WEBSITE_LEAD_FIELDS.map((f) => f.name)),
   );
-  assert.equal(finalFields.size, 4);
+  assert.equal(finalFields.size, 5);
 });
 
-test("WEBSITE_LEAD_FIELDS has exactly 4 entries and lineaWhatsapp is the only SELECT", () => {
-  assert.equal(WEBSITE_LEAD_FIELDS.length, 4);
+test("WEBSITE_LEAD_FIELDS has exactly 5 entries and lineaWhatsapp is the only SELECT", () => {
+  assert.equal(WEBSITE_LEAD_FIELDS.length, 5);
   const selectFields = WEBSITE_LEAD_FIELDS.filter((f) => f.type === "SELECT");
   assert.equal(selectFields.length, 1);
   assert.equal(selectFields[0].name, "lineaWhatsapp");
 });
 
-test("run() never posts any of the 4 WEBSITE_LEAD_FIELDS for company", async (t) => {
+test("run() never posts any of the 5 WEBSITE_LEAD_FIELDS for company", async (t) => {
   t.mock.method(process, "exit", () => {});
   t.mock.method(console, "error", () => {});
   t.mock.method(console, "log", () => {});
@@ -287,7 +289,7 @@ test("run() provisions all fields on both company and person from an empty state
 
   assert.deepEqual(exitCalls, []);
   assert.equal(postedFieldNames(calls, "obj-company").length, 15);
-  assert.equal(postedFieldNames(calls, "obj-person").length, 19);
+  assert.equal(postedFieldNames(calls, "obj-person").length, 20);
   assert.ok(
     logMessages.some((m) => m.includes("All custom fields exist")),
     "expected the final success message to be logged",

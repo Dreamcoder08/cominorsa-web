@@ -108,7 +108,7 @@ node --test tests/qa/                     # sólo QA suite
 ### Decisiones de diseño
 
 - **Sin Tailwind config custom**: se usa `@tailwindcss/postcss` con la config por defecto. Variables de marca van en `globals.css` con `@theme`.
-- **Formulario de consulta**: el form NO persiste en D1 por defecto. Construye una URL `wa.me/...` con el mensaje prellenado y abre WhatsApp en una pestaña nueva. Ver `app/ConsultationForm.tsx`.
+- **Formulario de consulta**: el form NO persiste en D1. Construye una URL `wa.me/...` con el mensaje prellenado y abre WhatsApp en una pestaña nueva — ese flujo nunca espera a nada más. En paralelo (fire-and-forget, sin bloquear la apertura de WhatsApp) hace un POST a `/api/crm-lead` (`app/api/crm-lead/route.ts`), que reenvía el lead a Twenty CRM **solo si** `TWENTY_API_KEY`/`TWENTY_API_URL` están seteadas en `.env`; si faltan, el endpoint responde `200 {"ok":true}` sin hacer nada (no-op silencioso — así es como producción se comporta hoy, ver `docker/twenty/README.md`). Ver `app/ConsultationForm.tsx`.
 - **Imágenes**: `og.png` y `logo.png` se sirven desde `public/` → `dist/client/`. El build los preserva con hashing para cache-busting.
 - **Sin dependencias de runtime innecesarias**: `drizzle-orm` está como dep pero el schema está vacío. Se activa cuando se decida qué tablas necesita el proyecto.
 

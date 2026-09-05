@@ -74,7 +74,17 @@ APIs & Webhooks) on first login, then add it to `.env` before running
    failure (missing env var, unreachable instance, non-2xx response,
    unparseable body) exits `1` with the real error printed to stderr.
 
-3. Import the Company records first, then the Person records, via Twenty's
+3. **Clear Twenty's own sample data first.** Observed directly on this
+   stack: a freshly created workspace already contains 5 demo Company
+   records (Notion, Stripe, Figma, Airbnb, Anthropic) and their 5 founder
+   People records, all sharing one `createdAt` timestamp from workspace
+   creation — not something either CSV produces. Delete all 10 (Command
+   Menu → each object's index → select all → delete, or via
+   `DELETE /rest/companies/:id` / `DELETE /rest/people/:id`) before
+   importing; otherwise the real CRM data ends up mixed with 5 fake
+   companies and 5 fake people with no indication they don't belong.
+
+4. Import the Company records first, then the Person records, via Twenty's
    UI Command Menu (never scripted — both files are well under the wizard's
    10k-row limit):
 
@@ -106,36 +116,52 @@ instance first:
 
 1. Destroy the stack **and its volumes** — this deletes the Postgres
    database and all local storage, i.e. **all local Twenty workspace data**
-   (every record, view, and anything clicked together inside the instance):
+   (every record, view, field, and anything clicked together inside the
+   instance):
 
    ```bash
    docker compose -f docker/twenty/docker-compose.yml down -v
    ```
 
-2. Bring the stack back up:
+   This also deletes the workspace itself, including the admin account and
+   every previously generated API key — none of that lives anywhere outside
+   this volume. `pnpm twenty:setup`'s env validation only checks that
+   `PG_DATABASE_PASSWORD`/`ENCRYPTION_KEY` are present and non-placeholder;
+   it cannot detect that a *stale* `TWENTY_API_KEY` now points at a
+   workspace that no longer exists.
+
+2. Bring the stack back up and wait for health:
 
    ```bash
-   docker compose -f docker/twenty/docker-compose.yml up -d
+   pnpm twenty:setup
    ```
 
-3. Wait for health again:
+3. Go through Twenty's first-login signup flow again in the browser (new
+   workspace, new admin account — there is no API-driven way to bootstrap
+   this), then generate a new API key from Settings → APIs & Webhooks and
+   update **both** `docker/twenty/.env` and the root `.env`'s
+   `TWENTY_API_KEY` with it (the two files are independent; `create-fields.mjs`
+   and `pnpm twenty:fields` read the former, the website's `/api/crm-lead`
+   route reads the latter).
 
-   ```bash
-   until curl -sf "$SERVER_URL/healthz"; do sleep 2; done
-   ```
+4. Clear the fresh workspace's seeded sample data — see the "Clear Twenty's
+   own sample data first" step above; a brand-new workspace seeds it again
+   every time.
 
-4. Re-provision all fields from scratch (the volumes were wiped, so nothing
-   exists yet on either object — 15 on Company, 19 on Person):
+5. Re-provision all fields from scratch (the volumes were wiped, so nothing
+   exists yet on either object — 15 on Company, 20 on Person):
 
    ```bash
    pnpm twenty:fields
    ```
 
-5. Re-import `crm-import-companies.csv` via Command Menu → Import records.
-6. Re-import `crm-import-people.csv` via Command Menu → Import records.
+6. Re-import `crm-import-companies.csv` via Command Menu → Import records.
+7. Re-import `crm-import-people.csv` via Command Menu → Import records.
 
 Only follow this sequence when you actually want to discard all local
 Twenty data. The source of truth for the CRM data model and content is the
 two committed CSVs plus the archived runbook, never anything authored by
-hand inside the running instance — so wiping and redoing is always safe from
-a data-loss perspective, just slow.
+hand inside the running instance — so the *data* is always safe to
+regenerate. The *workspace/credentials* are not: budget time for the manual
+signup-and-rekey step above, it is not just "slow," it needs a human in a
+browser.

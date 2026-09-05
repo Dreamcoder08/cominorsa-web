@@ -6,18 +6,78 @@ importing and managing the COMINORSA mining-lead CRM data (`crm-import-companies
 is wired into `dev`, `build`, `test`, or any `cf:*` deploy script — this stack
 never runs in CI or production.
 
+## Data & repository visibility
+
+This repository is **public** as of 2026-09-05 (changed deliberately so a
+fresh checkout works over plain HTTPS with no SSH key or GitHub credentials
+on a new machine — see "Setup" step 0). That has one direct consequence for
+this stack: `crm-import-companies.csv` and `crm-import-people.csv` (repo
+root, 799 + 1,222 rows) are tracked in git and are now public too.
+
+- Verified before the visibility change: no real secrets are tracked
+  anywhere in history — only placeholder values (`replace_me_with_...`,
+  `change-me`) in `.env.example` files. `docker/twenty/.env` itself is
+  git-ignored and has never been committed.
+- The CSV rows are the COMINORSA mining-lead list, sourced from INGEMMET's
+  public Catastro Minero (see `fuente_dato` column) plus limited data
+  captured through the website's own consultation form
+  (`ciudadConsulta`/`servicioConsulta`/`consultaMensaje` fields). The
+  underlying concession data is a public registry; what's not public
+  elsewhere is COMINORSA's specific compiled/filtered lead list and any
+  consultation-form submissions blended into it.
+- If this needs to be reversed, **flipping the repo back to private does
+  not retroactively unpublish the CSVs**: anyone who already cloned or
+  fetched the repo while it was public keeps a copy, and GitHub's own
+  caches (and any search-engine or scraper crawl) may still hold it. A
+  correct rollback is: make the repo private again, then rewrite history to
+  drop both CSVs (`git filter-repo` or the BFG Repo-Cleaner, not a plain
+  `git rm` commit, which leaves the blobs reachable in prior commits) and
+  force-push, treating every existing clone as compromised for that data.
+
 ## Prerequisites
 
 - Docker Engine + Docker Compose v2 (the `docker compose` subcommand, not the
   legacy standalone `docker-compose`).
+- Node.js `>=22.13.0` and pnpm `>=11.0.0` (see the root `package.json`
+  `engines` field) to run `pnpm install` and the `twenty:*` scripts below.
 - At least ~2GB of free RAM for the four containers (`server`, `worker`,
-  `db`, `redis`).
+  `db`, `redis`), on top of whatever the Docker runtime itself reserves.
 - No fixed port other than `3000` (the `server` service) needs to be free on
   the host.
 - The stack pins every image tag for reproducibility — currently
   `twentycrm/twenty:v2.38.1`, `postgres:16.15`, `redis:7.4.11`. See
   `docker/twenty/docker-compose.yml` for the source of truth; bumping any tag
   is a deliberate, reviewable diff, never `latest`.
+
+### Windows
+
+Everything under `docker/twenty/scripts/` is plain Node.js (no shell
+scripts), and `docker-compose.yml` is a standard Compose file, so the exact
+same `pnpm twenty:*` commands below work unchanged from PowerShell, CMD, or
+Git Bash — there is nothing Windows-specific to translate.
+
+What Windows adds is the underlying platform:
+
+- **Docker Desktop with the WSL2 backend** is required (Docker Engine alone
+  isn't installable natively on Windows). This needs Windows 10 build 19041+
+  or Windows 11, and hardware virtualization (Intel VT-x / AMD-V) enabled in
+  the BIOS/UEFI — on a laptop that has never run a VM or WSL before, check
+  this first, since it's the most common hard blocker and usually requires
+  a BIOS setting change, not just a Windows setting.
+- Installing Docker Desktop and enabling the WSL2 Windows feature both
+  require an **administrator account** on that machine.
+- Install Node.js from [nodejs.org](https://nodejs.org) (LTS ≥22.13) or via
+  `winget install OpenJS.NodeJS.LTS`, then enable pnpm with
+  `corepack enable` (bundled with Node ≥16.13) — this avoids installing an
+  unpinned global pnpm version.
+- Antivirus or endpoint-management software on a work/school laptop can
+  block the WSL2 kernel install or Docker's virtual network adapter; if
+  Docker Desktop fails to start with a generic error, that's the next thing
+  to check.
+- After installing Docker Desktop, **restart the laptop** before running
+  `pnpm twenty:setup` — the WSL2/virtualization feature install only takes
+  effect after a reboot, and `docker info` will otherwise fail with the
+  daemon unreachable.
 
 ## Configuration (`.env`)
 
@@ -38,7 +98,49 @@ the stack is up and running — generate it from Twenty's own UI (Settings →
 APIs & Webhooks) on first login, then add it to `.env` before running
 `pnpm twenty:fields`.
 
+## AI-assisted setup (e.g. Claude Code)
+
+Every command below is a plain CLI invocation, so an AI coding agent running
+in a terminal on the target machine can execute most of this setup — but not
+all of it. Three points in this flow are hard human-in-the-loop boundaries,
+not automation gaps that a smarter prompt closes:
+
+- **Installing Docker Desktop itself.** On Windows/macOS this is an
+  interactive GUI installer that requests administrator elevation and
+  typically requires a reboot before the daemon is reachable (see the
+  Windows notes above). An agent can detect that Docker is missing and tell
+  the human what to install, but cannot click through the installer or
+  force a reboot.
+- **Twenty's first-login signup.** Step 1 below brings the containers up,
+  but creating the workspace and admin account is a browser-only flow with
+  **no API to bootstrap it** (documented again under "Wipe-before-reimport").
+  An agent can get the stack healthy and stop there, but a human has to
+  open `http://localhost:3000`, sign up, and generate the `TWENTY_API_KEY`
+  (Settings → APIs & Webhooks) before steps 2 and 4 can run.
+- **Viewing the running UI.** A terminal-only agent has no way to render or
+  screenshot a browser tab; "seeing" the CRM means a human opens the URL
+  themselves, or the agent has separate browser-automation tooling
+  (e.g. a connected Chrome extension) configured on that same machine.
+
+In practice, the efficient split is: the agent runs step 0, generates real
+values for `PG_DATABASE_PASSWORD`/`ENCRYPTION_KEY` and runs step 1, then
+pauses and asks the human for the `TWENTY_API_KEY` from the browser
+sign-up before continuing with steps 2–4.
+
 ## Setup
+
+0. Clone the repository and install dependencies (skip if you already have a
+   working checkout):
+
+   ```bash
+   git clone https://github.com/Dreamcoder08/cominorsa-web.git
+   cd cominorsa-web
+   pnpm install
+   ```
+
+   The repository is public, so this works over plain HTTPS with no SSH key
+   or GitHub credentials needed — on Windows, run these same commands from
+   PowerShell, CMD, or Git Bash.
 
 1. Validate the local configuration, start the stack, and wait for its bounded
    health check:

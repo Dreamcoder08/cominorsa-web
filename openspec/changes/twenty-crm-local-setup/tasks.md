@@ -47,10 +47,10 @@ Chain strategy: stacked-to-main
 
 ## Phase 4: README
 
-- [ ] 4.1 Create `docker/twenty/README.md`: prerequisites (Docker + Docker Compose, ~2GB RAM, the pinned image tag).
-- [ ] 4.2 Document setup: `twenty:up` → `/healthz` wait loop → `twenty:fields` → import Companies then People via Command Menu, referencing `crm-import-companies.csv` (read-only) and `crm-import-people.csv` (read-only).
-- [ ] 4.3 Document teardown (`twenty:down`) and the wipe-before-reimport sequence (`down -v` → `up -d` → healthz → `twenty:fields` → reimport both CSVs); state `down -v` destroys all workspace data.
-- [ ] 4.4 State that reimporting without wiping first creates duplicate Company/Person records (no upsert).
+- [x] 4.1 Create `docker/twenty/README.md`: prerequisites (Docker + Docker Compose, ~2GB RAM, the pinned image tag).
+- [x] 4.2 Document setup: `twenty:up` → `/healthz` wait loop → `twenty:fields` → import Companies then People via Command Menu, referencing `crm-import-companies.csv` (read-only) and `crm-import-people.csv` (read-only).
+- [x] 4.3 Document teardown (`twenty:down`) and the wipe-before-reimport sequence (`down -v` → `up -d` → healthz → `twenty:fields` → reimport both CSVs); state `down -v` destroys all workspace data.
+- [x] 4.4 State that reimporting without wiping first creates duplicate Company/Person records (no upsert).
 
 ## Phase 5: Automated Verification
 

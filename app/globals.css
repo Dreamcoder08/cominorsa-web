@@ -141,22 +141,31 @@ blockquote {
   /* Was position:absolute — looked like a floating card, but that also
      meant it left the flow entirely and scrolled away with the hero, with
      no way back to nav or the WhatsApp CTA past the first screen. Sticky
-     keeps the same floating-card look (background + shadow) while staying
-     reachable at any scroll position. */
+     keeps it reachable at any scroll position.
+     Was also inset via width/margin-inline (a "floating card" narrower
+     than the viewport, background var(--white)) — that left a visible
+     strip of the body's var(--paper) on both sides, reading as two
+     separate backgrounds instead of one. Full-bleed + var(--paper) (same
+     token as the body) removes the seam; .site-header-inner below still
+     caps content at --container-max so the logo/nav/CTA stay aligned with
+     every other section. */
   position: sticky;
   top: 0;
   z-index: 10;
-  width: min(100% - 2 * var(--container-margin), var(--container-max));
-  margin-inline: auto;
+  width: 100%;
+  min-height: var(--header-height);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 16px 40px rgba(11, 35, 24, 0.1);
+}
+
+.site-header-inner {
   min-height: var(--header-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: clamp(0.65rem, 4vw, 2rem);
-  border-bottom: 1px solid var(--line);
-  background: var(--white);
-  color: var(--ink);
-  box-shadow: 0 16px 40px rgba(11, 35, 24, 0.1);
 }
 
 .brand {
@@ -1618,17 +1627,6 @@ footer > .brand {
      place instead of three separate overrides. */
   :root {
     --header-height: 72px;
-  }
-
-  /* Below this width the header stops being a floating card with margin —
-     margin-inline left a visible strip of the (dark) page background on
-     both sides, which reads as a broken/half-width bar, especially once
-     it's sticky and stays visible the whole time you scroll. Full-bleed
-     background, same content inset via padding instead of margin. */
-  .site-header {
-    width: 100%;
-    margin-inline: 0;
-    padding-inline: var(--container-margin);
   }
 
   .nav-links {

@@ -9,41 +9,43 @@ import { WHATSAPP_INFORMATION } from "./constants";
 export function SiteHeader({ basePath = "" }: { basePath?: string }) {
   return (
     <header className="site-header">
-      <a
-        className="brand"
-        href={`${basePath}#inicio`}
-        aria-label="COMINORSA, inicio"
-      >
-        <span className="brand-mark brand-logo-wrap" aria-hidden="true">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-44.png" alt="" width="44" height="44" />
-        </span>
-        <span className="brand-copy">
-          <strong translate="no">COMINORSA</strong>
-          <small>Consultoría minera y ambiental</small>
-        </span>
-      </a>
+      <div className="site-header-inner container">
+        <a
+          className="brand"
+          href={`${basePath}#inicio`}
+          aria-label="COMINORSA, inicio"
+        >
+          <span className="brand-mark brand-logo-wrap" aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-44.png" alt="" width="44" height="44" />
+          </span>
+          <span className="brand-copy">
+            <strong translate="no">COMINORSA</strong>
+            <small>Consultoría minera y ambiental</small>
+          </span>
+        </a>
 
-      <nav className="nav-links" aria-label="Navegación principal">
-        <a href={`${basePath}#nosotros`}>Nosotros</a>
-        <a href={`${basePath}#servicios`}>Servicios</a>
-        <a href={`${basePath}#consulta`}>Consulta</a>
-        <a href={`${basePath}#contacto`}>Contacto</a>
-      </nav>
+        <nav className="nav-links" aria-label="Navegación principal">
+          <a href={`${basePath}#nosotros`}>Nosotros</a>
+          <a href={`${basePath}#servicios`}>Servicios</a>
+          <a href={`${basePath}#consulta`}>Consulta</a>
+          <a href={`${basePath}#contacto`}>Contacto</a>
+        </nav>
 
-      <a
-        className="header-cta"
-        href={WHATSAPP_INFORMATION}
-        target="_blank"
-        rel="noreferrer"
-        data-event="whatsapp_cta_click"
-        data-event-context="header"
-      >
-        WhatsApp
-        <span aria-hidden="true">↗</span>
-      </a>
+        <a
+          className="header-cta"
+          href={WHATSAPP_INFORMATION}
+          target="_blank"
+          rel="noreferrer"
+          data-event="whatsapp_cta_click"
+          data-event-context="header"
+        >
+          WhatsApp
+          <span aria-hidden="true">↗</span>
+        </a>
 
-      <MobileNav whatsappHref={WHATSAPP_INFORMATION} basePath={basePath} />
+        <MobileNav whatsappHref={WHATSAPP_INFORMATION} basePath={basePath} />
+      </div>
     </header>
   );
 }

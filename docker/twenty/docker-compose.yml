@@ -15,7 +15,14 @@ services:
     volumes:
       - server-local-data:/app/packages/twenty-server/.local-storage
     ports:
-      - "3000:3000"
+      # SERVER_BIND_HOST defaults to 0.0.0.0 (open, correct for local dev).
+      # Production (PRODUCTION.md) sets SERVER_BIND_HOST=127.0.0.1 in its
+      # .env so the port is reachable only through the host's own reverse
+      # proxy — never edit this by hand on a live host with `sed`; that
+      # fix does not survive the next time this file is re-copied from the
+      # repo (confirmed: it silently reverted the VPS to an
+      # internet-exposed port during a routine docker-compose.yml update).
+      - "${SERVER_BIND_HOST:-0.0.0.0}:3000:3000"
     environment:
       NODE_PORT: 3000
       PG_DATABASE_URL: postgres://postgres:${PG_DATABASE_PASSWORD}@db:5432/default
@@ -33,6 +40,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+      # Cold start (fresh volume, first-ever migration run) has been
+      # observed taking 100-180s — longer than retries*interval alone
+      # covers. start_period gives that window a grace period so
+      # `depends_on: condition: service_healthy` (the worker service,
+      # and `docker compose up -d` itself) doesn't give up before the
+      # server is actually ready. Without this, `pnpm twenty:setup`
+      # reproducibly fails on a fresh install (confirmed both locally
+      # and on a fresh VPS).
+      start_period: 210s
     restart: unless-stopped
 
   worker:

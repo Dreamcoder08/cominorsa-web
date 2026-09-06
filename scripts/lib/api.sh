@@ -194,3 +194,35 @@ for dom in domains:
     print(f"  - {name} -- {status}")
 PYEOF
 }
+
+# cf_list_worker_domains <worker_name> — Lista Custom Domains de un Worker
+# (cominorsa-web es un Worker, no un proyecto Pages -- ver cf_add_worker_domain)
+cf_list_worker_domains() {
+  local worker="$1"
+  local response
+  response="$(cf_api GET "/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/domains?service=${worker}")"
+  CF_JSON="$response" python3 <<'PYEOF'
+import os, json
+d = json.loads(os.environ["CF_JSON"])
+domains = d.get("result", [])
+if not domains:
+    print("(no hay custom domains en este Worker)")
+    exit(0)
+for dom in domains:
+    hostname = dom.get("hostname", "?")
+    zone_name = dom.get("zone_name", "?")
+    print(f"  - {hostname} (zone: {zone_name})")
+PYEOF
+}
+
+# cf_add_worker_domain <worker_name> <zone_id> <hostname>
+# Adjunta un Custom Domain a un Worker. Requiere Workers Scripts:Write.
+# https://developers.cloudflare.com/api/resources/workers/subresources/domains/methods/update/
+cf_add_worker_domain() {
+  local worker="$1"
+  local zone_id="$2"
+  local hostname="$3"
+  local body
+  body="$(python3 -c "import json,sys; print(json.dumps({'hostname': sys.argv[1], 'service': sys.argv[2], 'zone_id': sys.argv[3]}))" "$hostname" "$worker" "$zone_id")"
+  cf_api PUT "/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/domains" "$body"
+}

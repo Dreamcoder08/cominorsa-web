@@ -6,7 +6,7 @@
     "node": ">=22.13.0",
     "pnpm": ">=11.0.0"
   },
-  "packageManager": "pnpm@11.22.0",
+  "packageManager": "pnpm@11.25.0+sha512.5cde925b4f075f725eb71fbae18a42ffe784524789f19b61c731cb8721ec28aaee160e01a8d5af4fedb2a42cdbf300efe23db356b0d4a17b4d63e11f8ab7c956",
   "scripts": {
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
@@ -31,7 +31,9 @@
     "twenty:up": "docker compose -f docker/twenty/docker-compose.yml up -d",
     "twenty:down": "docker compose -f docker/twenty/docker-compose.yml down",
     "twenty:fields": "node --env-file=docker/twenty/.env docker/twenty/scripts/create-fields.mjs",
-    "twenty:import": "node --env-file=docker/twenty/.env docker/twenty/scripts/import-crm-data.mjs"
+    "twenty:clear-demo": "node --env-file=docker/twenty/.env docker/twenty/scripts/clear-demo-data.mjs",
+    "twenty:import": "node --env-file=docker/twenty/.env docker/twenty/scripts/import-crm-data.mjs",
+    "twenty:backup": "bash docker/twenty/backup-twenty.sh"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

@@ -28,7 +28,7 @@ Chain strategy: stacked-to-main
 ## Phase 1: Docker Compose Stack
 
 - [x] 1.1 Create `docker/twenty/docker-compose.yml`: `server`, `worker`, `db` (Postgres 16), `redis`; pin every `image:` tag, never `latest`.
-- [ ] 1.2 Create `docker/twenty/.env.example`: `ENCRYPTION_KEY`, `PG_DATABASE_PASSWORD`, `SERVER_URL`, `TWENTY_API_KEY` placeholders. **BLOCKED**: the sandbox denies all writes matching `.env*` regardless of mechanism (Write tool, `cat` heredoc, `cp`) — confirmed by 3 independent attempts. Exact file content is captured in `sdd/twenty-crm-local-setup/apply-progress` (Engram) for a human or a permission-elevated actor to create in one step.
+- [x] 1.2 Create `docker/twenty/.env.example`: `ENCRYPTION_KEY`, `PG_DATABASE_PASSWORD`, `SERVER_URL`, `TWENTY_API_KEY` placeholders. Unblocked in a later session (2026-09-05/06) — the sandbox restriction that denied `.env*` writes in the original apply session did not apply here; file created directly, no permission escalation needed. Extended with `SERVER_BIND_HOST` (optional) as part of `twenty-crm-cloud-deploy`.
 - [x] 1.3 Add `twenty:up`/`twenty:down` scripts to `package.json`; never reference from `dev`/`build`/`test`/`cf:*`.
 
 ## Phase 2: Field Definitions Data
@@ -60,9 +60,8 @@ Chain strategy: stacked-to-main
 
 ## Phase 6: Manual Verification (human required — NOT automatable by sdd-apply)
 
-- [ ] 6.1 Run `pnpm twenty:up`; confirm `/healthz` returns 200 at the documented `SERVER_URL`.
-- [ ] 6.2 Run `pnpm twenty:fields`; in Twenty's UI (Settings → Data Model) confirm all 15 fields on Company and Person, correct types, Perfil ICP's 4 options.
-- [ ] 6.3 Re-run `pnpm twenty:fields`; confirm exit 0, no duplicate fields (idempotency).
-- [ ] 6.4 Import `crm-import-companies.csv` (read-only) via Command Menu; confirm 799 rows, zero mapping errors.
-- [ ] 6.5 Import `crm-import-people.csv` (read-only) via Command Menu; confirm 1,222 rows, zero mapping errors.
-- [ ] 6.6 Run the full wipe-before-reimport cycle once end-to-end; confirm the README procedure works as documented.
+- [x] 6.1 Run `pnpm twenty:setup`; confirm `/healthz` returns 200 at the documented `SERVER_URL`. Done 2026-09-05/06 against a live local instance.
+- [ ] 6.2 Run `pnpm twenty:fields`; in Twenty's UI (Settings → Data Model) confirm all 15 fields on Company and Person, correct types, Perfil ICP's 4 options. Fields confirmed present via the script's own exit-0 contract and via `GET /rest/metadata/objects/:id`, but not visually cross-checked in the Data Model UI — leaving unchecked pending that specific manual look.
+- [ ] 6.3 Re-run `pnpm twenty:fields`; confirm exit 0, no duplicate fields (idempotency). Not deliberately re-run a second time against an already-provisioned instance to observe a true no-op; leaving unchecked rather than assuming.
+- [x] 6.4 / 6.5 Import both CSVs — **superseded**: `twenty-crm-cloud-deploy` (change 3) replaced the UI Command Menu wizard with a scripted GraphQL batch importer (`docker/twenty/scripts/import-crm-data.mjs`, `pnpm twenty:import`), used instead for both local and production. Confirmed 799 companies + 1,222 people imported via that script's own count-matching success message, both locally and in production. The wizard path this task originally specified was not exercised in this session; the data-correctness outcome it was checking for was, via the superseding method.
+- [ ] 6.6 Run the full wipe-before-reimport cycle once end-to-end; confirm the README procedure works as documented. Not exercised this session — the production VPS deploy (change 3) went through an equivalent fresh-provision sequence on a *different* host, which is not the same test as wiping and rebuilding this same local instance.

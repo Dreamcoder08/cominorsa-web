@@ -24,7 +24,7 @@ function makeRequest(body) {
  * never leak env state into each other or the real process env.
  */
 async function withEnv(env, fn) {
-  const keys = ["TWENTY_API_KEY", "TWENTY_API_URL"];
+  const keys = ["TWENTY_API_KEY", "TWENTY_API_URL", "RESEND_API_KEY"];
   const previous = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
 
   for (const key of keys) {
@@ -170,6 +170,152 @@ test("Twenty network error: still returns 200, logs via console.error, never thr
     errorMessages.some((m) => m.includes("unreachable") && m.includes("ECONNREFUSED")),
     "expected an 'unreachable' error message naming the underlying cause",
   );
+});
+
+test("email env-gate: missing RESEND_API_KEY never calls Resend, even with Twenty configured", async (t) => {
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    calls.push(url);
+    return { ok: true, status: 200, text: async () => "" };
+  });
+
+  await withEnv(
+    { TWENTY_API_KEY: "secret-key", TWENTY_API_URL: "http://localhost:3000" },
+    async () => {
+      await POST(makeRequest(VALID_PAYLOAD));
+    },
+  );
+
+  assert.deepEqual(calls, ["http://localhost:3000/rest/people"]);
+});
+
+test("email happy path: posts to Resend with Bearer auth, correct recipient, escaped HTML body", async (t) => {
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    calls.push({ url, options });
+    return { ok: true, status: 200, text: async () => "" };
+  });
+
+  await withEnv({ RESEND_API_KEY: "resend-secret" }, async () => {
+    const response = await POST(
+      makeRequest({
+        ...VALID_PAYLOAD,
+        name: "<script>alert(1)</script>",
+        question: 'Consulta con "comillas" & símbolos',
+      }),
+    );
+    assert.equal(response.status, 200);
+  });
+
+  assert.equal(calls.length, 1);
+  const { url, options } = calls[0];
+  assert.equal(url, "https://api.resend.com/emails");
+  assert.equal(options.method, "POST");
+  assert.equal(options.headers.Authorization, "Bearer resend-secret");
+
+  const body = JSON.parse(options.body);
+  assert.equal(body.to.length, 1);
+  assert.match(body.to[0], /@/);
+  assert.ok(!body.html.includes("<script>"), "raw <script> tag must never appear in the email body");
+  assert.ok(body.html.includes("&lt;script&gt;"), "the name must be HTML-escaped, not stripped");
+  assert.ok(body.html.includes("&quot;comillas&quot;"));
+  assert.ok(body.html.includes("&amp;"));
+});
+
+test("Resend non-2xx response: still returns 200, logs via console.error, never throws", async (t) => {
+  const errorMessages = [];
+  t.mock.method(console, "error", (msg) => errorMessages.push(msg));
+  t.mock.method(globalThis, "fetch", async () => ({
+    ok: false,
+    status: 422,
+    text: async () => "invalid `from` address",
+  }));
+
+  await withEnv({ RESEND_API_KEY: "resend-secret" }, async () => {
+    const response = await POST(makeRequest(VALID_PAYLOAD));
+    assert.equal(response.status, 200);
+  });
+
+  assert.ok(
+    errorMessages.some((m) => m.includes("422") && m.includes("invalid `from` address")),
+    "expected the non-2xx status and body to be logged",
+  );
+});
+
+test("Resend network error: still returns 200, logs via console.error, never throws", async (t) => {
+  const errorMessages = [];
+  t.mock.method(console, "error", (msg) => errorMessages.push(msg));
+  t.mock.method(globalThis, "fetch", async () => {
+    throw new Error("ECONNREFUSED");
+  });
+
+  await withEnv({ RESEND_API_KEY: "resend-secret" }, async () => {
+    const response = await POST(makeRequest(VALID_PAYLOAD));
+    assert.equal(response.status, 200);
+  });
+
+  assert.ok(
+    errorMessages.some((m) => m.includes("Resend") && m.includes("unreachable")),
+    "expected an 'unreachable' error message naming the Resend integration",
+  );
+});
+
+test("independence: Twenty failing does not block or skip the email notification", async (t) => {
+  const calls = [];
+  t.mock.method(console, "error", () => {});
+  t.mock.method(globalThis, "fetch", async (url) => {
+    calls.push(url);
+    if (url.includes("rest/people")) {
+      throw new Error("Twenty is down");
+    }
+    return { ok: true, status: 200, text: async () => "" };
+  });
+
+  await withEnv(
+    {
+      TWENTY_API_KEY: "secret-key",
+      TWENTY_API_URL: "http://localhost:3000",
+      RESEND_API_KEY: "resend-secret",
+    },
+    async () => {
+      const response = await POST(makeRequest(VALID_PAYLOAD));
+      assert.equal(response.status, 200);
+    },
+  );
+
+  assert.deepEqual(
+    new Set(calls),
+    new Set(["http://localhost:3000/rest/people", "https://api.resend.com/emails"]),
+    "both integrations must be attempted regardless of the other's outcome",
+  );
+});
+
+test("independence: Resend failing does not block or skip the Twenty Person creation", async (t) => {
+  const calls = [];
+  t.mock.method(console, "error", () => {});
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    calls.push({ url, options });
+    if (url.includes("resend.com")) {
+      throw new Error("Resend is down");
+    }
+    return { ok: true, status: 200, text: async () => "" };
+  });
+
+  await withEnv(
+    {
+      TWENTY_API_KEY: "secret-key",
+      TWENTY_API_URL: "http://localhost:3000",
+      RESEND_API_KEY: "resend-secret",
+    },
+    async () => {
+      const response = await POST(makeRequest(VALID_PAYLOAD));
+      assert.equal(response.status, 200);
+    },
+  );
+
+  const twentyCall = calls.find((c) => c.url.includes("rest/people"));
+  assert.ok(twentyCall, "Twenty must still have been called");
+  assert.equal(JSON.parse(twentyCall.options.body).name.firstName, "Ana");
 });
 
 test("malformed JSON body: returns 200, no throw, no fetch call", async (t) => {

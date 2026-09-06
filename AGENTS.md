@@ -16,6 +16,14 @@ Project-specific skills for AI coding agents working on this repo. Each
   `app/globals.css` comes from the token system in `:root`. No magic
   values, no off-palette colors, `border-radius: 0` everywhere except one
   documented exception.
+- **twenty-crm-ops** — operate the Twenty CRM stack (local or production)
+  in the right order: fields before import, clear-demo before import,
+  `pnpm twenty:setup` instead of a raw `up -d` (cold start needs its full
+  `start_period`).
+- **vps-deploy** — deploy to the production VPS safely: `deploy@`, never
+  `root@`; edit the repo's `docker-compose.yml`/`.env.example` and re-copy,
+  never `sed` the host directly (already caused one real exposure
+  regression); verify port 3000 is closed externally after every deploy.
 
 ## Stack notes
 

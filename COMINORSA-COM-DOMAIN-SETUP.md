@@ -1,5 +1,20 @@
 # Setup: cominorsa.com via Cloudflare Registrar
 
+> **Estado (verificado 2026-09-06): parcialmente desactualizado.**
+> `cominorsa.com` SÍ está en producción y funcionando (confirmado: `curl
+> https://cominorsa.com` → 200, sirve el sitio real). Pero terminó desplegado
+> como **Worker** (`cominorsa-web`, `pnpm cf:deploy`), no como **Cloudflare
+> Pages project** (confirmado: `wrangler pages project list` devuelve vacío —
+> nunca existió un proyecto Pages). El custom domain está conectado al Worker
+> vía la API de Workers Custom Domains, no vía Pages. La afirmación de este
+> doc de "Deploy automático en cada git push (GitHub Actions ya configurado)"
+> también es falsa hoy: `.github/workflows/ci.yml` no despliega nada — ver
+> `AGENTS.md`'s `cominorsa-deploy` skill ("CI never deploys on its own").
+> Los pasos 1-4 (comprar el dominio, conseguir token/account ID) siguen
+> siendo el flujo correcto si hace falta repetirlos; el paso 5
+> (`pnpm cf:full`) y las referencias a Pages en el resto de este documento
+> no reflejan cómo terminó desplegado el sitio.
+
 Flujo end-to-end para tener `cominorsa.com` productivo en Cloudflare Pages, con todo automatizado del lado del codigo.
 
 ## Por que Cloudflare Registrar (en vez de NIC.pe / Punto.pe / etc)

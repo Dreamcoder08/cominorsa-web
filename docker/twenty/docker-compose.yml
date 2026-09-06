@@ -1,6 +1,9 @@
 # Vendored from https://github.com/twentyhq/twenty
 # (packages/twenty-docker/docker-compose.yml), adapted to pin every image tag
-# to an explicit version instead of `latest` for reproducibility.
+# to an explicit version instead of `latest` for reproducibility, and to
+# widen the `server` healthcheck's start_period/retries (see the comment on
+# that healthcheck below — live-verified against upstream's original values
+# failing a cold start under load).
 #
 # Usage: docker compose -f docker/twenty/docker-compose.yml up -d
 # Requires docker/twenty/.env (copy docker/twenty/.env.example and fill it in).
@@ -29,10 +32,18 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
+      # start_period covers the server's first-boot migration run (182
+      # legacy migrations observed on a fresh instance) without those
+      # failing probes counting against `retries`. Live-verified: upstream's
+      # original 5s/5s/20 (a 100s budget) let `docker compose up -d` report
+      # `dependency failed to start: ... is unhealthy` on a loaded host even
+      # though the server went healthy on its own ~3 minutes in — `up -d`
+      # had already given up and returned by then.
       test: curl --fail http://localhost:3000/healthz
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 24
+      start_period: 120s
     restart: unless-stopped
 
   worker:

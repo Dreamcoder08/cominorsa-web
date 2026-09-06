@@ -213,6 +213,24 @@ sign-up before continuing with steps 2–4.
    already-known column mapping was the actual complexity to avoid — a
    ~300-line script covering it was less complexity, not more.
 
+## Troubleshooting
+
+**`docker compose up -d` fails with `dependency failed to start: container
+twenty-server-1 is unhealthy`, but the server logs show it still booting.**
+Live-verified on a loaded/resource-constrained host: `server`'s first boot
+runs 182 legacy migrations before it can answer `/healthz`, which took
+~3 minutes under load — longer than the healthcheck's original 100s
+retry budget (`interval: 5s` × `retries: 20`), so `worker`'s
+`depends_on: server: condition: service_healthy` gave up and failed the
+whole `up -d` before the server actually became healthy seconds later.
+`docker/twenty/docker-compose.yml`'s `server` healthcheck now sets
+`start_period: 120s` (probe failures during this window don't count
+against `retries`) on top of the existing 24×5s budget — comfortably
+above the ~3 minutes observed. If this still times out on a given machine
+(e.g. very limited RAM causing heavy swapping), that machine doesn't meet
+the "~2GB free RAM" prerequisite above; check `docker stats` for swapping
+before assuming the stack itself is broken.
+
 ## Teardown
 
 Stop the stack without deleting data (containers stop, volumes persist):

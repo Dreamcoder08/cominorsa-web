@@ -1,0 +1,66 @@
+name: Twenty CRM stack
+
+# Decoupled from ci.yml on purpose: docker/twenty/ is never wired into dev,
+# build, test, or any cf:* deploy script (see docker/twenty/README.md), so
+# this only runs when the stack itself changes, and never blocks the main
+# pipeline or slows down unrelated PRs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docker/twenty/**"
+      - ".github/workflows/twenty-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "docker/twenty/**"
+      - ".github/workflows/twenty-ci.yml"
+
+concurrency:
+  group: twenty-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  boot:
+    name: Boot the real stack and wait for health
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Scope: this proves the pinned images still pull, Compose still starts
+    # Postgres/Redis/server/worker, and the server's own migrations bring it
+    # to a healthy /healthz within the startup script's timeout — i.e. "does
+    # docker-compose.yml still boot a working instance."
+    #
+    # It deliberately does NOT run `twenty:fields` or `twenty:import`:
+    # both require TWENTY_API_KEY, which only exists after a human completes
+    # Twenty's browser-only first-login signup (no API to bootstrap a
+    # workspace — see docker/twenty/README.md, "Wipe-before-reimport"). CI
+    # has no way to do that step, so it stays out of scope here.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+
+      - name: Generate ephemeral secrets
+        run: |
+          {
+            echo "PG_DATABASE_PASSWORD=$(openssl rand -hex 32)"
+            echo "ENCRYPTION_KEY=$(openssl rand -hex 32)"
+            echo "SERVER_URL=http://localhost:3000"
+          } >> "$GITHUB_ENV"
+
+      - name: Start Twenty and wait for health
+        run: node docker/twenty/scripts/start.mjs
+
+      - name: Show service logs
+        if: failure()
+        run: docker compose -f docker/twenty/docker-compose.yml logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker/twenty/docker-compose.yml down -v

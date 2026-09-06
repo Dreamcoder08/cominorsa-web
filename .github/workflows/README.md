@@ -53,3 +53,22 @@ trigger.
 If you later add a Wrangler secret for deployment, configure it via
 `Settings → Secrets and variables → Actions` in the GitHub repo. Do NOT
 commit secrets to the workflow file.
+
+## `twenty-ci.yml`
+
+A separate workflow, deliberately decoupled from `ci.yml` above, since
+`docker/twenty/` is never wired into `dev`, `build`, `test`, or any `cf:*`
+deploy script (see `docker/twenty/README.md`). It only triggers on changes
+under `docker/twenty/**`, so it doesn't add time to unrelated PRs.
+
+It boots the real Postgres/Redis/Twenty-server/worker stack with ephemeral,
+randomly generated secrets and waits for `/healthz`, via the project's own
+`docker/twenty/scripts/start.mjs` — proving the pinned images and Compose
+file still produce a healthy instance, not just that the startup script's
+logic is correct (that part is already covered by the mocked unit tests in
+`tests/qa/twenty-start.test.mjs`).
+
+It intentionally stops there: `twenty:fields` and `twenty:import` both
+require a `TWENTY_API_KEY`, which only exists after a human completes
+Twenty's browser-only first-login signup — there's no API to bootstrap a
+workspace, so CI has no way to reach that step.

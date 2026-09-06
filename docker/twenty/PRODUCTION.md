@@ -60,33 +60,47 @@ rule alone.
 
 ## Backups
 
-`/opt/twenty/backup-twenty.sh` runs a `pg_dump` of the `default` database
-inside the `db` container, gzips it to `/opt/twenty/backups/`, and prunes
-anything older than 14 days. Scheduled via the `deploy` user's crontab, daily
-at 03:00 server time:
+Three independent copies, in order of how automatically-available each one is:
+
+1. **VPS-local**: `/opt/twenty/backup-twenty.sh` runs a `pg_dump` of the
+   `default` database inside the `db` container, gzips it to
+   `/opt/twenty/backups/`, and prunes anything older than 14 days.
+2. **DigitalOcean Spaces (always-on, off-site)**: `/opt/twenty/backup-to-spaces.sh`
+   uploads the newest local backup to the `cominorsa-backups` Space
+   (region `sfo3`) via `s3cmd`, skipping already-uploaded files, pruning
+   remote objects older than 30 days. Credentials live in `~/.s3cfg` on
+   the `deploy` user, chmod 600, never committed. This does **not**
+   depend on any laptop being on — it runs entirely on the VPS.
+3. **User's own machine** (see below) — a third, redundant copy; kept for
+   defense in depth even though Spaces alone already satisfies "off-box,
+   always available."
+
+Both VPS-side scripts are chained in the `deploy` user's crontab, daily at
+03:00 server time, the upload only running if the local backup succeeds:
 
 ```
-0 3 * * * /opt/twenty/backup-twenty.sh
+0 3 * * * /opt/twenty/backup-twenty.sh && /opt/twenty/backup-to-spaces.sh
 ```
 
-Log of each run: `/opt/twenty/backups/backup.log`.
+Logs: `/opt/twenty/backups/backup.log` and `/opt/twenty/backups/backup-to-spaces.log`.
 
-**Off-box copy**: `docker/twenty/pull-backup.sh` runs on the user's own
-Windows machine (Task Scheduler task `TwentyCRM-PullBackup`, daily 22:15
-`SA Pacific Standard Time` / UTC-5 — after the VPS's 03:00 UTC cron has had
-time to finish) and pulls the newest VPS backup down to
-`~/twenty-backups/` via `scp`, skipping files already present, pruning
-anything older than 30 days. This means a VPS-level loss (not just a bad
-DB write) doesn't take every copy of the backup with it.
+**Integrity verified**: downloaded a real uploaded object back from Spaces
+and compared its MD5 against the local original — byte-identical.
 
-**Known gap**: the scheduled task is registered "run only when the user is
-logged on" (no stored Windows credentials) — it does not run if the
-machine is fully logged out at 22:15, only if it's on and at least locked.
-A true off-site copy (DigitalOcean Spaces or similar, always available
-regardless of any single machine's power/login state) is a stronger
-guarantee than either the VPS-local or the pulled-to-laptop copy alone, and
-remains a possible future upgrade if this dependency on the laptop being on
-becomes a problem in practice.
+**Off-box copy to the user's own machine**: `docker/twenty/pull-backup.sh`
+runs on the user's own Windows machine (Task Scheduler task
+`TwentyCRM-PullBackup`, daily 22:15 `SA Pacific Standard Time` / UTC-5 —
+after the VPS's 03:00 UTC cron has had time to finish) and pulls the
+newest VPS backup down to `~/twenty-backups/` via `scp`, skipping files
+already present, pruning anything older than 30 days.
+
+**Known gap (this path only, not Spaces)**: that scheduled task is
+registered "run only when the user is logged on" (no stored Windows
+credentials) — it does not run if the machine is fully logged out at
+22:15, only if it's on and at least locked. This no longer matters for
+the "off-box, always available" requirement — Spaces already satisfies
+that — but it does mean this specific third copy can lag if the laptop is
+off for an extended period.
 
 ### Manual backup
 

@@ -1,9 +1,10 @@
 // app/api/crm-lead/route.ts
 //
-// Route Handler that turns a `ConsultationForm` submission into a Twenty
-// CRM Person record, without ever surfacing an error to the client or
-// slowing down the site's WhatsApp handoff (see `app/ConsultationForm.tsx`,
-// which calls this endpoint fire-and-forget, never awaited).
+// Route Handler that turns a `ConsultationForm` submission into (a) a
+// Twenty CRM Person record and (b) an email notification to the team,
+// without ever surfacing an error to the client or slowing down the
+// site's WhatsApp handoff (see `app/ConsultationForm.tsx`, which calls
+// this endpoint fire-and-forget, never awaited).
 //
 // PROVISIONAL / LIVE-VERIFY (see design.md "Open Questions"): the exact
 // Twenty Core REST payload shape for `POST /rest/people` (composite `name`
@@ -13,10 +14,16 @@
 // verification, human-required) confirms or corrects this shape.
 //
 // Response contract: this handler ALWAYS returns `200 {"ok":true}`,
-// whatever happens internally (env unset, bad JSON, Twenty non-2xx,
-// network error). Nothing on the client reads this response — a non-2xx
-// here would only mislead uptime/monitoring tooling about an intentional
-// no-op path. Real diagnostics go to server-side `console.error` only.
+// whatever happens internally (env unset, bad JSON, an integration's
+// non-2xx response, network error). Nothing on the client reads this
+// response — a non-2xx here would only mislead uptime/monitoring tooling
+// about an intentional no-op path. Real diagnostics go to server-side
+// `console.error` only.
+//
+// The two integrations (Twenty, email notification) are independent: each
+// gates on its own env vars and runs even if the other's are unset, and
+// one's failure never blocks or is masked by the other's (`Promise.allSettled`,
+// not sequential awaits).
 //
 // Deliberately does NOT import `twentyRequest` from
 // `docker/twenty/scripts/create-fields.mjs`: that helper calls
@@ -34,17 +41,10 @@ type CrmLeadPayload = {
 
 const SECONDARY_WHATSAPP_SUFFIX = "987817100";
 const TWENTY_LEAD_ORIGIN = "Sitio Web - Formulario de Consulta";
+const LEAD_NOTIFICATION_FROM = "COMINORSA Web <avisos@cominorsa.com>";
+const LEAD_NOTIFICATION_TO = "cominorsa@gmail.com";
 
 export async function POST(request: Request): Promise<Response> {
-  // Env gate MUST be the very first thing this handler does, before any
-  // body parsing or network call: production has no Twenty instance yet,
-  // and this must stay a true no-op until change 3 sets real secrets.
-  const apiKey = process.env.TWENTY_API_KEY;
-  const apiUrl = process.env.TWENTY_API_URL;
-  if (!apiKey || !apiUrl) {
-    return Response.json({ ok: true });
-  }
-
   let body: CrmLeadPayload;
   try {
     body = await request.json();
@@ -52,6 +52,22 @@ export async function POST(request: Request): Promise<Response> {
     console.error(`crm-lead: malformed request body: ${(err as Error).message}`);
     return Response.json({ ok: true });
   }
+
+  await Promise.allSettled([
+    createTwentyPerson(body),
+    sendLeadNotificationEmail(body),
+  ]);
+
+  return Response.json({ ok: true });
+}
+
+// Env gate MUST be the very first thing this does, before any network
+// call: production had no Twenty instance for a while, and this must stay
+// a true no-op until real secrets are set.
+async function createTwentyPerson(body: CrmLeadPayload): Promise<void> {
+  const apiKey = process.env.TWENTY_API_KEY;
+  const apiUrl = process.env.TWENTY_API_URL;
+  if (!apiKey || !apiUrl) return;
 
   const name = String(body.name ?? "").trim();
   const [firstName, ...rest] = name.split(/\s+/).filter(Boolean);
@@ -86,6 +102,58 @@ export async function POST(request: Request): Promise<Response> {
   } catch (err) {
     console.error(`crm-lead: Twenty API unreachable: ${(err as Error).message}`);
   }
+}
 
-  return Response.json({ ok: true });
+// Independent of the Twenty integration: fires even if Twenty's env vars
+// are unset (and vice versa). Env-gated the same way — no-op, not an
+// error, until RESEND_API_KEY is set.
+async function sendLeadNotificationEmail(body: CrmLeadPayload): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
+
+  const name = String(body.name ?? "(sin nombre)").trim();
+  const city = String(body.city ?? "").trim();
+  const service = String(body.service ?? "").trim();
+  const question = String(body.question ?? "").trim();
+
+  const html = `
+    <h2>Nuevo lead desde la web</h2>
+    <p><strong>Nombre:</strong> ${escapeHtml(name)}</p>
+    <p><strong>Ciudad / Región:</strong> ${escapeHtml(city)}</p>
+    <p><strong>Servicio:</strong> ${escapeHtml(service)}</p>
+    <p><strong>Consulta:</strong> ${escapeHtml(question)}</p>
+    <p style="color:#666;font-size:12px">Guardado automáticamente en el CRM. El cliente todavía tiene que enviar el WhatsApp para que te llegue el mensaje directo.</p>
+  `.trim();
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: LEAD_NOTIFICATION_FROM,
+        to: [LEAD_NOTIFICATION_TO],
+        subject: `Nuevo lead: ${name || "sin nombre"} — ${service || "consulta general"}`,
+        html,
+      }),
+    });
+
+    if (!res.ok) {
+      const raw = await res.text();
+      console.error(`crm-lead: Resend POST /emails failed (${res.status}):\n${raw}`);
+    }
+  } catch (err) {
+    console.error(`crm-lead: Resend API unreachable: ${(err as Error).message}`);
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }

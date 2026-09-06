@@ -9,7 +9,9 @@
 #   2. .env en la raíz del proyecto
 #
 # Variables requeridas:
-#   CLOUDFLARE_API_TOKEN    — API token con Pages:Edit + Account Settings:Read
+#   CLOUDFLARE_API_TOKEN    — API token con Workers Scripts:Edit + Zone:Read
+#                             + Account Settings:Read (cominorsa-web es un
+#                             Worker, no un proyecto Pages)
 #   CLOUDFLARE_ACCOUNT_ID   — 32 hex chars, del dashboard de Cloudflare
 
 set -euo pipefail

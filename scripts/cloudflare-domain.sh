@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# cloudflare-domain.sh — Configura cominorsa.com.pe como custom domain en Pages
+# cloudflare-domain.sh — Configura cominorsa.com.pe como Custom Domain del
+# Worker cominorsa-web (NO Pages: este proyecto no tiene ni ha tenido nunca
+# un proyecto Pages -- confirmado con `wrangler pages project list` vacío.
+# Usa la API de Workers Custom Domains, PUT /accounts/:id/workers/domains.)
 #
 # USO:
 #   ./scripts/cloudflare-domain.sh                # setup completo guiado
@@ -9,7 +12,7 @@
 # Pre-requisitos:
 #   1. cominorsa.com.pe agregado a Cloudflare (DNS zone)
 #   2. Nameservers cambiados en tu registrar
-#   3. API Token con scope Pages:Edit (ya validado en check-env.sh)
+#   3. API Token con scope Workers Scripts:Write (ya validado en check-env.sh)
 
 set -euo pipefail
 
@@ -63,15 +66,20 @@ if [[ "$MODE" == "check" ]]; then
     echo "  ✓ $DOMAIN en Cloudflare (zone id: $ZONE_ID)"
   fi
   echo ""
-  echo "Custom domains en cominorsa-web:"
-  cf_list_pages_domains "$PROJECT_NAME"
+  echo "Custom domains en el Worker $PROJECT_NAME:"
+  cf_list_worker_domains "$PROJECT_NAME"
   exit 0
 fi
 
 # --add: skip guía
 if [[ "$MODE" != "guide" ]]; then
-  echo "▶ Agregando $DOMAIN a $PROJECT_NAME..."
-  pnpm exec wrangler pages domain add "$DOMAIN" --project-name="$PROJECT_NAME"
+  echo "▶ Agregando $DOMAIN al Worker $PROJECT_NAME..."
+  ZONE_ID="$(cf_get_zone_by_name "$DOMAIN")"
+  if [[ "$ZONE_ID" == "NOT_FOUND" ]]; then
+    echo "  ✗ $DOMAIN no está agregado como zona en Cloudflare todavía." >&2
+    exit 1
+  fi
+  cf_add_worker_domain "$PROJECT_NAME" "$ZONE_ID" "$DOMAIN"
   echo ""
   echo "✓ Dominio agregado. Esperá 2-5 min para que se propague."
   exit 0
@@ -131,18 +139,17 @@ else
 fi
 echo ""
 
-# Paso 3: agregar dominio a Pages
-echo "▶ Paso 3/4: Agregar $DOMAIN a $PROJECT_NAME..."
-EXISTING_DOMAINS="$(cf_list_pages_domains "$PROJECT_NAME" | grep -F "$DOMAIN" || true)"
+# Paso 3: agregar dominio como Custom Domain del Worker
+echo "▶ Paso 3/4: Agregar $DOMAIN al Worker $PROJECT_NAME..."
+EXISTING_DOMAINS="$(cf_list_worker_domains "$PROJECT_NAME" | grep -F "$DOMAIN" || true)"
 if [[ -n "$EXISTING_DOMAINS" ]]; then
-  echo "  ✓ $DOMAIN ya está agregado al proyecto"
+  echo "  ✓ $DOMAIN ya está agregado al Worker"
 else
   echo "  Agregando..."
-  if pnpm exec wrangler pages domain add "$DOMAIN" --project-name="$PROJECT_NAME"; then
+  if cf_add_worker_domain "$PROJECT_NAME" "$ZONE_ID" "$DOMAIN" > /dev/null; then
     echo "  ✓ $DOMAIN agregado"
   else
-    echo "  ✗ Falló. Intentá manualmente:"
-    echo "    pnpm exec wrangler pages domain add $DOMAIN --project-name=$PROJECT_NAME"
+    echo "  ✗ Falló. Revisá que el API Token tenga scope 'Workers Scripts:Write'."
     exit 1
   fi
 fi

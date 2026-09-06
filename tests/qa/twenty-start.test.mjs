@@ -111,13 +111,13 @@ test("startup uses absolute Compose paths, bounded commands, and no shell", asyn
   assert.deepEqual(upCall.args.slice(-2), ["up", "-d"]);
   for (const call of [configCall, upCall]) {
     assert.equal(call.command, "docker");
-    assert.match(call.args[2], /docker\/twenty$/);
-    assert.match(call.args[4], /docker\/twenty\/docker-compose\.yml$/);
+    assert.match(call.args[2], /docker[\\/]twenty$/);
+    assert.match(call.args[4], /docker[\\/]twenty[\\/]docker-compose\.yml$/);
   }
   for (const call of harness.commands) {
     assert.equal(call.options.shell, false);
     assert.ok(call.options.timeoutMs > 0);
-    assert.match(call.options.cwd, /docker\/twenty$/);
+    assert.match(call.options.cwd, /docker[\\/]twenty$/);
   }
   assert.deepEqual(
     harness.requests.map(({ url }) => url),

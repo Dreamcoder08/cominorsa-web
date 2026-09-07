@@ -1,168 +1,127 @@
+<div align="center">
+
 # COMINORSA — Web
 
 Landing page institucional de **COMINORSA S.A.C.**, consultoría minera y ambiental desde Piura, Perú.
 
-- **Stack**: Next.js 16 App Router + React 19, ejecutado por [Vinext](https://github.com/cloudflare/vinext) sobre Cloudflare Workers.
-- **Package manager**: pnpm 11 con lockfile reproducible.
-- **A11y**: HTML semántico en español, lang declarado, skip-link, landmarks, jerarquía de headings monotónica.
-- **SEO**: Open Graph y Twitter Card completos, viewport responsive, `og.png` preloadeado.
+[![License](https://img.shields.io/badge/license-proprietary-lightgrey.svg)](LICENSE)
+[![Stack](https://img.shields.io/badge/stack-Next.js%2016%20%2B%20React%2019%20%2F%20Cloudflare%20Workers-informational)]()
+
+</div>
 
 ---
 
-## Quickstart
+## Demo
+
+![COMINORSA screenshot](./docs/assets/cominorsa-screenshot.png)
+
+## Índice
+
+- [Demo](#demo)
+- [Descripción](#descripción)
+- [Características](#características)
+- [Stack técnico](#stack-técnico)
+- [Instalación](#instalación)
+- [Uso](#uso)
+- [Estructura del proyecto](#estructura-del-proyecto)
+- [Testing](#testing)
+- [Despliegue](#despliegue)
+- [Licencia](#licencia)
+
+## Descripción
+
+Sitio institucional de COMINORSA S.A.C., consultoría minera y ambiental. Presenta los servicios de la empresa (formalización minera IGAFOM/REINFO, gestión ambiental, ingeniería y planes de minado, seguridad minera, trámites MINEM/INGEMMET/DREM) y canaliza las consultas de contacto directo a WhatsApp, con reenvío opcional del lead a un CRM interno (Twenty CRM).
+
+## Características
+
+- Landing multi-sección con páginas de servicio dedicadas (`igafom-reinfo`, `gestion-ambiental-minera`, `ingenieria-y-planes-de-minado`, `seguridad-minera`, `tramites-minem-ingemmet-drem`, `declaraciones-dac-estamin`, `preguntas-frecuentes`).
+- Formulario de consulta que arma un mensaje prellenado y abre WhatsApp (`wa.me/...`), sin depender de que ningún backend responda.
+- Reenvío opcional y no bloqueante del lead a Twenty CRM vía `/api/crm-lead`, activo solo si `TWENTY_API_KEY`/`TWENTY_API_URL` están configuradas.
+- Accesibilidad: HTML semántico en español, `lang` declarado, skip-link, landmarks, jerarquía de headings monotónica.
+- SEO: Open Graph y Twitter Card completos, `robots.ts`, `sitemap.ts`, `manifest.ts`, `og.png` preloadeado.
+- Aviso de cookies y páginas legales (`privacidad`, `terminos`).
+- Headers de seguridad (CSP, HSTS, X-Frame-Options, Permissions-Policy) vía `public/_headers` para Cloudflare Pages.
+- Suite de tests propia (a11y, performance, seguridad de output, SEO, integridad del build) con `node --test`, sin dependencias externas.
+
+## Stack técnico
+
+| Capa | Tecnología |
+|------|-----------|
+| Frontend | Next.js 16 (App Router) + React 19, servido con [Vinext](https://github.com/cloudflare/vinext) |
+| Backend | Route handler de Next.js (`app/api/crm-lead`) que reenvía leads a Twenty CRM |
+| Base de datos | Drizzle ORM configurado (`db/schema.ts`) pero vacío por diseño — no hay tablas activas hoy |
+| Infraestructura | Cloudflare Workers + Cloudflare Pages, deploy con Wrangler |
+| Estilos | Tailwind CSS 4 (`@tailwindcss/postcss`, sin config custom) |
+| Testing | `node --test` (unit/QA) + Playwright (`pnpm test:e2e`) |
+
+## Instalación
 
 Requisitos: **Node.js >= 22.13.0** y **pnpm >= 11.0.0**.
 
 ```bash
-# 1. Instalar dependencias (lee pnpm-lock.yaml)
+git clone git@github.com:Dreamcoder08/cominorsa-web.git
+cd cominorsa-web
 pnpm install --frozen-lockfile
+```
 
-# 2. Levantar el dev server con HMR
+### Variables de entorno
+
+```bash
+cp .env.example .env
+```
+
+Variables relevantes documentadas en el proyecto (ver `.env.example` y `DEPLOY.md` para el detalle completo):
+
+- `TWENTY_API_KEY` / `TWENTY_API_URL` — opcionales; si faltan, `/api/crm-lead` responde `200 {"ok":true}` sin hacer nada (no-op silencioso).
+- Variables de Cloudflare (`CLOUDFLARE_API_TOKEN`, dominio, etc.) — ver [DEPLOY.md](./DEPLOY.md), sección "Variables de entorno y secrets".
+
+## Uso
+
+```bash
 pnpm dev
 # -> http://localhost:3000
 
-# 3. Compilar para producción
-pnpm build
-
-# 4. Arrancar el servidor de producción
-pnpm start
+pnpm build     # compila el worker y los assets en dist/
+pnpm start     # sirve el build de producción localmente
 ```
 
-El output de build queda en `dist/` con dos directorios:
+## Estructura del proyecto
 
-- `dist/server/` — worker de Cloudflare + manifests internos de Vinext.
-- `dist/client/` — assets estáticos (`_next/static/`, `og.png`, `logo.png`, `_headers`).
-
----
-
-## Scripts
-
-| Comando            | Descripción                                                  |
-| ------------------ | ------------------------------------------------------------ |
-| `pnpm dev`         | Servidor de desarrollo con HMR (Vinext + Wrangler)           |
-| `pnpm build`       | Compila el worker y los assets en `dist/`                    |
-| `pnpm start`       | Sirve el build de producción localmente                      |
-| `pnpm test`        | Build + suite completa de tests (`node --test tests/`)       |
-| `pnpm lint`        | ESLint con la config de Next.js                              |
-| `pnpm db:generate` | Genera migraciones de Drizzle (cuando se agreguen tablas)    |
-
----
-
-## Tests
-
-La suite cubre el render del worker, accesibilidad estructural, performance, seguridad de output, SEO y la integridad del build. Son tests rápidos (`node --test`, sin dependencias externas).
-
-```bash
-pnpm test                    # build + tests (CI)
-node --test tests/rendered-html.test.mjs   # sólo render
-node --test tests/qa/                     # sólo QA suite
 ```
-
-| Suite                          | Qué valida                                                                |
-| ------------------------------ | ------------------------------------------------------------------------- |
-| `rendered-html.test.mjs`       | Worker responde 200, renderiza marca, contiene los servicios y CTA       |
-| `qa/accessibility.test.mjs`    | `lang`, skip-link, landmarks, jerarquía de headings, alts, aria-hidden    |
-| `qa/performance.test.mjs`      | Tamaños de bundle (JS < 600 KB, CSS < 50 KB), tiempo de render, preloads  |
-| `qa/security.test.mjs`         | Sin leaks de secretos, tel: y wa.me consistentes, RUC visible             |
-| `qa/security-headers.test.mjs` | CSP, HSTS, X-Frame-Options, Permissions-Policy y headers de cache         |
-| `qa/seo.test.mjs`              | title, description, Open Graph, Twitter Card, viewport, h1 único         |
-| `qa/build-output.test.mjs`     | Estructura de `dist/`, manifests de Vinext, `_headers` con cache          |
-
----
-
-## Arquitectura
-
-```text
-.
-├── app/                  # Next.js App Router (RSC)
-│   ├── layout.tsx        # Root layout + generateMetadata (OG, Twitter)
-│   ├── page.tsx          # Landing principal
+cominorsa-web/
+├── app/                    # Next.js App Router (RSC)
+│   ├── layout.tsx          # Root layout + generateMetadata (OG, Twitter)
+│   ├── page.tsx            # Landing principal
 │   ├── ConsultationForm.tsx
-│   ├── not-found.tsx     # 404 con branding
-│   ├── error.tsx         # 500 con branding
-│   ├── loading.tsx       # Skeleton de carga
-│   ├── robots.ts         # /robots.txt
-│   ├── sitemap.ts        # /sitemap.xml
-│   ├── manifest.ts       # PWA manifest
+│   ├── api/crm-lead/       # Reenvío de leads a Twenty CRM
+│   ├── <servicio>/page.tsx # Páginas de cada línea de servicio
+│   ├── robots.ts, sitemap.ts, manifest.ts
 │   └── globals.css
-├── public/
-│   ├── _headers          # CSP, HSTS, etc. (Cloudflare Pages)
-│   ├── og.png, logo.png
-│   └── *.svg
-├── build/
-│   └── sites-vite-plugin.ts
-├── db/
-│   └── schema.ts         # Vacío por diseño (ver DEPLOY.md para activarlo)
-├── drizzle/              # Migraciones (vacío hasta que se defina el schema)
+├── public/                 # og.png, logo.png, favicons, _headers
+├── db/schema.ts             # Vacío por diseño (ver DEPLOY.md para activarlo)
+├── drizzle/                 # Migraciones (vacío hasta definir el schema)
+├── docker/twenty/           # Stack local/producción de Twenty CRM
 ├── tests/
 │   ├── rendered-html.test.mjs
-│   └── qa/               # Suite QA: a11y, perf, security, SEO, build, headers
-├── .openai/hosting.json  # Bindings de Cloudflare para el dev server
-├── vite.config.ts        # Config de Vinext + plugin de Cloudflare
-├── drizzle.config.ts
-├── pnpm-workspace.yaml   # allowBuilds + overrides
-├── .npmrc                # Overrides locales de pnpm
+│   └── qa/                  # a11y, performance, security, SEO, build
+├── scripts/                 # Automatización de Cloudflare y Twenty CRM
+├── DEPLOY.md                # Guía de despliegue a Cloudflare Workers
 └── package.json
 ```
 
-### Decisiones de diseño
-
-- **Sin Tailwind config custom**: se usa `@tailwindcss/postcss` con la config por defecto. Variables de marca van en `globals.css` con `@theme`.
-- **Formulario de consulta**: el form NO persiste en D1. Construye una URL `wa.me/...` con el mensaje prellenado y abre WhatsApp en una pestaña nueva — ese flujo nunca espera a nada más. En paralelo (fire-and-forget, sin bloquear la apertura de WhatsApp) hace un POST a `/api/crm-lead` (`app/api/crm-lead/route.ts`), que reenvía el lead a Twenty CRM **solo si** `TWENTY_API_KEY`/`TWENTY_API_URL` están seteadas en `.env`; si faltan, el endpoint responde `200 {"ok":true}` sin hacer nada (no-op silencioso — así es como producción se comporta hoy, ver `docker/twenty/README.md`). Ver `app/ConsultationForm.tsx`.
-- **Imágenes**: `og.png` y `logo.png` se sirven desde `public/` → `dist/client/`. El build los preserva con hashing para cache-busting.
-- **Sin dependencias de runtime innecesarias**: `drizzle-orm` está como dep pero el schema está vacío. Se activa cuando se decida qué tablas necesita el proyecto.
-
----
-
-## Configuración de pnpm (importante)
-
-Este proyecto usa **pnpm 11**. Algunas opciones cambiaron de ubicación con respecto a pnpm 10:
-
-- `allowBuilds` (qué paquetes pueden correr install scripts) → `pnpm-workspace.yaml`
-- `overrides` (forzar versiones de transitivas) → `pnpm-workspace.yaml`
-- Los overrides de comportamiento (ignore-scripts, strict-dep-builds, etc.) → `.npmrc` local
-
-`engines.pnpm` está pinneado a `>=11.0.0` en `package.json` y `packageManager: pnpm@11.22.0` para que Corepack elija la versión correcta.
-
-### ¿Por qué `allowBuilds` está en una allowlist?
-
-Por seguridad. pnpm 11+ ya no corre install scripts por defecto. Solo los paquetes explícitamente aprobados (`sharp`, `esbuild`, `unrs-resolver`, `workerd`) compilan binarios. Cualquier intento de un paquete nuevo de correr un script va a fallar hasta que se apruebe explícitamente.
-
----
-
-## Despliegue a Cloudflare
-
-Ver [DEPLOY.md](./DEPLOY.md) para la guía paso a paso de cómo deployar a Cloudflare Workers, configurar D1/R2, y conectar un dominio custom.
-
----
-
-## Mantenimiento
-
-### Auditoría de seguridad
+## Testing
 
 ```bash
-pnpm audit                  # 0 vulns esperado
-pnpm install --frozen-lockfile   # CI gate: lockfile inmutable
+pnpm test                    # build + suite completa (CI)
+node --test tests/rendered-html.test.mjs   # sólo render
+node --test tests/qa/                      # sólo QA suite
+pnpm test:e2e                              # Playwright
 ```
 
-### Lockfile
+## Despliegue
 
-- `pnpm-lock.yaml` está commiteado.
-- Para CI, usar siempre `pnpm install --frozen-lockfile` (falla si el lockfile quedó desincronizado con `package.json`).
-- Si `pnpm install` agrega o cambia paquetes, regenerar el lockfile localmente y commitearlo.
-
-### Bump de versiones
-
-```bash
-pnpm update <paquete>@latest
-pnpm install --frozen-lockfile   # validar reproducibilidad
-pnpm test
-```
-
----
+Ver [DEPLOY.md](./DEPLOY.md) para la guía paso a paso de despliegue a Cloudflare Workers, bindings de D1/R2 y configuración de dominio custom.
 
 ## Licencia
 
-Propietario. © COMINORSA S.A.C. — RUC 20614147131. Ver `LICENSE` para los
-términos completos (All Rights Reserved). El código fuente no puede ser
-copiado, modificado ni distribuido sin autorización escrita de COMINORSA.
+Software propietario. © COMINORSA S.A.C. — RUC 20614147131. Todos los derechos reservados. Ver [LICENSE](./LICENSE) para los términos completos; el código fuente no puede ser copiado, modificado ni distribuido sin autorización escrita de COMINORSA S.A.C.

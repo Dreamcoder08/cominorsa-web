@@ -19,7 +19,6 @@
     "types:worker": "wrangler types worker-configuration.d.ts --config dist/server/wrangler.json --include-env=false",
     "bundle:report": "node scripts/bundle-report.mjs",
     "crm:export": "node scripts/generate-crm-import-csvs.mjs",
-    "db:generate": "drizzle-kit generate",
     "cf:setup": "bash scripts/cloudflare-setup.sh",
     "cf:deploy": "bash scripts/cloudflare-deploy.sh",
     "cf:domain": "bash scripts/cloudflare-domain.sh",
@@ -38,7 +37,6 @@
     "twenty:backup": "bash docker/twenty/backup-twenty.sh"
   },
   "dependencies": {
-    "drizzle-orm": "0.45.2",
     "next": "^16.3.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
@@ -49,12 +47,12 @@
     "@tailwindcss/postcss": "4.2.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.3",
+    "@types/bun": "^1.4.2",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "^0.5.34",
-    "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
     "jsdom": "^30.0.1",

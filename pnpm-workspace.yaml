@@ -21,8 +21,10 @@ minimumReleaseAgeExclude:
 # ─── Security overrides (pnpm 11+) ────────────────────────────────
 # `overrides` en pnpm 11+ vive en pnpm-workspace.yaml, no en
 # package.json#pnpm ni en .npmrc.
-# Forzamos esbuild >=0.25 para eliminar la vuln moderada
-# GHSA-67mh-4wv8-2f99 reachable transitivamente desde
-# drizzle-kit>@esbuild-kit/* (build-time only, via pnpm db:generate).
+# esbuild >=0.25 elimina la vuln moderada GHSA-67mh-4wv8-2f99.
+# sharp >=0.35.4 elimina las vulns high de libheif
+# (GHSA-g89c-p67h-r497, GHSA-2jg2-4ch7-h545), que llegan como dev-only
+# vía wrangler>miniflare>sharp.
 overrides:
   esbuild: ">=0.25.0"
+  sharp: ">=0.35.4"

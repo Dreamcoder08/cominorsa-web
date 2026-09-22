@@ -155,11 +155,11 @@ export function ConsultationForm() {
         Al continuar se abrirá WhatsApp. El pago y el horario de atención se
         coordinan directamente con COMINORSA.
       </p>
-          <p className="form-status" aria-live="polite">
-            {whatsAppOpened
-              ? "Se abrió WhatsApp con tu mensaje preparado. Revísalo y envíalo para completar tu consulta."
-              : ""}
-          </p>
+      <p className="form-status" aria-live="polite">
+        {whatsAppOpened
+          ? "Se abrió WhatsApp con tu mensaje preparado. Revísalo y envíalo para completar tu consulta."
+          : ""}
+      </p>
     </form>
   );
 }

@@ -24,7 +24,7 @@ Guía paso a paso para llevar **COMINORSA — Web** a producción en Cloudflare 
 
 | Herramienta | Versión mínima | Cómo instalar                                                   |
 | ----------- | -------------- | --------------------------------------------------------------- |
-| Node.js     | 22.13.0        | `nvm install 22` o [fnm](https://github.com/Schniz/fnm)         |
+| Node.js     | 22.18.0        | `nvm install 22` o [fnm](https://github.com/Schniz/fnm)         |
 | pnpm        | 11.0.0         | `corepack enable && corepack prepare pnpm@11.22.0 --activate`   |
 | Wrangler    | 4.128+         | `pnpm add -g wrangler` (o usar el `wrangler` del proyecto)      |
 | Cuenta CF   | —              | <https://dash.cloudflare.com/sign-up> (plan Free alcanza)         |

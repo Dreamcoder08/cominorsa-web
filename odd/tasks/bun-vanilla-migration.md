@@ -64,6 +64,8 @@ itself.
 - Rendered HTML must stay equivalent enough that `tests/qa/*` keeps
   passing; any intended change to output requires updating its test in
   the same commit.
+- URL shape and origin must equal production (`https://cominorsa.com`,
+  no trailing slash) — verify against the live site, not scripts.
 
 ## Resolved configuration
 
@@ -209,13 +211,6 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
       src/`).
       **Documented differences vs. the real Next output** (all
       intentional, not regressions):
-      - Canonical URL keeps T3's trailing slash
-        (`/seguridad-minera/`); Next's own canonical has no trailing
-        slash (`.../seguridad-minera`) because it echoes the
-        requested pathname verbatim. Pre-existing T3 decision, out of
-        T4's scope (T4 only adds new head elements); trailing-slash
-        canonicals are the more correct choice for a directory-style
-        static host (Cloudflare serving `index.html` per directory).
       - Added `og:url` (the canonical URL) even though the current
         Next output omits it entirely — the task's own spec asks for
         it, it's a low-risk best-practice addition, and using the
@@ -229,12 +224,37 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
         `app/manifest.ts`) — that's T8's job. Until T8 ships, this
         link 404s in the static build; acceptable for a head/metadata
         task per the task's own scope.
-      - Base URL confirmed as `https://cominorsa.com.pe` (already the
-        constant T3 put in `document.tsx`, and the real production
-        domain per `scripts/cloudflare-domain.sh`), not
-        `https://cominorsa.com` as an earlier instruction assumed —
-        verified against the repo's own DNS/Custom-Domain setup script
-        before writing anything, not changed.
+
+      **Defect found and fixed (parent verification, same slice):**
+      T4 originally hardcoded `SITE_URL = "https://cominorsa.com.pe"`
+      in `document.tsx`, with a trailing-slash canonical
+      (`/seguridad-minera/`). Root cause: that value was copied from
+      `scripts/cloudflare-domain.sh` and from T3's pre-existing
+      constant, neither of which was checked against the live site —
+      `scripts/cloudflare-domain.sh` is stale. Parent verification
+      caught it with live evidence: `curl
+      https://cominorsa.com.pe/seguridad-minera` does not resolve
+      (000/no route to host), while `curl -sL
+      https://cominorsa.com/seguridad-minera` returns 200 with a live
+      `<link rel="canonical" href="https://cominorsa.com/seguridad-minera">`
+      (no trailing slash) — independently reproduced from this
+      environment, and corroborated by `COMINORSA-COM-DOMAIN-SETUP.md`'s
+      own header ("`cominorsa.com` SÍ está en producción... deployed
+      as a Worker"). Fixed same-slice (commit `1e5632f`): extracted the
+      origin into a single exported constant,
+      `src/build/site-config.ts`'s `SITE_URL = "https://cominorsa.com"`,
+      consumed by `document.tsx` (canonical, og:url, og:image,
+      JSON-LD) and pinned by `site-config.test.ts` plus a
+      `document.test.ts`/`build.test.ts` assertion that no emitted
+      HTML ever contains `.com.pe`. Canonical/og:url paths dropped the
+      trailing slash (`/seguridad-minera`, matching the live site
+      exactly); `build.ts` now emits pages as flat `<slug>.html` files
+      (e.g. `seguridad-minera.html`, not `seguridad-minera/index.html`)
+      so Cloudflare's default `html_handling: "auto-trailing-slash"`
+      serves the no-slash URL at 200 with zero redirects (verified
+      against Cloudflare's own docs, not assumed — see `build.ts`'s
+      module comment for the exact routing table). **Lesson**: a
+      deploy/ops script is not production evidence; the live site is.
 - [x] **T5** — Self-hosted woff2 fonts + hand-written `@font-face`,
       replacing `next/font/google`. Route: delegated writer. **DONE**
       — commit `03f8ba1`. New `src/build/fonts.css` self-hosts
@@ -410,28 +430,39 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
     resolving G2.
   - `03f8ba1` — feat(static-build): self-host Archivo/Newsreader/Geist
     Mono, drop next/font.
+  - `1e5632f` — fix(static-build): correct production origin and URL
+    shape (defect found by parent verification against the live site;
+    see T4's "Defect found and fixed" note above for detail).
   - Authored line count (`git diff --stat
     feat/bun-vanilla-migration-t3..HEAD`, font binaries excluded):
-    568 insertions + 21 deletions = **589 lines** across 10 files —
-    over the ~400-line advisory heuristic; not split artificially,
-    kept as three commits (CI / metadata / fonts) that are each
-    independently coherent and already the smallest reviewable units.
-  - Verification (all observed, not assumed): `bun test src/` → 85
-    pass, 0 fail. `pnpm typecheck` → exit 0. `pnpm lint` → 0 errors (7
-    pre-existing warnings, unchanged). `bun run build:static` →
-    `dist-static/seguridad-minera/index.html` + hashed
-    `assets/globals-*.css` + `assets/fonts-*.css` + copied
-    `public/fonts/*.woff2` + rest of `public/`. `pnpm test` → 190/190
-    pass (includes the new `tests/qa/ci-workflow.test.mjs`). Real
-    Playwright screenshots of the served `dist-static/` output (a
-    throwaway `Bun.serve` static server) at 1440px and 390px against
-    the live Next page (`vinext start`): layout, spacing, colors, and
-    now typography all match; documented remaining differences are
-    T7's cookie-consent banner/widget gaps (unrelated to this slice,
-    already carried forward) and the manifest-file gap (T8) noted
-    under T4 above.
-  - Running slice total: ~384 (T2) + ~846 (T3) + 589 (slice 3) ≈ 1,819
-    of the ~2,400-line forecast.
+    863 insertions + 66 deletions = **929 lines** across 13 files
+    (182+/24- of which is this feature document; code+tests alone are
+    ~681+/42-) — over the ~400-line advisory heuristic; not split
+    artificially, kept as four commits (CI / metadata / fonts / origin
+    fix) that are each independently coherent and already the
+    smallest reviewable units.
+  - Verification (all observed, not assumed), after the fix: `bun
+    test src/` → 89 pass, 0 fail. `pnpm typecheck` → exit 0. `pnpm
+    lint` → 0 errors (7 pre-existing warnings, unchanged). `bun run
+    build:static` → `dist-static/seguridad-minera.html` (flat file,
+    no trailing-slash folder) + hashed `assets/globals-*.css` +
+    `assets/fonts-*.css` + copied `public/fonts/*.woff2` + rest of
+    `public/`. `grep -o 'https://[^"]*' dist-static/seguridad-minera.html
+    | sort -u` → only `cominorsa.com`/`cominorsa.com/og.png`/
+    `cominorsa.com/seguridad-minera` (+ `schema.org`, `wa.me/...`) —
+    zero `.com.pe`. `pnpm test` → 190/190 pass (includes the new
+    `tests/qa/ci-workflow.test.mjs`). Real Playwright screenshots of
+    the served `dist-static/` output (a throwaway `Bun.serve` static
+    server, pre-fix trailing-slash mapping) at 1440px and 390px
+    against the live Next page (`vinext start`): layout, spacing,
+    colors, and typography all match; documented remaining
+    differences are T7's cookie-consent banner/widget gaps (unrelated
+    to this slice) and the manifest-file gap (T8) noted under T4
+    above. Screenshots were taken before the origin/URL-shape fix and
+    not re-captured after it (the fix is metadata/routing-only, not
+    visual — nothing in the rendered page's visible content changed).
+  - Running slice total: ~384 (T2) + ~846 (T3) + 929 (slice 3,
+    including this doc) ≈ 2,159 of the ~2,400-line forecast.
   - Push/PR of `feat/bun-vanilla-migration-t4` into the feature branch
     is the user's decision (branch-chain strategy).
 

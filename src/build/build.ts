@@ -1,12 +1,23 @@
 /** @jsxImportSource ../html */
 // src/build/build.ts
 //
-// The static build pipeline (T3): renders `/seguridad-minera/` with
+// The static build pipeline (T3): renders `/seguridad-minera` with
 // the T2 hand-written runtime (no React), bundles+minifies+hashes
 // `app/globals.css` via `Bun.build`, and copies `public/` assets
 // alongside the output. Run with `bun run build:static`
 // (`package.json`); output goes to `dist-static/` — a new directory,
 // gitignored, that never collides with the Next/vinext `dist/`.
+//
+// Pages are emitted as flat `<slug>.html` files, NOT `<slug>/index.html`
+// folders: Cloudflare Workers Static Assets' default `html_handling:
+// "auto-trailing-slash"` serves a file like `foo.html` directly at
+// `/foo` with zero redirects, but a folder index `foo/index.html` only
+// at `/foo/`, 307-redirecting the no-slash form (confirmed against
+// Cloudflare's own docs — developers.cloudflare.com/workers/
+// static-assets/routing/advanced/html-handling). Production's real URL
+// shape has no trailing slash (confirmed against the live site's own
+// canonical tag), so this is the only shape that matches it with zero
+// redirects. The root page stays `index.html` (unaffected either way).
 //
 // Only one route today. T6 turns `PAGES` below into a loop over the
 // other five service pages plus the homepage/legal pages.
@@ -32,8 +43,14 @@ async function copyPublicAssets(outDir: string): Promise<void> {
   }
 }
 
-async function writePage(outDir: string, routeDir: string, html: string): Promise<void> {
-  await Bun.write(join(outDir, routeDir, "index.html"), html);
+/**
+ * Writes a rendered page as a flat `<slug>.html` file (or `index.html`
+ * for the root route, `slug === ""`) — see the module comment above for
+ * why this shape, not a `<slug>/index.html` folder, is required.
+ */
+async function writePage(outDir: string, slug: string, html: string): Promise<void> {
+  const fileName = slug === "" ? "index.html" : `${slug}.html`;
+  await Bun.write(join(outDir, fileName), html);
 }
 
 export async function runStaticBuild(
@@ -58,7 +75,7 @@ export async function runStaticBuild(
   const html = renderDocument({
     title: `${seguridadMinera.pageTitle} | COMINORSA`,
     description: seguridadMinera.pageDescription,
-    canonicalPath: `/${seguridadMinera.slug}/`,
+    canonicalPath: `/${seguridadMinera.slug}`,
     cssHref,
     fontsCssHref,
     children: ServicePage({ service: seguridadMinera }),
@@ -73,7 +90,7 @@ if (import.meta.main) {
   const outDir = join(ROOT, "dist-static");
   await Bun.$`rm -rf ${outDir}`.quiet();
   const { cssFileName, fontsCssFileName } = await runStaticBuild(outDir);
-  console.log(`Built ${relative(ROOT, outDir)}/${seguridadMinera.slug}/index.html`);
+  console.log(`Built ${relative(ROOT, outDir)}/${seguridadMinera.slug}.html`);
   console.log(`CSS: ${ASSETS_DIR_NAME}/${cssFileName}`);
   console.log(`Fonts CSS: ${ASSETS_DIR_NAME}/${fontsCssFileName}`);
 }

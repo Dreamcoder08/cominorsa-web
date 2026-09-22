@@ -22,8 +22,8 @@
 
 import { raw, render, type Child, type Html } from "../html/jsx-runtime";
 import { PRIMARY_WHATSAPP_NUMBER } from "../../app/constants";
+import { SITE_URL } from "./site-config";
 
-const SITE_URL = "https://cominorsa.com.pe";
 const SITE_NAME = "COMINORSA";
 const SOCIAL_IMAGE = `${SITE_URL}/og.png`;
 const SOCIAL_IMAGE_ALT = "COMINORSA — Consultoría minera y soluciones ambientales";
@@ -93,7 +93,13 @@ const CRITICAL_FONT_HREF = "/fonts/archivo-latin-variable.woff2";
 export type DocumentProps = {
   title: string;
   description: string;
-  /** Absolute path from the site root, e.g. "/seguridad-minera/". */
+  /**
+   * Absolute path from the site root, NO trailing slash (e.g.
+   * "/seguridad-minera"), except the root itself ("/") — matches
+   * production's real URL shape exactly (verified against the live
+   * site) and the no-redirect routing `build.ts` emits under
+   * Cloudflare's default `html_handling: "auto-trailing-slash"`.
+   */
   canonicalPath: string;
   /** Absolute path to the built, hashed stylesheet, e.g. "/assets/globals-abc123.css". */
   cssHref: string;

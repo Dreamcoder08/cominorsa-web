@@ -13,7 +13,7 @@ import { raw, render } from "../html/jsx-runtime";
 const html = renderDocument({
   title: "Seguridad minera y consultoría mensual | COMINORSA",
   description: "Planes de Seguridad y Salud Ocupacional.",
-  canonicalPath: "/seguridad-minera/",
+  canonicalPath: "/seguridad-minera",
   cssHref: "/assets/globals-abc123.css",
   fontsCssHref: "/assets/fonts-def456.css",
   children: raw("<main><p>body</p></main>"),
@@ -50,10 +50,14 @@ describe("renderDocument", () => {
     );
   });
 
-  test("sets an absolute canonical URL under the production domain", () => {
+  test("sets an absolute canonical URL under the production domain, no trailing slash", () => {
     expect(html).toContain(
-      '<link rel="canonical" href="https://cominorsa.com.pe/seguridad-minera/">',
+      '<link rel="canonical" href="https://cominorsa.com/seguridad-minera">',
     );
+  });
+
+  test("never emits a URL on the stale, non-resolving .com.pe domain", () => {
+    expect(html).not.toContain(".com.pe");
   });
 
   test("links the hashed stylesheet passed in", () => {
@@ -95,14 +99,14 @@ describe("renderDocument", () => {
     expect(html).toContain('<meta property="og:locale" content="es_PE">');
     expect(html).toContain('<meta property="og:site_name" content="COMINORSA">');
     expect(html).toContain(
-      '<meta property="og:url" content="https://cominorsa.com.pe/seguridad-minera/">',
+      '<meta property="og:url" content="https://cominorsa.com/seguridad-minera">',
     );
     expect(html).toContain('<meta property="og:title" content="COMINORSA | Técnica que impulsa">');
     expect(html).toContain(
       '<meta property="og:description" content="Formalización minera y soluciones ambientales para una minería segura y sostenible.">',
     );
     expect(html).toContain(
-      '<meta property="og:image" content="https://cominorsa.com.pe/og.png">',
+      '<meta property="og:image" content="https://cominorsa.com/og.png">',
     );
     expect(html).toContain('<meta property="og:image:width" content="1200">');
     expect(html).toContain('<meta property="og:image:height" content="630">');
@@ -120,7 +124,7 @@ describe("renderDocument", () => {
       '<meta name="twitter:description" content="Formalización, gestión ambiental y asistencia técnica minera.">',
     );
     expect(html).toContain(
-      '<meta name="twitter:image" content="https://cominorsa.com.pe/og.png">',
+      '<meta name="twitter:image" content="https://cominorsa.com/og.png">',
     );
   });
 
@@ -145,7 +149,7 @@ describe("renderDocument", () => {
     const parsed = JSON.parse(match![1]);
     expect(parsed["@type"]).toBe("ProfessionalService");
     expect(parsed.name).toBe("COMINORSA S.A.C.");
-    expect(parsed.url).toBe("https://cominorsa.com.pe");
+    expect(parsed.url).toBe("https://cominorsa.com");
     expect(parsed.telephone).toBe("+51910728575");
     expect(parsed.address.addressRegion).toBe("Piura");
   });
@@ -154,7 +158,7 @@ describe("renderDocument", () => {
     const unsafe = renderDocument({
       title: '</title><script>alert(1)</script>',
       description: "d",
-      canonicalPath: "/x/",
+      canonicalPath: "/x",
       cssHref: "/assets/x.css",
       fontsCssHref: "/assets/fonts-x.css",
       children: raw("<p></p>"),

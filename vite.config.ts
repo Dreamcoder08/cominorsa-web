@@ -6,7 +6,19 @@ import { sites } from "./build/sites-vite-plugin";
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   "00000000-0000-4000-8000-000000000000";
 
-const { d1, r2 } = hostingConfig;
+interface OptionalBindings {
+  d1?: string;
+  r2?: string;
+}
+
+export function readOptionalBinding(config: object): OptionalBindings {
+  const d1 = "d1" in config && typeof config.d1 === "string" ? config.d1 : undefined;
+  const r2 = "r2" in config && typeof config.r2 === "string" ? config.r2 : undefined;
+
+  return { ...(d1 ? { d1 } : {}), ...(r2 ? { r2 } : {}) };
+}
+
+const { d1, r2 } = readOptionalBinding(hostingConfig);
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";

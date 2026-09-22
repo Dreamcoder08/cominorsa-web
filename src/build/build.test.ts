@@ -1,14 +1,17 @@
 // src/build/build.test.ts
 //
-// End-to-end coverage for the static build pipeline: renders
-// `seguridad-minera.html` with the T2 runtime, links a content-hashed
-// CSS file built from `app/globals.css`, and copies `public/` assets
-// alongside it. Output goes to a throwaway temp dir so this test never
-// touches the real `dist-static/`.
+// End-to-end coverage for the static build pipeline: renders every
+// route in `routes.ts`'s `PAGE_ROUTES` table (T6a — the 6 service
+// pages in this commit; preguntas-frecuentes/privacidad/terminos/404
+// are added by this task's later commits) with the T2 runtime, links
+// one shared content-hashed CSS/fonts pair built from
+// `app/globals.css`/`fonts.css`, and copies `public/` assets alongside
+// them. Output goes to a throwaway temp dir so this test never touches
+// the real `dist-static/`.
 //
-// `seguridad-minera.html` (a FILE, not `seguridad-minera/index.html`)
-// is deliberate: Cloudflare Workers Static Assets' default
-// `html_handling: "auto-trailing-slash"` serves a file like
+// Pages are flat `<slug>.html` files (e.g. `seguridad-minera.html`),
+// NOT `<slug>/index.html` folders: Cloudflare Workers Static Assets'
+// default `html_handling: "auto-trailing-slash"` serves a file like
 // `foo.html` directly at `/foo` (200, zero redirects), but a folder
 // index like `foo/index.html` only at `/foo/`, 307-redirecting the
 // no-slash form (verified against Cloudflare's own docs,
@@ -20,6 +23,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { PAGE_ROUTES } from "./routes";
 import { runStaticBuild } from "./build";
 
 async function withTempOutDir<T>(fn: (outDir: string) => Promise<T>): Promise<T> {
@@ -36,12 +40,18 @@ async function withTempOutDir<T>(fn: (outDir: string) => Promise<T>): Promise<T>
 }
 
 describe("runStaticBuild", () => {
-  test("emits seguridad-minera.html (a flat file, not a folder index) with the expected key content", () =>
+  test("emits one flat <slug>.html file per route, not a folder index", () =>
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
-      expect(await Bun.file(join(outDir, "seguridad-minera", "index.html")).exists()).toBe(
-        false,
-      );
+      for (const route of PAGE_ROUTES) {
+        expect(await Bun.file(join(outDir, route.slug, "index.html")).exists()).toBe(false);
+        expect(await Bun.file(join(outDir, `${route.slug}.html`)).exists()).toBe(true);
+      }
+    }));
+
+  test("emits seguridad-minera.html with the expected key content (parity with the pre-route-table build)", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
       const html = await Bun.file(join(outDir, "seguridad-minera.html")).text();
 
       expect(html).toContain("<!doctype html>");
@@ -58,39 +68,55 @@ describe("runStaticBuild", () => {
       );
     }));
 
-  test("never emits a URL on the stale, non-resolving .com.pe domain", () =>
+  test("emits every other service page with its own title and canonical", () =>
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
-      const html = await Bun.file(join(outDir, "seguridad-minera.html")).text();
-      expect(html).not.toContain(".com.pe");
+      const cases: Array<[slug: string, title: string]> = [
+        ["igafom-reinfo", "IGAFOM y REINFO — Formalización minera"],
+        ["gestion-ambiental-minera", "Gestión ambiental minera — DIA y PAMA"],
+        ["declaraciones-dac-estamin", "Declaraciones DAC y ESTAMIN"],
+        ["ingenieria-y-planes-de-minado", "Planes de minado e ingeniería técnica"],
+        ["tramites-minem-ingemmet-drem", "Trámites ante MINEM, INGEMMET y DREM"],
+      ];
+      for (const [slug, title] of cases) {
+        const html = await Bun.file(join(outDir, `${slug}.html`)).text();
+        expect(html).toContain(`<title>${title} | COMINORSA</title>`);
+        expect(html).toContain(`<link rel="canonical" href="https://cominorsa.com/${slug}">`);
+      }
     }));
 
-  test("links a hashed CSS file that actually exists in the output", () =>
+  test("never emits a URL on the stale, non-resolving .com.pe domain, on any page", () =>
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
-      const html = await Bun.file(join(outDir, "seguridad-minera.html")).text();
+      for (const route of PAGE_ROUTES) {
+        const html = await Bun.file(join(outDir, `${route.slug}.html`)).text();
+        expect(html).not.toContain(".com.pe");
+      }
+    }));
 
-      const match = html.match(/<link rel="stylesheet" href="([^"]+)">/);
-      expect(match).not.toBeNull();
-      const cssHref = match![1]!;
+  test("every page links the same hashed CSS and fonts files that actually exist in the output", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const seguridadHtml = await Bun.file(join(outDir, "seguridad-minera.html")).text();
+      const matches = [...seguridadHtml.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map(
+        (m) => m[1]!,
+      );
+      expect(matches.length).toBe(2);
+      const cssHref = matches.find((href) => href.includes("globals-"))!;
+      const fontsHref = matches.find((href) => href.includes("fonts-"))!;
       expect(cssHref).toMatch(/^\/assets\/globals-[a-z0-9]+\.css$/);
-
-      const cssPath = join(outDir, cssHref.replace(/^\//, ""));
-      expect(await Bun.file(cssPath).exists()).toBe(true);
-    }));
-
-  test("links a hashed fonts stylesheet that actually exists in the output", () =>
-    withTempOutDir(async (outDir) => {
-      await runStaticBuild(outDir);
-      const html = await Bun.file(join(outDir, "seguridad-minera.html")).text();
-
-      const matches = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)];
-      const fontsHref = matches.map((m) => m[1]!).find((href) => href.includes("fonts-"));
-      expect(fontsHref).toBeDefined();
       expect(fontsHref).toMatch(/^\/assets\/fonts-[a-z0-9]+\.css$/);
+      expect(await Bun.file(join(outDir, cssHref.replace(/^\//, ""))).exists()).toBe(true);
+      expect(await Bun.file(join(outDir, fontsHref.replace(/^\//, ""))).exists()).toBe(true);
 
-      const fontsCssPath = join(outDir, fontsHref!.replace(/^\//, ""));
-      expect(await Bun.file(fontsCssPath).exists()).toBe(true);
+      // Every other page links the exact same hashed files — one CSS
+      // build, shared across the whole route table, not one per page.
+      for (const route of PAGE_ROUTES) {
+        if (route.slug === "seguridad-minera") continue;
+        const html = await Bun.file(join(outDir, `${route.slug}.html`)).text();
+        expect(html).toContain(`<link rel="stylesheet" href="${cssHref}">`);
+        expect(html).toContain(`<link rel="stylesheet" href="${fontsHref}">`);
+      }
     }));
 
   test("preloads the critical font, and the woff2 files ship in the output", () =>

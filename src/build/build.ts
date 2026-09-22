@@ -1,12 +1,12 @@
 /** @jsxImportSource ../html */
 // src/build/build.ts
 //
-// The static build pipeline (T3): renders `/seguridad-minera` with
-// the T2 hand-written runtime (no React), bundles+minifies+hashes
-// `app/globals.css` via `Bun.build`, and copies `public/` assets
-// alongside the output. Run with `bun run build:static`
-// (`package.json`); output goes to `dist-static/` — a new directory,
-// gitignored, that never collides with the Next/vinext `dist/`.
+// The static build pipeline: bundles+minifies+hashes `app/globals.css`
+// and `fonts.css` via `Bun.build`, copies `public/` assets, and renders
+// every route in `routes.ts`'s `PAGE_ROUTES` table (T6a) into a flat
+// `<slug>.html` file. Run with `bun run build:static` (`package.json`);
+// output goes to `dist-static/` — a new directory, gitignored, that
+// never collides with the Next/vinext `dist/`.
 //
 // Pages are emitted as flat `<slug>.html` files, NOT `<slug>/index.html`
 // folders: Cloudflare Workers Static Assets' default `html_handling:
@@ -17,23 +17,21 @@
 // static-assets/routing/advanced/html-handling). Production's real URL
 // shape has no trailing slash (confirmed against the live site's own
 // canonical tag), so this is the only shape that matches it with zero
-// redirects. The root page stays `index.html` (unaffected either way).
-//
-// Only one route today. T6 turns `PAGES` below into a loop over the
-// other five service pages plus the homepage/legal pages.
+// redirects. The root page stays `index.html` (unaffected either way;
+// the homepage itself is T6b, not yet in `PAGE_ROUTES`).
 
 import { Glob } from "bun";
 import { join, relative } from "node:path";
 import { buildCss } from "./css";
 import { renderDocument } from "./document";
-import { seguridadMinera } from "./site-data";
-import { ServicePage } from "./service-page";
+import { PAGE_ROUTES } from "./routes";
 
 const ROOT = join(import.meta.dirname, "..", "..");
 const CSS_ENTRY = join(ROOT, "app", "globals.css");
 const FONTS_CSS_ENTRY = join(import.meta.dirname, "fonts.css");
 const PUBLIC_DIR = join(ROOT, "public");
 const ASSETS_DIR_NAME = "assets";
+const SITE_SUFFIX = " | COMINORSA";
 
 async function copyPublicAssets(outDir: string): Promise<void> {
   const glob = new Glob("**/*");
@@ -72,16 +70,18 @@ export async function runStaticBuild(
 
   await copyPublicAssets(outDir);
 
-  const html = renderDocument({
-    title: `${seguridadMinera.pageTitle} | COMINORSA`,
-    description: seguridadMinera.pageDescription,
-    canonicalPath: `/${seguridadMinera.slug}`,
-    cssHref,
-    fontsCssHref,
-    children: ServicePage({ service: seguridadMinera }),
-  });
+  for (const route of PAGE_ROUTES) {
+    const html = renderDocument({
+      title: `${route.title}${SITE_SUFFIX}`,
+      description: route.description,
+      canonicalPath: route.canonicalPath,
+      cssHref,
+      fontsCssHref,
+      children: route.render(),
+    });
 
-  await writePage(outDir, seguridadMinera.slug, html);
+    await writePage(outDir, route.slug, html);
+  }
 
   return { cssFileName, fontsCssFileName };
 }
@@ -90,7 +90,7 @@ if (import.meta.main) {
   const outDir = join(ROOT, "dist-static");
   await Bun.$`rm -rf ${outDir}`.quiet();
   const { cssFileName, fontsCssFileName } = await runStaticBuild(outDir);
-  console.log(`Built ${relative(ROOT, outDir)}/${seguridadMinera.slug}.html`);
+  console.log(`Built ${relative(ROOT, outDir)}/ (${PAGE_ROUTES.length} pages)`);
   console.log(`CSS: ${ASSETS_DIR_NAME}/${cssFileName}`);
   console.log(`Fonts CSS: ${ASSETS_DIR_NAME}/${fontsCssFileName}`);
 }

@@ -14,12 +14,27 @@ export type CssBuildResult = {
   path: string;
 };
 
-export async function buildCss(entry: string, outDir: string): Promise<CssBuildResult> {
+export type CssBuildOptions = {
+  /**
+   * Glob patterns for url() references Bun's CSS bundler should pass
+   * through verbatim instead of resolving as local files — e.g.
+   * root-relative paths like "/fonts/x.woff2" that only resolve against
+   * the site's public root at runtime (src/build/fonts.css, T5).
+   */
+  external?: string[];
+};
+
+export async function buildCss(
+  entry: string,
+  outDir: string,
+  options?: CssBuildOptions,
+): Promise<CssBuildResult> {
   const result = await Bun.build({
     entrypoints: [entry],
     outdir: outDir,
     naming: "[name]-[hash].[ext]",
     minify: true,
+    external: options?.external ?? [],
   });
 
   if (!result.success) {

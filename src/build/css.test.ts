@@ -72,4 +72,34 @@ describe("buildCss", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  test("leaves url() references matching `external` untouched instead of resolving them as local files", async () => {
+    // Bun's CSS bundler otherwise treats url(...) as a local-file import
+    // and fails with "Could not resolve" for a root-relative path like
+    // "/fonts/x.woff2" that only exists at runtime under the site's
+    // public root, not as a real filesystem path relative to the CSS
+    // entry. `external` (used by fonts.css, T5) tells it to pass such
+    // references through verbatim instead.
+    const { dir, entry } = await fixture(
+      '@font-face { font-family: "X"; src: url("/fonts/x.woff2") format("woff2"); }\n',
+    );
+    try {
+      const result = await buildCss(entry, join(dir, "out"), { external: ["/fonts/*"] });
+      const css = await Bun.file(join(dir, "out", result.fileName)).text();
+      expect(css).toContain("url(/fonts/x.woff2)");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("without `external`, the same root-relative url() fails to resolve", async () => {
+    const { dir, entry } = await fixture(
+      '@font-face { font-family: "X"; src: url("/fonts/x.woff2") format("woff2"); }\n',
+    );
+    try {
+      await expect(buildCss(entry, join(dir, "out"))).rejects.toThrow();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

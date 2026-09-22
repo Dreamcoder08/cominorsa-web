@@ -81,6 +81,15 @@ export function jsonLdScript(data: unknown): Html {
   return raw(JSON.stringify(data).replace(/</g, "\\u003c"));
 }
 
+// The only font actually critical to preload: Archivo is the `body`
+// font (see app/globals.css), so it's on the critical rendering path for
+// every page. Newsreader is an italic accent font used on a handful of
+// headings, and Geist Mono only renders small labels/kickers — neither
+// blocks first paint of the bulk of the page's text the way the body
+// font does, so preloading them too would spend early-load bandwidth on
+// lower-priority requests (T5's "preload only the critical font(s)").
+const CRITICAL_FONT_HREF = "/fonts/archivo-latin-variable.woff2";
+
 export type DocumentProps = {
   title: string;
   description: string;
@@ -88,10 +97,19 @@ export type DocumentProps = {
   canonicalPath: string;
   /** Absolute path to the built, hashed stylesheet, e.g. "/assets/globals-abc123.css". */
   cssHref: string;
+  /** Absolute path to the built, hashed fonts stylesheet (src/build/fonts.css). */
+  fontsCssHref: string;
   children: Child;
 };
 
-function Document({ title, description, canonicalPath, cssHref, children }: DocumentProps) {
+function Document({
+  title,
+  description,
+  canonicalPath,
+  cssHref,
+  fontsCssHref,
+  children,
+}: DocumentProps) {
   const canonicalUrl = `${SITE_URL}${canonicalPath}`;
 
   return (
@@ -129,7 +147,9 @@ function Document({ title, description, canonicalPath, cssHref, children }: Docu
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
 
+        <link rel="preload" href={CRITICAL_FONT_HREF} as="font" type="font/woff2" crossorigin={true} />
         <link rel="stylesheet" href={cssHref} />
+        <link rel="stylesheet" href={fontsCssHref} />
 
         <script type="application/ld+json">{jsonLdScript(JSON_LD)}</script>
       </head>

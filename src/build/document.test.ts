@@ -15,6 +15,7 @@ const html = renderDocument({
   description: "Planes de Seguridad y Salud Ocupacional.",
   canonicalPath: "/seguridad-minera/",
   cssHref: "/assets/globals-abc123.css",
+  fontsCssHref: "/assets/fonts-def456.css",
   children: raw("<main><p>body</p></main>"),
 });
 
@@ -59,6 +60,22 @@ describe("renderDocument", () => {
     expect(html).toContain(
       '<link rel="stylesheet" href="/assets/globals-abc123.css">',
     );
+  });
+
+  test("links the hashed fonts stylesheet passed in", () => {
+    expect(html).toContain(
+      '<link rel="stylesheet" href="/assets/fonts-def456.css">',
+    );
+  });
+
+  test("preloads only the critical font (Archivo, the body/heading font)", () => {
+    expect(html).toContain(
+      '<link rel="preload" href="/fonts/archivo-latin-variable.woff2" as="font" type="font/woff2" crossorigin>',
+    );
+    // Not preloaded: Newsreader (italic accent font) and Geist Mono
+    // (small labels) are lower-priority than the body/heading font.
+    expect(html).not.toContain("newsreader-italic-latin-variable.woff2");
+    expect(html).not.toContain("geist-mono-latin.woff2");
   });
 
   test("renders children inside body, unescaped when passed as raw()", () => {
@@ -139,6 +156,7 @@ describe("renderDocument", () => {
       description: "d",
       canonicalPath: "/x/",
       cssHref: "/assets/x.css",
+      fontsCssHref: "/assets/fonts-x.css",
       children: raw("<p></p>"),
     });
     expect(unsafe).not.toContain("<script>alert(1)</script>");

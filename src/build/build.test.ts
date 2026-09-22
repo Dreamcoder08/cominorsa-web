@@ -56,6 +56,37 @@ describe("runStaticBuild", () => {
       expect(await Bun.file(cssPath).exists()).toBe(true);
     }));
 
+  test("links a hashed fonts stylesheet that actually exists in the output", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const html = await Bun.file(join(outDir, "seguridad-minera", "index.html")).text();
+
+      const matches = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)];
+      const fontsHref = matches.map((m) => m[1]!).find((href) => href.includes("fonts-"));
+      expect(fontsHref).toBeDefined();
+      expect(fontsHref).toMatch(/^\/assets\/fonts-[a-z0-9]+\.css$/);
+
+      const fontsCssPath = join(outDir, fontsHref!.replace(/^\//, ""));
+      expect(await Bun.file(fontsCssPath).exists()).toBe(true);
+    }));
+
+  test("preloads the critical font, and the woff2 files ship in the output", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const html = await Bun.file(join(outDir, "seguridad-minera", "index.html")).text();
+
+      expect(html).toContain(
+        '<link rel="preload" href="/fonts/archivo-latin-variable.woff2" as="font" type="font/woff2" crossorigin>',
+      );
+      for (const fontFile of [
+        "archivo-latin-variable.woff2",
+        "newsreader-italic-latin-variable.woff2",
+        "geist-mono-latin.woff2",
+      ]) {
+        expect(await Bun.file(join(outDir, "fonts", fontFile)).exists()).toBe(true);
+      }
+    }));
+
   test("is deterministic across repeated builds of the same source", () =>
     withTempOutDir(async (outDirA) => {
       await runStaticBuild(outDirA);

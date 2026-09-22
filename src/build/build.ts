@@ -20,6 +20,7 @@ import { ServicePage } from "./service-page";
 
 const ROOT = join(import.meta.dirname, "..", "..");
 const CSS_ENTRY = join(ROOT, "app", "globals.css");
+const FONTS_CSS_ENTRY = join(import.meta.dirname, "fonts.css");
 const PUBLIC_DIR = join(ROOT, "public");
 const ASSETS_DIR_NAME = "assets";
 
@@ -35,9 +36,22 @@ async function writePage(outDir: string, routeDir: string, html: string): Promis
   await Bun.write(join(outDir, routeDir, "index.html"), html);
 }
 
-export async function runStaticBuild(outDir: string): Promise<{ cssFileName: string }> {
+export async function runStaticBuild(
+  outDir: string,
+): Promise<{ cssFileName: string; fontsCssFileName: string }> {
   const { fileName: cssFileName } = await buildCss(CSS_ENTRY, join(outDir, ASSETS_DIR_NAME));
   const cssHref = `/${ASSETS_DIR_NAME}/${cssFileName}`;
+
+  const { fileName: fontsCssFileName } = await buildCss(
+    FONTS_CSS_ENTRY,
+    join(outDir, ASSETS_DIR_NAME),
+    // The woff2 files fonts.css references live under public/fonts/,
+    // copied verbatim by copyPublicAssets below — not local files
+    // relative to this CSS entry, so Bun's bundler must not try to
+    // resolve/inline them.
+    { external: ["/fonts/*"] },
+  );
+  const fontsCssHref = `/${ASSETS_DIR_NAME}/${fontsCssFileName}`;
 
   await copyPublicAssets(outDir);
 
@@ -46,18 +60,20 @@ export async function runStaticBuild(outDir: string): Promise<{ cssFileName: str
     description: seguridadMinera.pageDescription,
     canonicalPath: `/${seguridadMinera.slug}/`,
     cssHref,
+    fontsCssHref,
     children: ServicePage({ service: seguridadMinera }),
   });
 
   await writePage(outDir, seguridadMinera.slug, html);
 
-  return { cssFileName };
+  return { cssFileName, fontsCssFileName };
 }
 
 if (import.meta.main) {
   const outDir = join(ROOT, "dist-static");
   await Bun.$`rm -rf ${outDir}`.quiet();
-  const { cssFileName } = await runStaticBuild(outDir);
+  const { cssFileName, fontsCssFileName } = await runStaticBuild(outDir);
   console.log(`Built ${relative(ROOT, outDir)}/${seguridadMinera.slug}/index.html`);
   console.log(`CSS: ${ASSETS_DIR_NAME}/${cssFileName}`);
+  console.log(`Fonts CSS: ${ASSETS_DIR_NAME}/${fontsCssFileName}`);
 }

@@ -98,6 +98,17 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
       hook. Route: inline. Partial: `pnpm verify` gate (typecheck +
       `bun test src/` + `pnpm test`) pinned by
       `tests/qa/verify-script.test.mjs` (3 pass).
+      **CI part done in slice 3** (commit `e113ead`, route: delegated
+      writer): `.github/workflows/ci.yml` now also triggers on
+      `pull_request` targeting `feat/bun-vanilla-migration**` (kept
+      `main`), installs Bun via `oven-sh/setup-bun@v2` (pinned major
+      version), and runs `bun test src/` + `bun run build:static` after
+      the existing Node test step. Pinned by new
+      `tests/qa/ci-workflow.test.mjs` (6 tests). Strict TDD: RED (2
+      pass / 4 fail — trigger glob, setup-bun step, and both Bun steps
+      missing) → GREEN (6 pass, 0 fail). T1 itself stays open: the
+      Bun toolchain adoption (`bunfig.toml`, lockfile) is still
+      outstanding.
 - [x] **T2** — Hand-written `jsx-runtime` rendering JSX to escaped HTML
       strings, with unit tests. Security-critical (XSS via attribute and
       text escaping). Route: delegated writer. **DONE** — `src/html/jsx-runtime.ts`
@@ -159,11 +170,123 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
       are the documented T5 (fallback serif/sans instead of self-hosted
       Archivo/Newsreader) and T7 (no cookie-consent banner yet) gaps.
       Route confirmed: delegated writer.
-- [ ] **T4** — Static `<head>`/metadata system replacing
+- [x] **T4** — Static `<head>`/metadata system replacing
       `generateMetadata`, `viewport`, and the JSON-LD block. Route:
-      delegated writer.
-- [ ] **T5** — Self-hosted woff2 fonts + hand-written `@font-face`,
-      replacing `next/font/google`. Route: delegated writer.
+      delegated writer. **DONE** — commit `4369132`.
+      `src/build/document.tsx` now emits full parity with
+      `app/layout.tsx`'s `generateMetadata`/`viewport` and
+      `app/services-data.ts`'s `generateServiceMetadata`:
+      `applicationName`, `theme-color`, complete Open Graph (type,
+      url, title, description, image+width+height+alt, locale,
+      site_name), Twitter card, favicon/apple-touch-icon/manifest
+      links, and the JSON-LD block.
+      Verified against the real merged head, not assumed: built Next
+      (`pnpm build`) and rendered `/seguridad-minera` in-process via
+      `tests/qa/helpers.mjs`'s `render()`. Discovered Next's
+      out-of-order streaming metadata renders `<title>`/meta tags into
+      a hidden `<div hidden><!--$--><div hidden>` in `<body>` that a
+      client script moves into `<head>` at hydration — the naive
+      `<head>` of that raw HTML response is incomplete; the real
+      merged metadata is inside that hidden div. That diff confirmed:
+      only `title`, `description`, and `alternates.canonical` are
+      page-specific (per `generateServiceMetadata`); OG/Twitter/icons/
+      theme-color/JSON-LD are identical on every route today (defined
+      once at the root, never overridden per page) — so they're
+      hardcoded constants in `document.tsx` rather than new
+      `DocumentProps` fields.
+      **G2 resolved**: new exported `jsonLdScript()` helper in
+      `document.tsx` applies the exact
+      `JSON.stringify(data).replace(/</g, "\\u003c")` treatment via
+      `raw()`. Three new tests in `document.test.ts` prove a
+      `</script>` inside a string value (a) never appears as the
+      literal byte sequence `</script` in the output and (b)
+      round-trips exactly through `JSON.parse` (proving the escaping
+      is JSON-safe, not just HTML-safe — a plain text-escaper would
+      corrupt the JSON).
+      Strict TDD: RED (`bun test src/build/document.test.ts` →
+      `Export named 'jsonLdScript' not found`, 0 pass / 1 fail) →
+      GREEN (18 pass, 0 fail; 79 pass / 0 fail for full `bun test
+      src/`).
+      **Documented differences vs. the real Next output** (all
+      intentional, not regressions):
+      - Canonical URL keeps T3's trailing slash
+        (`/seguridad-minera/`); Next's own canonical has no trailing
+        slash (`.../seguridad-minera`) because it echoes the
+        requested pathname verbatim. Pre-existing T3 decision, out of
+        T4's scope (T4 only adds new head elements); trailing-slash
+        canonicals are the more correct choice for a directory-style
+        static host (Cloudflare serving `index.html` per directory).
+      - Added `og:url` (the canonical URL) even though the current
+        Next output omits it entirely — the task's own spec asks for
+        it, it's a low-risk best-practice addition, and using the
+        already-computed canonical URL costs nothing.
+      - No `robots` meta tag: confirmed via grep that the current
+        service pages set no `robots` field (only `app/not-found.tsx`
+        does, out of scope here), so there's nothing to port.
+      - `<link rel="manifest" href="/manifest.webmanifest">` is
+        emitted, but the file itself doesn't exist in `dist-static/`
+        yet (Next currently generates it at request time from
+        `app/manifest.ts`) — that's T8's job. Until T8 ships, this
+        link 404s in the static build; acceptable for a head/metadata
+        task per the task's own scope.
+      - Base URL confirmed as `https://cominorsa.com.pe` (already the
+        constant T3 put in `document.tsx`, and the real production
+        domain per `scripts/cloudflare-domain.sh`), not
+        `https://cominorsa.com` as an earlier instruction assumed —
+        verified against the repo's own DNS/Custom-Domain setup script
+        before writing anything, not changed.
+- [x] **T5** — Self-hosted woff2 fonts + hand-written `@font-face`,
+      replacing `next/font/google`. Route: delegated writer. **DONE**
+      — commit `03f8ba1`. New `src/build/fonts.css` self-hosts
+      Archivo, Newsreader (italic), and Geist Mono, resolving the same
+      `--font-display`/`--font-editorial`/`--font-mono` custom
+      properties `app/globals.css` already consumes — zero CSS/token
+      changes needed there, per the constraint.
+      The three `.woff2` files under `public/fonts/` (with a README
+      documenting source + OFL-1.1 license) are the exact "latin"
+      subset `next/font/google` already downloads for this project —
+      extracted from a real `pnpm build` run
+      (`.vinext/fonts/*/*.woff2`), no network fetch needed. Only the
+      Latin subset ships (dropped `vietnamese`/`latin-ext`/
+      `cyrillic*`/`symbols2`, which next/font also ships but this
+      100%-Spanish site would never select) — confirmed by diffing
+      next/font's own generated `unicode-range` values against every
+      character actually used.
+      Discovery: Archivo and Newsreader are variable fonts — every
+      weight next/font requests for a given subset points at the
+      *identical* file (verified by diffing next/font's generated
+      `style.css`), so one `font-weight: <min> <max>` range per
+      family/style replaces next/font's five duplicate declarations of
+      the same `src`. Geist Mono keeps a fixed weight (400 — the only
+      one this site requests). Metric-matched `*-Fallback` @font-face
+      rules (ascent/descent/line-gap/size-adjust) are copied verbatim
+      from next/font's own generated CSS, preserving its
+      swap-without-layout-shift behavior.
+      `css.ts` gained an `external` build option
+      (`buildCss(entry, outDir, { external: [...] })`): Bun's CSS
+      bundler otherwise treats `url()` as a local-file import and
+      fails to resolve a root-relative runtime path like
+      `/fonts/x.woff2`; `fonts.css`'s build passes
+      `external: ["/fonts/*"]` to leave those references untouched.
+      `document.tsx` now requires `fontsCssHref`, links the built
+      fonts stylesheet, and preloads only Archivo (the `body` font on
+      every route, per T5's "preload only the critical font(s)")
+      rather than all three the way next/font's default does —
+      Newsreader is an italic accent font and Geist Mono only renders
+      small labels, neither on the critical rendering path.
+      Strict TDD, in commit order: `document.test.ts` fonts-link/
+      preload tests RED (2 fail: no fonts stylesheet link, no preload
+      found) → GREEN (20 pass). `css.test.ts` `external` option RED
+      (`Could not resolve: "/fonts/x.woff2"`, 5 pass / 1 fail) → GREEN
+      (6 pass). `build.test.ts` fonts-stylesheet-in-output RED
+      (`fontsHref` undefined, 5 pass / 1 fail) → GREEN (7 pass; full
+      `bun test src/`: 85 pass, 0 fail).
+      Verification: real Playwright screenshots of the served
+      `dist-static/` output (`Bun.serve` static server) at 1440px and
+      390px against the live Next page (`vinext start`) — typography
+      now matches exactly (Archivo headings/body, same weights/
+      tracking); the only visible difference is Next's cookie-consent
+      banner overlay (T7 leftover, unrelated, already documented).
 - [ ] **T6** — Port the remaining 9 pages. Route: delegated writer.
 - [ ] **T7** — Rewrite the 4 interactive widgets as vanilla ES modules
       with progressive enhancement. Route: delegated writer.
@@ -189,30 +312,29 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
   to `jsx(type, props, key)`, discarding the three dev-only debug
   params the same way `jsx`/`jsxs` already discard `key`. RED → GREEN
   evidence under T3 above.
-- **G2 (T4)** — The JSON-LD block is the site's only raw-HTML site
-  (`app/layout.tsx:117-128`, the one `dangerouslySetInnerHTML`). Passing it
-  through `raw()` MUST keep the existing
+- **G2 (T4) — RESOLVED.** The JSON-LD block is the site's only raw-HTML
+  site (`app/layout.tsx:117-128`, the one `dangerouslySetInnerHTML`).
+  Passing it through `raw()` keeps the existing
   `JSON.stringify(jsonLd).replace(/</g, "\\u003c")` treatment: inside a
   `<script>`, HTML entities are not decoded, so `escapeText` would corrupt
   the JSON while `</script>` in a string value would break out of the
   element. `raw()` does no escaping by design — the caller owns this.
+  Fixed in T4 (commit `4369132`): `src/build/document.tsx` exports
+  `jsonLdScript(data)`, applying exactly that treatment. Three dedicated
+  tests prove a `</script>` inside a string value neither breaks out of
+  the element nor corrupts the JSON (round-trips through `JSON.parse`).
 - Verified non-issues: zero `style={{...}}` object props and zero other
   `dangerouslySetInnerHTML` in `app/`, so the runtime needs neither a
   style-object serializer nor a second raw-HTML path.
 
 ## Carried-forward gaps (found in T3, to resolve in T4/T5/T7/T11)
 
-- **T4 leftover** — `src/build/document.tsx`'s `<head>` is deliberately
-  minimal (charset, viewport, title, description, canonical,
-  stylesheet). Still missing, and needed for parity with
-  `app/layout.tsx`'s `generateMetadata`: OG/Twitter tags, favicon/icon
-  links, `theme-color`, `applicationName`, and the JSON-LD block (G2,
-  needs `raw()` with the exact escaping treatment above).
-- **T5 leftover** — No self-hosted fonts yet. The static page falls
-  back to the browser's default serif/sans stack instead of
-  Archivo/Newsreader/Geist Mono; confirmed visually in the T3
-  screenshot comparison (headings render in a generic serif, not
-  Newsreader italic).
+- **T4 leftover — RESOLVED in slice 3** (commit `4369132`). Full
+  `<head>` parity now shipped; see T4 above for detail and documented
+  differences.
+- **T5 leftover — RESOLVED in slice 3** (commit `03f8ba1`).
+  Self-hosted Archivo/Newsreader/Geist Mono now ship; see T5 above for
+  detail.
 - **T7 leftovers, all confirmed present in `src/build/site-shell.tsx`**:
   - `MobileNavStatic` renders the closed-state DOM of `app/MobileNav.tsx`
     (`aria-expanded="false"`, `data-open="false"`, `inert`) with no
@@ -279,11 +401,47 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
   for this clone, so no native review. Push/PR into the feature branch
   is the user's decision.
 
+- **Slice 3 complete** on branch `feat/bun-vanilla-migration-t4`
+  (based on `feat/bun-vanilla-migration-t3`): T1's CI part, T4, and T5,
+  each its own work-unit commit, route: delegated writer throughout.
+  - `e113ead` — ci: run on migration-chain PRs and add Bun test/build
+    steps.
+  - `4369132` — feat(static-build): full `<head>` metadata parity,
+    resolving G2.
+  - `03f8ba1` — feat(static-build): self-host Archivo/Newsreader/Geist
+    Mono, drop next/font.
+  - Authored line count (`git diff --stat
+    feat/bun-vanilla-migration-t3..HEAD`, font binaries excluded):
+    568 insertions + 21 deletions = **589 lines** across 10 files —
+    over the ~400-line advisory heuristic; not split artificially,
+    kept as three commits (CI / metadata / fonts) that are each
+    independently coherent and already the smallest reviewable units.
+  - Verification (all observed, not assumed): `bun test src/` → 85
+    pass, 0 fail. `pnpm typecheck` → exit 0. `pnpm lint` → 0 errors (7
+    pre-existing warnings, unchanged). `bun run build:static` →
+    `dist-static/seguridad-minera/index.html` + hashed
+    `assets/globals-*.css` + `assets/fonts-*.css` + copied
+    `public/fonts/*.woff2` + rest of `public/`. `pnpm test` → 190/190
+    pass (includes the new `tests/qa/ci-workflow.test.mjs`). Real
+    Playwright screenshots of the served `dist-static/` output (a
+    throwaway `Bun.serve` static server) at 1440px and 390px against
+    the live Next page (`vinext start`): layout, spacing, colors, and
+    now typography all match; documented remaining differences are
+    T7's cookie-consent banner/widget gaps (unrelated to this slice,
+    already carried forward) and the manifest-file gap (T8) noted
+    under T4 above.
+  - Running slice total: ~384 (T2) + ~846 (T3) + 589 (slice 3) ≈ 1,819
+    of the ~2,400-line forecast.
+  - Push/PR of `feat/bun-vanilla-migration-t4` into the feature branch
+    is the user's decision (branch-chain strategy).
+
 ## Next step
 
-T4 (static `<head>`/metadata system: OG/Twitter tags, favicon/icon
-links, `theme-color`, `applicationName`, and the JSON-LD block per gap
-G2's exact escaping requirement) — see "Carried-forward gaps (found in
-T3...)" above for the full list this leaves open, including the T5
-font gap and the T7 widget/cookie-banner gaps confirmed by the T3
-screenshot comparison.
+**T6** — port the remaining nine pages (home + 5 other service pages +
+`preguntas-frecuentes`, `privacidad`, `terminos`) using the now-complete
+`document.tsx` (head/metadata, G2, fonts) and the existing
+`site-shell.tsx`/`service-page.tsx` patterns from T3. Carried-forward,
+still open: the T7 widget/cookie-banner gaps in `site-shell.tsx`
+(`MobileNavStatic`, `CookiePreferencesButtonStatic`, the cookie-consent
+banner itself), and T1's remaining Bun-toolchain-adoption part
+(`bunfig.toml`, lockfile) — its CI half shipped this slice.

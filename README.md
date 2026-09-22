@@ -56,7 +56,7 @@ Sitio institucional de COMINORSA S.A.C., consultoría minera y ambiental. Presen
 
 ## Instalación
 
-Requisitos: **Node.js >= 22.13.0** y **pnpm >= 11.0.0**.
+Requisitos: **Node.js >= 22.18.0** y **pnpm >= 11.0.0**.
 
 ```bash
 git clone git@github.com:Dreamcoder08/cominorsa-web.git

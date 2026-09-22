@@ -38,7 +38,7 @@ root, 799 + 1,222 rows) are tracked in git and are now public too.
 
 - Docker Engine + Docker Compose v2 (the `docker compose` subcommand, not the
   legacy standalone `docker-compose`).
-- Node.js `>=22.13.0` and pnpm `>=11.0.0` (see the root `package.json`
+- Node.js `>=22.18.0` and pnpm `>=11.0.0` (see the root `package.json`
   `engines` field) to run `pnpm install` and the `twenty:*` scripts below.
 - At least ~2GB of free RAM for the four containers (`server`, `worker`,
   `db`, `redis`), on top of whatever the Docker runtime itself reserves.
@@ -66,7 +66,7 @@ What Windows adds is the underlying platform:
   a BIOS setting change, not just a Windows setting.
 - Installing Docker Desktop and enabling the WSL2 Windows feature both
   require an **administrator account** on that machine.
-- Install Node.js from [nodejs.org](https://nodejs.org) (LTS ≥22.13) or via
+- Install Node.js from [nodejs.org](https://nodejs.org) (LTS ≥22.18) or via
   `winget install OpenJS.NodeJS.LTS`, then enable pnpm with
   `corepack enable` (bundled with Node ≥16.13) — this avoids installing an
   unpinned global pnpm version.

@@ -1,25 +1,15 @@
-import type { Metadata } from "next";
-import { getBaseUrl } from "../base-url";
-import { SiteFooter } from "../SiteFooter";
-import { SiteHeader } from "../SiteHeader";
-import { buildWhatsAppLink } from "../constants";
-// T6a: FAQ content moved to `src/data/faq.ts` (pure, framework-free) so
-// the Bun-native static build's FAQ page renders the exact same list —
-// see that module's header comment.
-import { faqs } from "../../src/data/faq";
+/** @jsxImportSource ../html */
+// src/build/faq-page.tsx
+//
+// Ported from `app/preguntas-frecuentes/page.tsx`, verbatim markup and
+// copy. FAQ content lives in `src/data/faq.ts` (T6a), imported by both
+// this static build and the Next page — single source of truth.
 
-export async function generateMetadata(): Promise<Metadata> {
-  const baseUrl = await getBaseUrl();
+import { buildWhatsAppLink } from "../../app/constants";
+import type { FaqEntry } from "../data/faq";
+import { SiteFooter, SiteHeader } from "./site-shell";
 
-  return {
-    title: "Preguntas frecuentes sobre minería | COMINORSA",
-    description:
-      "Respuestas generales sobre IGAFOM, REINFO, DIA, PAMA, DAC, ESTAMIN, planes de minado y consultoría minera en Piura.",
-    alternates: { canonical: `${baseUrl}/preguntas-frecuentes` },
-  };
-}
-
-export default function PreguntasFrecuentesPage() {
+export function FaqPage({ faqs }: { faqs: readonly FaqEntry[] }) {
   const whatsappHref = buildWhatsAppLink(
     "Hola COMINORSA, tengo una consulta que no encontré en las preguntas frecuentes.",
   );
@@ -41,7 +31,7 @@ export default function PreguntasFrecuentesPage() {
 
         <div className="legal-page-body">
           {faqs.map((faq) => (
-            <section key={faq.question}>
+            <section>
               <h2>{faq.question}</h2>
               <p>{faq.answer}</p>
             </section>
@@ -49,9 +39,7 @@ export default function PreguntasFrecuentesPage() {
 
           <section>
             <h2>¿Tu pregunta no está aquí?</h2>
-            <p>
-              Escríbenos por WhatsApp y revisamos tu caso directamente.
-            </p>
+            <p>Escríbenos por WhatsApp y revisamos tu caso directamente.</p>
             <a
               className="button button-primary"
               href={whatsappHref}

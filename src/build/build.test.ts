@@ -2,9 +2,9 @@
 //
 // End-to-end coverage for the static build pipeline: renders every
 // route in `routes.ts`'s `PAGE_ROUTES` table (T6a — the 6 service
-// pages in this commit; preguntas-frecuentes/privacidad/terminos/404
-// are added by this task's later commits) with the T2 runtime, links
-// one shared content-hashed CSS/fonts pair built from
+// pages plus preguntas-frecuentes/privacidad/terminos in this commit;
+// the 404 page is added by this task's next commit) with the T2
+// runtime, links one shared content-hashed CSS/fonts pair built from
 // `app/globals.css`/`fonts.css`, and copies `public/` assets alongside
 // them. Output goes to a throwaway temp dir so this test never touches
 // the real `dist-static/`.
@@ -83,6 +83,35 @@ describe("runStaticBuild", () => {
         expect(html).toContain(`<title>${title} | COMINORSA</title>`);
         expect(html).toContain(`<link rel="canonical" href="https://cominorsa.com/${slug}">`);
       }
+    }));
+
+  test("emits preguntas-frecuentes.html with its FAQ content and canonical", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const html = await Bun.file(join(outDir, "preguntas-frecuentes.html")).text();
+      expect(html).toContain(
+        "<title>Preguntas frecuentes sobre minería | COMINORSA</title>",
+      );
+      expect(html).toContain(
+        '<link rel="canonical" href="https://cominorsa.com/preguntas-frecuentes">',
+      );
+      expect(html).toContain("<h2>¿Qué es el REINFO?</h2>");
+    }));
+
+  test("emits privacidad.html and terminos.html with their own canonical", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const privacidad = await Bun.file(join(outDir, "privacidad.html")).text();
+      expect(privacidad).toContain("<title>Política de Privacidad | COMINORSA</title>");
+      expect(privacidad).toContain(
+        '<link rel="canonical" href="https://cominorsa.com/privacidad">',
+      );
+
+      const terminos = await Bun.file(join(outDir, "terminos.html")).text();
+      expect(terminos).toContain("<title>Términos y Condiciones | COMINORSA</title>");
+      expect(terminos).toContain(
+        '<link rel="canonical" href="https://cominorsa.com/terminos">',
+      );
     }));
 
   test("never emits a URL on the stale, non-resolving .com.pe domain, on any page", () =>

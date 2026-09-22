@@ -269,6 +269,16 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
   `feat/bun-vanilla-migration` (that merge/PR decision belongs to the
   orchestrator/user per `feature-branch-chain`).
 
+- Parent review of T3: spot check `bun test src/` → 70 pass, 0 fail;
+  screenshot of `dist-static/seguridad-minera/` matches the Next page
+  except fonts (T5) and the cookie banner (T7). Fixed the one lint
+  error T2 left (`no-namespace` on the `JSX` namespace that
+  `jsxImportSource` requires) in `26d6261`; `pnpm lint` → 0 errors.
+- Slice 2 (`feat/bun-vanilla-migration-t3`) = T3 + G1, ~846 authored
+  lines — over the ~400 advisory budget as one coherent unit. RDD is off
+  for this clone, so no native review. Push/PR into the feature branch
+  is the user's decision.
+
 ## Next step
 
 T4 (static `<head>`/metadata system: OG/Twitter tags, favicon/icon

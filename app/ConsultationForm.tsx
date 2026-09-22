@@ -1,11 +1,13 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useState, useSyncExternalStore, type FormEvent } from "react";
 import {
   CONTACT_SUBMIT_EVENT,
   PRIMARY_WHATSAPP_NUMBER,
   SECONDARY_WHATSAPP_NUMBER,
 } from "./constants";
+
+const subscribeToHydration = () => () => {};
 
 const serviceOptions = [
   "Formalización minera e IGAFOM",
@@ -20,21 +22,19 @@ const serviceOptions = [
 ];
 
 export function ConsultationForm() {
-  const [sent, setSent] = useState(false);
+  const [whatsAppOpened, setWhatsAppOpened] = useState(false);
   // Server-rendered HTML has no onSubmit wired at all — that's a React
   // prop, not an HTML attribute — so a submit click landing before this
-  // client component finishes hydrating falls through to the browser's
-  // *native* form submission: GET, every field (including the client's
-  // name/city/question) appended to the URL as a query string. `mounted`
-  // starts false on both server and first client render (so this can't
-  // itself cause a hydration mismatch), then flips true in an effect,
-  // which only fires after hydration has already attached the real
-  // handler — closing the gap instead of just narrowing it with a delay.
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // client component finishes hydrating falls through to a native GET with
+  // the form fields in the URL. useSyncExternalStore supplies a stable false
+  // server snapshot and flips to the true client snapshot only after React
+  // has attached the submit handler, without synchronously setting state in
+  // an effect.
+  const mounted = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,7 +64,7 @@ export function ConsultationForm() {
     event.currentTarget.dataset.event = CONTACT_SUBMIT_EVENT;
     event.currentTarget.dataset.eventContext = service;
     window.open(url, "_blank", "noopener,noreferrer");
-    setSent(true);
+    setWhatsAppOpened(true);
 
     fetch("/api/crm-lead", {
       method: "POST",
@@ -88,6 +88,7 @@ export function ConsultationForm() {
             type="text"
             name="name"
             autoComplete="name"
+            maxLength={120}
             placeholder="Escribe tu nombre"
             required
           />
@@ -98,6 +99,7 @@ export function ConsultationForm() {
             type="text"
             name="city"
             autoComplete="address-level1"
+            maxLength={120}
             placeholder="Ej. Piura"
             required
           />
@@ -132,6 +134,7 @@ export function ConsultationForm() {
           name="question"
           rows={5}
           minLength={10}
+          maxLength={2000}
           placeholder="Cuéntanos brevemente qué necesitas resolver"
           required
         />
@@ -152,9 +155,11 @@ export function ConsultationForm() {
         Al continuar se abrirá WhatsApp. El pago y el horario de atención se
         coordinan directamente con COMINORSA.
       </p>
-      <p className="form-status" aria-live="polite">
-        {sent ? "Tu mensaje fue preparado y enviado a WhatsApp." : ""}
-      </p>
+          <p className="form-status" aria-live="polite">
+            {whatsAppOpened
+              ? "Se abrió WhatsApp con tu mensaje preparado. Revísalo y envíalo para completar tu consulta."
+              : ""}
+          </p>
     </form>
   );
 }

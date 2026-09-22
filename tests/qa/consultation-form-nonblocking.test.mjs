@@ -7,7 +7,7 @@
 // source-order assertion only proves statement ORDER in the source text,
 // not runtime behavior. This file renders the real component in jsdom,
 // mocks window.open and fetch, submits the form, and asserts window.open
-// plus the "sent" status text both land synchronously while the mocked
+// plus the WhatsApp handoff status text both land synchronously while the mocked
 // fetch's promise is still pending/unresolved (or rejecting) — proving the
 // requirement from openspec/changes/website-crm-lead-capture/specs/
 // website-lead-capture/spec.md's "Non-Blocking Lead Capture Call" at
@@ -83,13 +83,24 @@ test.afterEach(() => {
   delete globalThis.fetch;
 });
 
-test("window.open and the sent status fire before a slow CRM fetch ever resolves", (t) => {
+test("native field limits match the CRM route limits", () => {
+  renderForm();
+
+  assert.equal(document.querySelector('input[name="name"]').maxLength, 120);
+  assert.equal(document.querySelector('input[name="city"]').maxLength, 120);
+  assert.equal(
+    document.querySelector('textarea[name="question"]').maxLength,
+    2000,
+  );
+});
+
+test("window.open and the handoff status fire before a slow CRM fetch ever resolves", (t) => {
   let fetchSettled = false;
   let resolveFetch;
   const pendingFetch = new Promise((resolve) => {
     resolveFetch = resolve;
   });
-  const fetchMock = t.mock.fn((..._args) =>
+  const fetchMock = t.mock.fn(() =>
     pendingFetch.then(() => {
       fetchSettled = true;
       return { ok: true };
@@ -116,8 +127,8 @@ test("window.open and the sent status fire before a slow CRM fetch ever resolves
   );
   assert.equal(
     getStatusText(),
-    "Tu mensaje fue preparado y enviado a WhatsApp.",
-    "the sent status must render synchronously on submit",
+    "Se abrió WhatsApp con tu mensaje preparado. Revísalo y envíalo para completar tu consulta.",
+    "the status must truthfully say the user still completes sending in WhatsApp",
   );
   assert.equal(
     fetchMock.mock.calls.length,
@@ -154,8 +165,8 @@ test("a rejecting CRM fetch is silently absorbed and never blocks or delays wind
   );
   assert.equal(
     getStatusText(),
-    "Tu mensaje fue preparado y enviado a WhatsApp.",
-    "the sent status must render even though the CRM fetch will reject",
+    "Se abrió WhatsApp con tu mensaje preparado. Revísalo y envíalo para completar tu consulta.",
+    "the truthful WhatsApp handoff status must render even though the CRM fetch will reject",
   );
   assert.equal(fetchMock.mock.calls.length, 1);
 

@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Request } from "@playwright/test";
+import { expect, test, type Page } from "./guarded-test";
 
 /**
  * Stubs `window.open` and records its arguments instead of tracking a real
@@ -30,17 +30,6 @@ async function getOpenedUrls(page: Page): Promise<string[]> {
   return page.evaluate(
     () => (window as unknown as { __openCalls: string[] }).__openCalls,
   );
-}
-
-/** Same reasoning as stubWindowOpen's doc comment (see above) — a
- * manually-collected listener armed before the click, rather than
- * `page.waitForRequest()`. */
-function captureRequestsTo(page: Page, urlSubstring: string) {
-  const requests: Request[] = [];
-  page.on("request", (req) => {
-    if (req.url().includes(urlSubstring)) requests.push(req);
-  });
-  return requests;
 }
 
 // A known, expected React/CSP interaction, not a bug: browsers hide a
@@ -120,21 +109,28 @@ test.describe("consultation form — the real client-facing lead flow", () => {
       "Necesito ayuda para renovar mi inscripcion REINFO antes del vencimiento de este mes.",
   };
 
-  test("filling and submitting sends the lead to WhatsApp and to /api/crm-lead with matching data", async ({
+  test("submitting opens the prepared WhatsApp message and posts matching lead data", async ({
     page,
+    crmLeadPayloads,
   }) => {
     await stubWindowOpen(page);
     await gotoAndWaitForHydration(page);
     await page.locator("#consulta").scrollIntoViewIfNeeded();
 
-    await page.fill('input[name="name"]', SAMPLE_LEAD.name);
-    await page.fill('input[name="city"]', SAMPLE_LEAD.city);
+    const nameInput = page.getByLabel("Nombre completo");
+    const cityInput = page.getByLabel("Ciudad o región");
+    const questionInput = page.getByLabel("Escribe tu consulta");
+    await expect(nameInput).toHaveAttribute("maxlength", "120");
+    await expect(cityInput).toHaveAttribute("maxlength", "120");
+    await expect(questionInput).toHaveAttribute("maxlength", "2000");
+
+    await nameInput.fill(SAMPLE_LEAD.name);
+    await cityInput.fill(SAMPLE_LEAD.city);
     await page.selectOption('select[name="service"]', {
       label: SAMPLE_LEAD.service,
     });
-    await page.fill('textarea[name="question"]', SAMPLE_LEAD.question);
+    await questionInput.fill(SAMPLE_LEAD.question);
 
-    const apiRequests = captureRequestsTo(page, "/api/crm-lead");
     await page.click('.consultation-form button[type="submit"]');
 
     // WhatsApp: right number, right message content.
@@ -146,15 +142,10 @@ test.describe("consultation form — the real client-facing lead flow", () => {
     expect(decodedUrl).toContain(SAMPLE_LEAD.city);
     expect(decodedUrl).toContain(SAMPLE_LEAD.service);
 
-    // /api/crm-lead: same data, forwarded as JSON (this is the boundary
-    // ConsultationForm owns — what the route handler does with it once it
-    // has the data is covered by tests/qa/crm-lead-route.test.mjs, and by
-    // manual verification against a real local Twenty instance).
-    await expect.poll(() => apiRequests.length).toBeGreaterThan(0);
-    const apiRequest = apiRequests[0];
-    expect(apiRequest.method()).toBe("POST");
-    const body = apiRequest.postDataJSON();
-    expect(body).toMatchObject({
+    // The guarded fixture captures the JSON at the browser boundary and
+    // fulfills it without allowing the local app to invoke a provider.
+    await expect.poll(() => crmLeadPayloads.length).toBeGreaterThan(0);
+    expect(crmLeadPayloads[0]).toMatchObject({
       name: SAMPLE_LEAD.name,
       city: SAMPLE_LEAD.city,
       service: SAMPLE_LEAD.service,
@@ -163,12 +154,13 @@ test.describe("consultation form — the real client-facing lead flow", () => {
     });
 
     await expect(page.locator(".form-status")).toHaveText(
-      "Tu mensaje fue preparado y enviado a WhatsApp.",
+      "Se abrió WhatsApp con tu mensaje preparado. Revísalo y envíalo para completar tu consulta.",
     );
   });
 
   test("selecting the secondary WhatsApp line routes both effects to that number", async ({
     page,
+    crmLeadPayloads,
   }) => {
     await stubWindowOpen(page);
     await gotoAndWaitForHydration(page);
@@ -182,26 +174,23 @@ test.describe("consultation form — the real client-facing lead flow", () => {
     await page.selectOption('select[name="whatsapp"]', "51987817100");
     await page.fill('textarea[name="question"]', SAMPLE_LEAD.question);
 
-    const apiRequests = captureRequestsTo(page, "/api/crm-lead");
     await page.click('.consultation-form button[type="submit"]');
 
     await expect.poll(() => getOpenedUrls(page)).toHaveLength(1);
     const [openedUrl] = await getOpenedUrls(page);
     expect(openedUrl).toContain("wa.me/51987817100");
 
-    await expect.poll(() => apiRequests.length).toBeGreaterThan(0);
-    const body = apiRequests[0].postDataJSON();
-    expect(body.whatsappLine).toBe("51987817100");
+    await expect.poll(() => crmLeadPayloads.length).toBeGreaterThan(0);
+    expect(crmLeadPayloads[0]).toMatchObject({ whatsappLine: "51987817100" });
   });
 
   test("required fields block submission — no popup, no API call", async ({
     page,
+    crmLeadPayloads,
   }) => {
     await stubWindowOpen(page);
     await gotoAndWaitForHydration(page);
     await page.locator("#consulta").scrollIntoViewIfNeeded();
-
-    const apiRequests = captureRequestsTo(page, "/api/crm-lead");
 
     // Submit with every field left empty — native HTML5 required validation
     // must block it before the form's own JS handler ever runs.
@@ -209,7 +198,7 @@ test.describe("consultation form — the real client-facing lead flow", () => {
     await page.waitForTimeout(300);
 
     expect(await getOpenedUrls(page)).toEqual([]);
-    expect(apiRequests).toHaveLength(0);
+    expect(crmLeadPayloads).toHaveLength(0);
     await expect(page.locator(".form-status")).toHaveText("");
   });
 });

@@ -33,6 +33,9 @@ interface VNode {
   readonly props: Props;
 }
 
+// TypeScript resolves JSX types from a `JSX` namespace exported by the
+// `jsxImportSource` module; there is no ES-module equivalent.
+// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace JSX {
   export type Element = VNode;
   // Permissive for now: any tag name, any prop bag. Tightening this to

@@ -27,6 +27,36 @@ test("scripts/validate-env.mjs exits 0 with current project state", () => {
   assert.match(result.stdout, /all required checks passed/);
 });
 
+test("integrity-qualified packageManager matches the pnpm user-agent semver", () => {
+  const result = spawnSync(
+    "node",
+    [resolve(ROOT, "scripts/validate-env.mjs")],
+    {
+      encoding: "utf8",
+      cwd: ROOT,
+      env: {
+        ...process.env,
+        npm_config_user_agent: "pnpm/11.25.0 npm/? node/v22.13.0 linux x64",
+      },
+    },
+  );
+  assert.equal(result.status, 0);
+  assert.doesNotMatch(result.stdout, /mismatch with package\.json/);
+});
+
+test("CI lets pnpm/action-setup use packageManager instead of pinning another version", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const workflow = await readFile(
+    resolve(ROOT, ".github/workflows/ci.yml"),
+    "utf8",
+  );
+  const setupStep = workflow.match(
+    /- name: Setup pnpm[\s\S]*?(?=\n\s+- name: Setup Node)/,
+  )?.[0];
+  assert.ok(setupStep, "Setup pnpm step missing");
+  assert.doesNotMatch(setupStep, /\bversion:/);
+});
+
 test("package.json declares the `validate` script", async () => {
   const { readFile } = await import("node:fs/promises");
   const pkg = JSON.parse(await readFile(resolve(ROOT, "package.json"), "utf8"));

@@ -60,7 +60,7 @@ check(
   `found ${process.versions.node}`,
 );
 const pkg = readJson("package.json", join(ROOT, "package.json")) ?? {};
-const expectedPnpm = pkg.packageManager?.replace("pnpm@", "");
+const expectedPnpm = pkg.packageManager?.replace("pnpm@", "").split("+", 1)[0];
 const actualPnpm = process.env.npm_config_user_agent?.match(/pnpm\/(\S+)/)?.[1];
 note(
   `pnpm ${expectedPnpm} (package.json pins this)`,
@@ -137,7 +137,8 @@ check(
 );
 check(
   "proxy.ts uses a per-request nonce, not 'unsafe-inline', in script-src",
-  /'nonce-\$\{nonce\}'/.test(proxyRaw) && !/script-src[^`]*'unsafe-inline'/.test(proxyRaw),
+  /'nonce-\$\{nonce\}'/.test(proxyRaw) &&
+    !/script-src[^`]*'unsafe-inline'/.test(proxyRaw),
   "expected a nonce-based script-src in proxy.ts",
 );
 

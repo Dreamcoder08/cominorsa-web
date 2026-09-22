@@ -74,32 +74,30 @@ itself.
 - **Test runners**: `node --test` for `tests/qa/*.test.mjs` (existing,
   unchanged); `bun test` for new Bun-native modules under `src/`;
   `playwright test` for e2e.
-- **Delivery strategy**: `ask-on-risk`. Chain strategy: **PENDING** — ask
-  before the first slice boundary.
+- **Delivery strategy**: `ask-on-risk`. Chain strategy:
+  **`feature-branch-chain`** (user choice, 2026-09-22) — every slice PR
+  targets `feat/bun-vanilla-migration`; `main` receives the whole
+  migration only at the T11 cutover, so Next.js keeps serving until then.
 - **Forecast**: ~2,400 authored changed lines → ~6 slices at the ~400-line
   delivery budget.
 - **Skills resolved by registry** (`.atl/skill-registry.md`):
   `work-unit-commits`, `chained-pr`, `skill-creator`.
 
-## Blocker
+## Blocker (resolved)
 
-`main` carries ~613 insertions of uncommitted work (Resend email
-notification, `app/api/next-business-day/`, typecheck tooling, provider
-isolation e2e). It overlaps this migration in `db/index.ts`,
-`app/ConsultationForm.tsx`, `app/api/crm-lead/route.ts`, `tsconfig.json`,
-`package.json`, `vite.config.ts`. Carried onto this branch uncommitted by
-`git checkout -b`. **T0 and T1 are blocked until the user decides its
-fate.** Tasks touching only new paths may proceed.
+The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
+`e4e18bb`) and merged into this branch before T0. No longer blocking.
 
 ## Tasks
 
-- [ ] **T0** — Delete dead Drizzle/D1 scaffolding (`db/`, `drizzle/`,
-      `drizzle.config.ts`, the `drizzle-orm` dep). *BLOCKED: `db/index.ts`
-      has uncommitted changes.* Route: inline.
+- [x] **T0** — Delete dead Drizzle/D1 scaffolding (`db/`, `drizzle/`,
+      `drizzle.config.ts`, the `drizzle-orm` dep). Route: inline. **DONE**
+      — commit `36060e7`.
 - [ ] **T1** — Adopt Bun toolchain (`bunfig.toml`, lockfile, scripts)
       without breaking `node --test` or the pre-commit `pnpm validate`
-      hook. *BLOCKED: `package.json`/`tsconfig.json` have uncommitted
-      changes.* Route: inline.
+      hook. Route: inline. Partial: `pnpm verify` gate (typecheck +
+      `bun test src/` + `pnpm test`) pinned by
+      `tests/qa/verify-script.test.mjs` (3 pass).
 - [x] **T2** — Hand-written `jsx-runtime` rendering JSX to escaped HTML
       strings, with unit tests. Security-critical (XSS via attribute and
       text escaping). Route: delegated writer. **DONE** — `src/html/jsx-runtime.ts`
@@ -172,11 +170,9 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
   (`odd/bun-vanilla-migration/tasks`).
 - **T2 complete and verified.** ~384 authored lines. Running slice total:
   ~384 of the ~400-line delivery budget.
-- T0 and T1 remain blocked on the uncommitted-work decision. Asked; no
-  confirmed answer recorded yet, so nothing of the user's has been
-  committed, stashed, or reverted.
+- T0 done (`36060e7`); blocker resolved.
+- Slice 1 = T0 + T2 + `verify` gate → PR into the feature branch.
 
 ## Next step
 
-Get an explicit decision on the ~613 uncommitted lines. Then T0/T1. T3 is
-the next unblocked task and will resolve gap G1.
+T3 (Bun.build pipeline for `seguridad-minera`), resolving gap G1.

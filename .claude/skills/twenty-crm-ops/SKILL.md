@@ -18,6 +18,7 @@ Load when the task touches `docker/twenty/`, any `pnpm twenty:*` script, Twenty'
 - Never assume a first-boot `docker compose up -d` completed instantly — the server's healthcheck has a 210s `start_period` for cold start (see `docker-compose.yml` comment); use `pnpm twenty:setup`, which waits correctly, not a raw `up -d && curl` in a loop.
 - Targeting production: never point these scripts at `docker/twenty/.env` — build a separate temp env file with the production `SERVER_URL`/`TWENTY_API_KEY` (from that instance's own Settings -> APIs & Webhooks), and delete it after use. See `docker/twenty/PRODUCTION.md`.
 - After any destructive REST call (`DELETE /rest/...`) against production, verify the result with a `GET` before considering the step done.
+- No script here renames or reorders an existing SELECT field's options (e.g. Opportunity "Etapa" stages) — only `create-fields.mjs` (create-if-missing) exists. Do it by hand in Settings -> Modelo de datos -> <object> -> <field>, and when editing an option's label, commit by clicking away (or onto the next option) — never press Enter: Enter both confirms the current edit AND creates a new blank "Option N" row, silently padding the list. If scripting this later, the likely shape is `PATCH /rest/metadata/fields/:id` with a full updated `options` array (mirrors the POST body in `create-fields.mjs`'s `createField`), but this is unverified — confirm against a live instance before trusting it.
 
 ## Execution Steps
 

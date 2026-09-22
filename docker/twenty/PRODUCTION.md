@@ -1,18 +1,32 @@
 # Twenty CRM — Production (VPS)
 
 Companion to `docker/twenty/README.md` (which covers the **local** Docker
-stack). This document is the actual, live production deployment: a
-self-hosted VPS running the same `docker-compose.yml`, reachable 24/7 and
-wired to `app/api/crm-lead/route.ts` via Cloudflare Workers secrets.
+stack). This document records the deployed topology and its operating
+procedures. Statements about provisioning, backup integrity, API contents, or
+end-to-end lead creation are historical evidence unless a current check is
+explicitly identified below.
+
+## Evidence status
+
+**Current read-only smoke evidence:** `HEAD`/`GET` returned HTTP 200 with valid
+TLS for both `https://cominorsa.com` and
+`https://157-245-247-246.nip.io`. These checks did not authenticate, create a
+lead, inspect email delivery, inspect containers, or verify backup freshness or
+restorability.
+
+Commands in this document that create, import, restore, redeploy, or delete
+data are **write operations**. Run them only with explicit authorization and a
+cleanup/rollback plan. Prefer the read-only smoke checks above for routine
+reachability checks.
 
 Implements `openspec/changes/archive/2026-09-06-twenty-crm-cloud-deploy/proposal.md`. Where this
 document and the proposal disagree, this document reflects what is actually
 running (see "Deviations from the original proposal" below).
 
-## Current deployment
+## Recorded deployment configuration
 
 | Item | Value |
-|---|---|
+| --- | --- |
 | Provider | DigitalOcean (not Hetzner — see Deviations) |
 | Droplet | `ubuntu-s-2vcpu-4gb-nyc1`, 2 vCPU / 4GB RAM, region NYC1 |
 | OS | Ubuntu 24.04 LTS |
@@ -39,7 +53,7 @@ directly and bypasses `ufw` rules for published ports, so binding to
 `127.0.0.1` in `docker-compose.yml` is the actual control, not the firewall
 rule alone.
 
-## Security hardening applied
+## Security hardening recorded at deployment
 
 - **No root SSH.** `PermitRootLogin no` in `/etc/ssh/sshd_config`. All admin
   access is through the `deploy` user (passwordless sudo, in the `docker`
@@ -60,7 +74,10 @@ rule alone.
 
 ## Backups
 
-Three independent copies, in order of how automatically-available each one is:
+The following is the recorded backup configuration, not a claim that recent
+jobs or objects were inspected during the current read-only smoke check.
+
+Three configured copies, in order of how automatically-available each one is:
 
 1. **VPS-local**: `/opt/twenty/backup-twenty.sh` runs a `pg_dump` of the
    `default` database inside the `db` container, gzips it to
@@ -84,8 +101,10 @@ Both VPS-side scripts are chained in the `deploy` user's crontab, daily at
 
 Logs: `/opt/twenty/backups/backup.log` and `/opt/twenty/backups/backup-to-spaces.log`.
 
-**Integrity verified**: downloaded a real uploaded object back from Spaces
-and compared its MD5 against the local original — byte-identical.
+**Historical integrity verification:** a real uploaded object was downloaded
+from Spaces and its MD5 matched the local original. This does not establish the
+freshness or integrity of current backups; verify those separately with
+explicit operational authorization.
 
 **Off-box copy to the user's own machine**: `docker/twenty/pull-backup.sh`
 runs on the user's own Windows machine (Task Scheduler task
@@ -137,9 +156,9 @@ different local port — never touching `/opt/twenty` on the VPS or
 4. Verified via REST with production's own API key (still valid — it's part of the restored data): `GET /rest/companies` → `totalCount: 799`, `GET /rest/people` → `totalCount: 1222`, both matching production exactly; spot-checked one full company record, all 15 custom fields present with real values.
 5. Torn down completely (`down -v`) — nothing from this drill persists anywhere.
 
-This confirms the backup is not just non-empty but **actually restorable**,
-including its encrypted contents, without needing a live Twenty signup —
-the fastest true disaster-recovery path if this exact VPS is ever lost.
+This historical drill confirmed that the sampled backup was restorable,
+including its encrypted contents, without needing a live Twenty signup. It does
+not prove that current backups are fresh or restorable.
 
 ## Redeploying / updating the stack
 
@@ -177,6 +196,9 @@ Wipe-before-reimport section).
 
 ## Cloudflare Workers wiring
 
+Secret changes and the end-to-end POST below mutate production. They are not
+routine smoke checks and require explicit authorization.
+
 ```bash
 pnpm exec wrangler secret put TWENTY_API_KEY --name cominorsa-web
 pnpm exec wrangler secret put TWENTY_API_URL --name cominorsa-web
@@ -186,12 +208,15 @@ pnpm exec wrangler secret put TWENTY_API_URL --name cominorsa-web
 Setting a secret creates a new Worker deployment automatically — no separate
 `wrangler deploy` is needed for the secret to take effect.
 
-Verify end-to-end against the real production domain:
+For a read-only reachability check, use `curl --head` or a normal GET against
+the two URLs in "Evidence status". To verify lead creation end-to-end, obtain
+explicit write authorization, use an identifiable test record, and confirm its
+cleanup before running:
 
 ```bash
 curl -X POST https://cominorsa.com/api/crm-lead \
   -H "Content-Type: application/json" \
-  -d '{"name":"Test Lead","city":"Lima","service":"...","question":"...","whatsappLine":"..."}'
+  -d '{"name":"Test Lead","city":"Lima","service":"REINFO","question":"Prueba operativa autorizada de captura CRM.","whatsappLine":"51910728575"}'
 ```
 
 (`https://cominorsa-web.<workers-dev-subdomain>.workers.dev/api/crm-lead`
@@ -208,17 +233,19 @@ test record afterward.
    records) — not delegated to any nameserver. **This does not block
    anything currently live**: the real production domain is
    `cominorsa.com` (purchased via Cloudflare Registrar — see
-   `COMINORSA-COM-DOMAIN-SETUP.md`), confirmed serving the real site and
-   the full CRM lead-capture flow end-to-end (`POST
-   https://cominorsa.com/api/crm-lead` verified to create a real Person
-   record on this VPS's Twenty instance). `.com.pe` was always meant as an
+   `COMINORSA-COM-DOMAIN-SETUP.md`). Historical write verification recorded
+   that `POST https://cominorsa.com/api/crm-lead` created a Person on this
+   VPS's Twenty instance; the current smoke evidence is read-only. `.com.pe`
+   was always meant as an
    optional secondary domain redirecting to `.com` (per that doc's own
    rationale), never a requirement — it was added as a Cloudflare zone at
    some point (status `pending`, assigned nameservers
    `harleigh.ns.cloudflare.com` / `johnathan.ns.cloudflare.com`) but the
    registrar-side NS delegation was never finished. Finishing it is a
    nice-to-have, not a fix for anything broken.
-2. **Backups are not off-box** (see Backups section above).
+2. **Current backup health is unverified.** Off-box backups are configured as
+   recorded above, but the current read-only smoke check did not inspect job
+   logs, object freshness, integrity, or restore behavior.
 3. **No monitoring/alerting** if the VPS or any container goes down —
    `docker compose ps` / `systemctl status` require someone to check
    manually. Not in scope of the original proposal either.

@@ -27,6 +27,7 @@ Use whenever asked to publish/deploy this site, or when a user references what's
 3. If credentials are present: `pnpm cf:deploy`.
 4. If missing: tell the user exactly what's missing. Give them the `.env` path (they fill it in themselves — see the "never ask them to paste it" rule above) as the primary option, or they run `! pnpm cf:deploy` themselves (their own terminal may have the vars, or can complete an interactive `wrangler login` this sandbox can't).
 5. Other scripts available if relevant: `cf:rollback`, `cf:status`, `cf:watch`, `cf:bootstrap`, `cf:smoke`, `cf:domain` — check `package.json` scripts before assuming one exists.
+6. After `cf:rollback`, always follow with `pnpm cf:smoke` before telling the user it's done — a rollback that silently failed or landed on the wrong deployment is worse than an obvious deploy failure, since nothing in the rollback output itself proves the live site actually changed.
 
 ## Output Contract
 

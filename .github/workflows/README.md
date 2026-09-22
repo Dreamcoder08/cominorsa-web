@@ -6,7 +6,7 @@ to `main`.
 ## Pipeline
 
 ```
-checkout → setup pnpm 11.22.0 → setup Node 22.13.0 → cache pnpm store
+checkout → setup pnpm 11.22.0 → setup Node 22.18.0 → cache pnpm store
        → pnpm install --frozen-lockfile
        → pnpm run validate
        → pnpm audit --audit-level=high

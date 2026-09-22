@@ -52,14 +52,17 @@ function note(name, cond, msg) {
 
 process.stdout.write("\n== Environment validation ==\n\n");
 
-// 1. Node + pnpm version
-const nodeMajor = Number(process.versions.node.split(".")[0]);
-check(
-  "Node >= 22.13.0",
-  nodeMajor >= 22 && process.versions.node >= "22.13.0",
-  `found ${process.versions.node}`,
-);
+// 1. Node + pnpm version. `engines.node` is the single source of truth;
+// versions are compared numerically (as strings, "22.9.0" >= "22.13.0").
 const pkg = readJson("package.json", join(ROOT, "package.json")) ?? {};
+const minNode = pkg.engines?.node?.replace(/^>=/, "") ?? "0.0.0";
+function atLeast(version, minimum) {
+  const [a, b] = [version, minimum].map((v) => v.split(".").map(Number));
+  const i = a.findIndex((n, idx) => n !== b[idx]);
+  return i === -1 || a[i] > b[i];
+}
+const nodeOk = atLeast(process.versions.node, minNode);
+check(`Node >= ${minNode}`, nodeOk, `found ${process.versions.node}`);
 const expectedPnpm = pkg.packageManager?.replace("pnpm@", "").split("+", 1)[0];
 const actualPnpm = process.env.npm_config_user_agent?.match(/pnpm\/(\S+)/)?.[1];
 note(

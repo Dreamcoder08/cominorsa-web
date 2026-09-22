@@ -106,9 +106,59 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
       1 fail) → GREEN (35 pass, 0 fail). Parent spot check re-ran
       `bun test src/html/jsx-runtime.test.ts` → 35 pass.
       `bunx tsc --noEmit src/html/jsx-runtime.ts` → exit 0.
-- [ ] **T3** — `Bun.build` pipeline emitting one page end-to-end
+- [x] **T3** — `Bun.build` pipeline emitting one page end-to-end
       (`seguridad-minera`, 13 lines) with hashed CSS, verified against the
-      existing QA suite. Route: delegated writer.
+      existing QA suite. Route: delegated writer. **DONE** —
+      `src/build/{build,css,document,service-page,site-shell,site-data}.{ts,tsx}`
+      + matching `*.test.ts` (34 new tests / 55 assertions across 6 files) +
+      `src/html/jsx-dev-runtime.ts` resolving G1. Output: `dist-static/`
+      (new, gitignored, no collision with Next's `dist/`).
+      Commits: `9fe50b1` (G1) and `b9a1ff1` (T3 pipeline).
+      Strict TDD observed per unit — RED then GREEN, in commit order:
+      G1 (`jsx-dev-runtime`): RED `Cannot find module
+      './jsx-dev-runtime' ... 0 pass 1 fail` → GREEN 5 pass. `document`:
+      RED `Cannot find module './document' ... 0 pass 1 fail` → GREEN 9
+      pass. `site-shell`: RED `Cannot find module './site-shell' ... 0
+      pass 1 fail` → GREEN 7 pass. `service-page`: RED `Cannot find
+      module './service-page' ... 0 pass 1 fail` → GREEN 6 pass. `css`:
+      RED `Cannot find module './css' ... 0 pass 1 fail` → GREEN 4 pass.
+      `build`: RED `Cannot find module './build' ... 0 pass 1 fail` →
+      GREEN 4 pass. Combined `bun test src/`: 70 pass, 0 fail (includes
+      T2's 35 + G1's 5 + T3's 30).
+      Design choice (JSX coexistence): no scoped tsconfig. Every new
+      `.tsx` under `src/` carries a per-file
+      `/** @jsxImportSource ../html */` pragma; root `tsconfig.json`
+      keeps `jsx: "react-jsx"` for Next unchanged. Empirically verified
+      with a throwaway probe file against the real project tsconfig
+      (`bunx tsc --noEmit -p <probe extending tsconfig.json>` → exit 0)
+      before writing any page code — TS's react-jsx mode natively
+      supports per-file import-source overrides via this pragma, so no
+      new tsconfig, no build-config duplication.
+      CSS hashing: `Bun.build({ naming: "[name]-[hash].[ext]" })`'s own
+      content hash, not a separate `Bun.CryptoHasher` pass — empirically
+      verified deterministic (same content → same hash across runs,
+      hash unaffected by comment-only edits since minify strips
+      comments before hashing) and content-sensitive (a real value
+      change → a different hash).
+      `app/globals.css`'s `@import "tailwindcss";` still resolves
+      through Bun's bundler (inlines the Tailwind package's own
+      preflight/theme CSS) but Bun's CSS parser doesn't understand
+      Tailwind v4's `@theme`/`@tailwind` at-rules — non-fatal warnings,
+      passed through verbatim in the output. Not a regression (no
+      Tailwind utility classes are used anywhere in this page's
+      component tree — verified by grep); full removal is T11.
+      Verification: `bun test src/` 70/70 pass · `pnpm typecheck` exit 0
+      · `pnpm lint` 1 pre-existing error unchanged from baseline HEAD
+      (T2's `namespace JSX`, confirmed via `git stash` diff — not
+      introduced here) · `pnpm run build:static` produces
+      `dist-static/seguridad-minera/index.html` + hashed CSS + copied
+      `public/` assets · `pnpm test` 184/184 pass (Next build
+      unaffected) · real Playwright screenshot of the served
+      `dist-static/` output, compared side-by-side against the current
+      Next page: layout/spacing/colors/copy match; the only differences
+      are the documented T5 (fallback serif/sans instead of self-hosted
+      Archivo/Newsreader) and T7 (no cookie-consent banner yet) gaps.
+      Route confirmed: delegated writer.
 - [ ] **T4** — Static `<head>`/metadata system replacing
       `generateMetadata`, `viewport`, and the JSON-LD block. Route:
       delegated writer.
@@ -131,10 +181,14 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
 
 ## Carried-forward gaps (found reviewing T2, to resolve in T3/T4)
 
-- **G1 (T3)** — `jsxImportSource` also requires a `jsx-dev-runtime` entry
-  point. Bun emits `jsxDEV` in development; only `jsx`/`jsxs` exist today,
-  so dev builds will fail until `src/html/jsx-dev-runtime.ts` re-exports
-  them. Not a T2 defect — T2 was explicitly scoped to direct calls.
+- **G1 (T3) — RESOLVED.** `jsxImportSource` also requires a
+  `jsx-dev-runtime` entry point. Bun emits `jsxDEV` in development; only
+  `jsx`/`jsxs` existed after T2, so dev builds would have failed until
+  `src/html/jsx-dev-runtime.ts` re-exported them. Fixed in T3:
+  `jsxDEV(type, props, key, isStaticChildren, source, self)` delegates
+  to `jsx(type, props, key)`, discarding the three dev-only debug
+  params the same way `jsx`/`jsxs` already discard `key`. RED → GREEN
+  evidence under T3 above.
 - **G2 (T4)** — The JSON-LD block is the site's only raw-HTML site
   (`app/layout.tsx:117-128`, the one `dangerouslySetInnerHTML`). Passing it
   through `raw()` MUST keep the existing
@@ -145,6 +199,38 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
 - Verified non-issues: zero `style={{...}}` object props and zero other
   `dangerouslySetInnerHTML` in `app/`, so the runtime needs neither a
   style-object serializer nor a second raw-HTML path.
+
+## Carried-forward gaps (found in T3, to resolve in T4/T5/T7/T11)
+
+- **T4 leftover** — `src/build/document.tsx`'s `<head>` is deliberately
+  minimal (charset, viewport, title, description, canonical,
+  stylesheet). Still missing, and needed for parity with
+  `app/layout.tsx`'s `generateMetadata`: OG/Twitter tags, favicon/icon
+  links, `theme-color`, `applicationName`, and the JSON-LD block (G2,
+  needs `raw()` with the exact escaping treatment above).
+- **T5 leftover** — No self-hosted fonts yet. The static page falls
+  back to the browser's default serif/sans stack instead of
+  Archivo/Newsreader/Geist Mono; confirmed visually in the T3
+  screenshot comparison (headings render in a generic serif, not
+  Newsreader italic).
+- **T7 leftovers, all confirmed present in `src/build/site-shell.tsx`**:
+  - `MobileNavStatic` renders the closed-state DOM of `app/MobileNav.tsx`
+    (`aria-expanded="false"`, `data-open="false"`, `inert`) with no
+    open/close behavior, no focus trap, no Escape handling.
+  - `CookiePreferencesButtonStatic` renders the button with no
+    click handler (would need `window.localStorage` + reload).
+  - The cookie-consent banner itself (`app/CookieConsent.tsx`,
+    rendered by `app/layout.tsx` as a sibling of `<main>`, not by
+    `ServicePageLayout`) is not rendered at all yet in the static
+    build — confirmed by the T3 screenshot diff (Next shows the
+    Aceptar/Rechazar banner; the static build doesn't). It's
+    `useSyncExternalStore`-driven and meaningless without JS, so this
+    was scoped out of T3 rather than ported as dead markup; T7 needs to
+    decide whether it becomes inline-visible-by-default markup or a
+    template injected by the widget's own script.
+  - GA4 script injection (also in `CookieConsent.tsx`, gated on
+    `consent === "granted"`) has no static-build equivalent yet —
+    expected, since it's conditional client behavior.
 
 ## Acceptance criteria
 
@@ -172,7 +258,22 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
   ~384 of the ~400-line delivery budget.
 - T0 done (`36060e7`); blocker resolved.
 - Slice 1 = T0 + T2 + `verify` gate → PR into the feature branch.
+- **T3 complete and verified**, resolving G1. ~846 authored lines
+  (`git diff --stat feat/bun-vanilla-migration..HEAD`) — over the
+  ~400-line advisory heuristic; not split artificially, since it's one
+  coherent unit (build pipeline + ported components + G1 + full
+  strict-TDD coverage for a page the QA suite doesn't otherwise touch).
+  Running slice total: ~384 (T2) + ~846 (T3) ≈ 1,230 of the ~2,400-line
+  forecast. Branch `feat/bun-vanilla-migration-t3` carries commits for
+  G1, the T3 build pipeline, and this doc update — not yet merged into
+  `feat/bun-vanilla-migration` (that merge/PR decision belongs to the
+  orchestrator/user per `feature-branch-chain`).
 
 ## Next step
 
-T3 (Bun.build pipeline for `seguridad-minera`), resolving gap G1.
+T4 (static `<head>`/metadata system: OG/Twitter tags, favicon/icon
+links, `theme-color`, `applicationName`, and the JSON-LD block per gap
+G2's exact escaping requirement) — see "Carried-forward gaps (found in
+T3...)" above for the full list this leaves open, including the T5
+font gap and the T7 widget/cookie-banner gaps confirmed by the T3
+screenshot comparison.

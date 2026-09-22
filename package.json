@@ -17,6 +17,7 @@
     "validate": "node scripts/validate-env.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "verify": "pnpm typecheck && bun test src/ && pnpm test",
+    "build:static": "bun run src/build/build.ts",
     "types:worker": "wrangler types worker-configuration.d.ts --config dist/server/wrangler.json --include-env=false",
     "bundle:report": "node scripts/bundle-report.mjs",
     "crm:export": "node scripts/generate-crm-import-csvs.mjs",

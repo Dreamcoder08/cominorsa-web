@@ -1,29 +1,37 @@
 // src/build/routes.ts
 //
-// T6a: one explicit route table drives the static build. `build.ts`
-// loops over `PAGE_ROUTES` to emit `<slug>.html` for each; T8's
-// sitemap generator is meant to reuse this exact list instead of
-// hand-listing routes a second time. The 6 service pages plus
-// preguntas-frecuentes/privacidad/terminos land here; the 404 page is
-// added by this task's next commit (it needs document.tsx's optional
-// canonicalPath/robots support, since it has no single canonical URL
-// and must be noindex).
+// T6a: one explicit route table drives the static build for every page
+// except the homepage (T6b, tracked separately in
+// odd/tasks/bun-vanilla-migration.md). `build.ts` loops over
+// `PAGE_ROUTES` to emit `<slug>.html` for each; T8's sitemap generator
+// is meant to reuse this exact list instead of hand-listing routes a
+// second time.
 
 import type { Child } from "../html/jsx-runtime";
 import { FaqPage } from "./faq-page";
+import { NotFoundPage } from "./not-found-page";
 import { PrivacyPage } from "./privacy-page";
 import { ServicePage } from "./service-page";
 import { faqs, serviceGroups } from "./site-data";
 import { TermsPage } from "./terms-page";
 
+// Root layout's description (`app/layout.tsx`'s `generateMetadata`) —
+// the 404 page has no page-specific `description` override today
+// (verified against the live 404 response: its `<meta
+// name="description">` is this exact root string, not a custom one).
+const ROOT_DESCRIPTION =
+  "Formalización minera, instrumentos ambientales, ingeniería y asistencia técnica desde Piura, Perú.";
+
 export type PageRoute = {
-  /** URL slug, no leading/trailing slash. */
+  /** URL slug, no leading/trailing slash. "404" emits `404.html` (see build.ts). */
   slug: string;
   /** Page-specific portion of `<title>`; callers append " | COMINORSA" uniformly. */
   title: string;
   description: string;
-  /** Absolute path with no trailing slash, e.g. "/privacidad". */
-  canonicalPath: string;
+  /** Absolute path with no trailing slash, e.g. "/privacidad". Omit for the 404 page (no single canonical URL). */
+  canonicalPath?: string;
+  /** e.g. "noindex, follow" — only the 404 route sets this today. */
+  robots?: string;
   render: () => Child;
 };
 
@@ -60,5 +68,12 @@ export const PAGE_ROUTES: PageRoute[] = [
       "Condiciones de uso del sitio web de COMINORSA S.A.C. y del contenido publicado en él.",
     canonicalPath: "/terminos",
     render: () => TermsPage(),
+  },
+  {
+    slug: "404",
+    title: "Página no encontrada",
+    description: ROOT_DESCRIPTION,
+    robots: "noindex, follow",
+    render: () => NotFoundPage(),
   },
 ];

@@ -154,6 +154,10 @@ describe("renderDocument", () => {
     expect(parsed.address.addressRegion).toBe("Piura");
   });
 
+  test("does not emit a robots meta tag when none is requested", () => {
+    expect(html).not.toContain('name="robots"');
+  });
+
   test("escapes an unsafe title instead of injecting markup", () => {
     const unsafe = renderDocument({
       title: '</title><script>alert(1)</script>',
@@ -167,6 +171,42 @@ describe("renderDocument", () => {
     expect(unsafe).toContain(
       "&lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;",
     );
+  });
+});
+
+// T6a: the 404 page has no canonical URL (there's no single "real" page
+// it represents) and must be noindex — `canonicalPath` is optional, and
+// an explicit `robots` prop renders a `<meta name="robots">` tag.
+// Verified against the live site: `curl -sL
+// https://cominorsa.com/<random-broken-path>` returns 404 with `<meta
+// name="robots" content="noindex, follow">` and no `<link rel="canonical">`
+// at all (matching `app/not-found.tsx`'s own `robots: { index: false,
+// follow: true }` metadata, which Next serializes as "noindex, follow").
+describe("renderDocument without canonicalPath (404 page)", () => {
+  const notFoundHtml = renderDocument({
+    title: "Página no encontrada",
+    description: "Formalización minera, instrumentos ambientales, ingeniería y asistencia técnica desde Piura, Perú.",
+    robots: "noindex, follow",
+    cssHref: "/assets/globals-abc123.css",
+    fontsCssHref: "/assets/fonts-def456.css",
+    children: raw("<main><p>404</p></main>"),
+  });
+
+  test("emits no canonical link", () => {
+    expect(notFoundHtml).not.toContain('rel="canonical"');
+  });
+
+  test("emits no og:url meta (there is no canonical URL to advertise)", () => {
+    expect(notFoundHtml).not.toContain('property="og:url"');
+  });
+
+  test("emits the requested robots meta tag", () => {
+    expect(notFoundHtml).toContain('<meta name="robots" content="noindex, follow">');
+  });
+
+  test("still emits the rest of the head (title, description, OG defaults)", () => {
+    expect(notFoundHtml).toContain("<title>Página no encontrada</title>");
+    expect(notFoundHtml).toContain('<meta property="og:site_name" content="COMINORSA">');
   });
 });
 

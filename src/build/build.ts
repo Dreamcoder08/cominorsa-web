@@ -19,6 +19,11 @@
 // canonical tag), so this is the only shape that matches it with zero
 // redirects. The root page stays `index.html` (unaffected either way;
 // the homepage itself is T6b, not yet in `PAGE_ROUTES`).
+//
+// The 404 route emits `404.html`: Cloudflare Workers Static Assets
+// serves it for unmatched paths once `not_found_handling: "404-page"`
+// is configured (T9) — out of this task's scope, noted here only so
+// the file's purpose is clear before that config lands.
 
 import { Glob } from "bun";
 import { join, relative } from "node:path";
@@ -75,6 +80,7 @@ export async function runStaticBuild(
       title: `${route.title}${SITE_SUFFIX}`,
       description: route.description,
       canonicalPath: route.canonicalPath,
+      robots: route.robots,
       cssHref,
       fontsCssHref,
       children: route.render(),

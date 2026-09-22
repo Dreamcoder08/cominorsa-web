@@ -1,9 +1,8 @@
 // src/build/build.test.ts
 //
 // End-to-end coverage for the static build pipeline: renders every
-// route in `routes.ts`'s `PAGE_ROUTES` table (T6a — the 6 service
-// pages plus preguntas-frecuentes/privacidad/terminos in this commit;
-// the 404 page is added by this task's next commit) with the T2
+// route in `routes.ts`'s `PAGE_ROUTES` table (T6a — all 6 service
+// pages, preguntas-frecuentes, privacidad, terminos, 404) with the T2
 // runtime, links one shared content-hashed CSS/fonts pair built from
 // `app/globals.css`/`fonts.css`, and copies `public/` assets alongside
 // them. Output goes to a throwaway temp dir so this test never touches
@@ -112,6 +111,16 @@ describe("runStaticBuild", () => {
       expect(terminos).toContain(
         '<link rel="canonical" href="https://cominorsa.com/terminos">',
       );
+    }));
+
+  test("emits 404.html noindex, with no canonical link", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const html = await Bun.file(join(outDir, "404.html")).text();
+      expect(html).toContain("<title>Página no encontrada | COMINORSA</title>");
+      expect(html).toContain('<meta name="robots" content="noindex, follow">');
+      expect(html).not.toContain('rel="canonical"');
+      expect(html).toContain("Volver al inicio");
     }));
 
   test("never emits a URL on the stale, non-resolving .com.pe domain, on any page", () =>

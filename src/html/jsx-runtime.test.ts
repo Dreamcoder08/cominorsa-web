@@ -9,7 +9,7 @@
 // `jsxImportSource` wiring is a later task (T3).
 
 import { describe, expect, test } from "bun:test";
-import { Fragment, jsx, jsxs, raw, render } from "./jsx-runtime";
+import { Fragment, jsx, jsxs, raw, render, type Child } from "./jsx-runtime";
 
 describe("text escaping", () => {
   test("escapes & < > in text children", () => {
@@ -163,7 +163,7 @@ describe("function components", () => {
   });
 
   test("forwards children through a wrapping component", () => {
-    function Card(props: { children?: unknown }) {
+    function Card(props: { children?: Child }) {
       return jsx("section", { className: "card", children: props.children });
     }
     expect(

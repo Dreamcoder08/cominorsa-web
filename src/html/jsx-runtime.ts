@@ -22,14 +22,14 @@ const ELEMENT_TAG = Symbol("element");
 export type Html = { readonly [HTML_TAG]: string };
 
 type Key = string | number;
-type ComponentFn = (props: Props) => Child;
+type ComponentFn<P = Props> = (props: P) => Child;
 type Primitive = string | number | boolean | null | undefined;
 export type Child = Primitive | Html | VNode | readonly Child[];
 type Props = { children?: Child; [prop: string]: unknown };
 
 interface VNode {
   readonly [ELEMENT_TAG]: true;
-  readonly type: string | ComponentFn;
+  readonly type: string | ComponentFn<Props>;
   readonly props: Props;
 }
 
@@ -61,10 +61,24 @@ export function raw(html: string): Html {
   return { [HTML_TAG]: html } as Html;
 }
 
+// Generic over the props type so a component declaring its own shape
+// (`(props: { title: string }) => ...`, which every page component does)
+// type-checks at the call site. Widening to the internal `Props` bag is
+// the one unavoidable cast, contained here: `render` only ever reads
+// props back out through the same component that declared them.
+//
 // `key` exists only for automatic-JSX-runtime signature compatibility —
 // this runtime never reconciles, so it is accepted and discarded.
-export function jsx(type: VNode["type"], props: Props, _key?: Key): VNode {
-  return { [ELEMENT_TAG]: true, type, props };
+export function jsx<P extends object>(
+  type: string | ComponentFn<P>,
+  props: P,
+  _key?: Key,
+): VNode {
+  return {
+    [ELEMENT_TAG]: true,
+    type: type as string | ComponentFn<Props>,
+    props: props as Props,
+  };
 }
 
 export const jsxs = jsx;

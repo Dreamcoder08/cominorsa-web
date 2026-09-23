@@ -12,7 +12,7 @@
 // shape, confirmed directly against the live site.
 
 import { describe, expect, test } from "bun:test";
-import { SITE_URL } from "./site-config";
+import { SITE_URL, SITEMAP_LAST_MODIFIED } from "./site-config";
 
 describe("SITE_URL", () => {
   test("is the real production origin, verified against the live site", () => {
@@ -21,5 +21,23 @@ describe("SITE_URL", () => {
 
   test("never resolves to the stale, non-resolving .com.pe domain", () => {
     expect(SITE_URL).not.toContain(".com.pe");
+  });
+});
+
+// T8: sitemap.xml needs a `lastmod` value. Production's app/sitemap.ts
+// calls `new Date()` per request — fine for a live per-request handler,
+// but calling it at *build* time would make every rebuild of the
+// exact same content produce a different sitemap.xml, which fails the
+// "reproducible build" bar this task requires. SITEMAP_LAST_MODIFIED is
+// a fixed ISO-8601 string instead: bump it by hand whenever a deploy
+// meaningfully changes page content, or override per-build via the
+// SITEMAP_LAST_MODIFIED env var (e.g. a CI step could pass the commit
+// date) without touching source.
+describe("SITEMAP_LAST_MODIFIED", () => {
+  test("is a fixed, valid ISO-8601 timestamp (deterministic — never new Date())", () => {
+    expect(SITEMAP_LAST_MODIFIED).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/,
+    );
+    expect(Number.isNaN(Date.parse(SITEMAP_LAST_MODIFIED))).toBe(false);
   });
 });

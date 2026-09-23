@@ -261,4 +261,37 @@ describe("runStaticBuild", () => {
         }
       }
     }));
+
+  // T8: sitemap.xml/robots.txt/manifest.webmanifest, generated from the
+  // same PAGE_ROUTES table + site-config.ts constants exercised in
+  // sitemap.test.ts/robots.test.ts/webmanifest.test.ts directly — this
+  // just proves runStaticBuild actually wires them into the output dir.
+  test("writes sitemap.xml, robots.txt, and manifest.webmanifest to the output root", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+
+      const sitemap = await Bun.file(join(outDir, "sitemap.xml")).text();
+      expect(sitemap).toContain("<loc>https://cominorsa.com/</loc>");
+      expect(sitemap).toContain("<loc>https://cominorsa.com/seguridad-minera</loc>");
+      expect(sitemap).not.toContain("404");
+
+      const robots = await Bun.file(join(outDir, "robots.txt")).text();
+      expect(robots).toContain("Sitemap: https://cominorsa.com/sitemap.xml");
+
+      const manifest = await Bun.file(join(outDir, "manifest.webmanifest")).text();
+      expect(JSON.parse(manifest).name).toBe("COMINORSA | Consultoría minera y ambiental");
+    }));
+
+  // T10: dist-static/_headers, generated from security-policy.ts — see
+  // headers.test.ts for the unit-level policy assertions; this proves
+  // it actually lands in the build output.
+  test("writes dist-static/_headers with the security policy and asset caching rules", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const headers = await Bun.file(join(outDir, "_headers")).text();
+      expect(headers).toContain("Content-Security-Policy:");
+      expect(headers).not.toContain("nonce-");
+      expect(headers).toContain("/assets/*");
+      expect(headers).toContain("/fonts/*");
+    }));
 });

@@ -30,8 +30,13 @@ import { Glob } from "bun";
 import { join, relative } from "node:path";
 import { buildCss } from "./css";
 import { renderDocument } from "./document";
+import { buildHeadersFile } from "./headers";
 import { buildJs } from "./js";
 import { PAGE_ROUTES } from "./routes";
+import { buildRobotsTxt } from "./robots";
+import { buildSitemapXml } from "./sitemap";
+import { SITEMAP_LAST_MODIFIED } from "./site-config";
+import { buildWebManifest } from "./webmanifest";
 
 const ROOT = join(import.meta.dirname, "..", "..");
 const CSS_ENTRY = join(ROOT, "app", "globals.css");
@@ -77,9 +82,29 @@ async function buildClientScripts(
 async function copyPublicAssets(outDir: string): Promise<void> {
   const glob = new Glob("**/*");
   for await (const relativePath of glob.scan({ cwd: PUBLIC_DIR, dot: false })) {
+    // public/_headers is the Next.js/SSR-era file — it documents its own
+    // comment that Cloudflare never even applies it there. T10's
+    // dist-static/_headers (written below by writeGeneratedFiles) is the
+    // one this static build actually ships; skip copying the stale one
+    // so there's no ambiguity about which file governs the output.
+    if (relativePath === "_headers") continue;
     const source = Bun.file(join(PUBLIC_DIR, relativePath));
     await Bun.write(join(outDir, relativePath), source);
   }
+}
+
+/**
+ * T8/T10: sitemap.xml, robots.txt, manifest.webmanifest, and _headers —
+ * none of these vary per page, so they're written once at the output
+ * root rather than looped per route like writePage.
+ */
+async function writeGeneratedFiles(outDir: string): Promise<void> {
+  await Promise.all([
+    Bun.write(join(outDir, "sitemap.xml"), buildSitemapXml(SITEMAP_LAST_MODIFIED)),
+    Bun.write(join(outDir, "robots.txt"), buildRobotsTxt()),
+    Bun.write(join(outDir, "manifest.webmanifest"), buildWebManifest()),
+    Bun.write(join(outDir, "_headers"), buildHeadersFile()),
+  ]);
 }
 
 /**
@@ -110,6 +135,7 @@ export async function runStaticBuild(
   const fontsCssHref = `/${ASSETS_DIR_NAME}/${fontsCssFileName}`;
 
   await copyPublicAssets(outDir);
+  await writeGeneratedFiles(outDir);
 
   const { mobileNavHref, consentHref, consultationFormHref } = await buildClientScripts(outDir);
 

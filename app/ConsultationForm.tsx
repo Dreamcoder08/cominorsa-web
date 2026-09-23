@@ -6,20 +6,12 @@ import {
   PRIMARY_WHATSAPP_NUMBER,
   SECONDARY_WHATSAPP_NUMBER,
 } from "./constants";
+// T6b: moved to src/data/ so the static build's server-rendered form
+// (src/build/consultation-form.tsx) shares the exact same list instead
+// of a second hand-copied one — see that module's own comment.
+import { consultationServiceOptions as serviceOptions } from "../src/data/consultation-services";
 
 const subscribeToHydration = () => () => {};
-
-const serviceOptions = [
-  "Formalización minera e IGAFOM",
-  "REINFO",
-  "DIA, PAMA e instrumentos ambientales",
-  "DAC y ESTAMIN",
-  "Informes y expedientes técnicos",
-  "Planes de minado, mapas y planos",
-  "Seguridad y salud ocupacional",
-  "Trámites ante MINEM, INGEMMET o DREM",
-  "Otra consulta minera o ambiental",
-];
 
 export function ConsultationForm() {
   const [whatsAppOpened, setWhatsAppOpened] = useState(false);

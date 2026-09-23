@@ -3,8 +3,9 @@
 //
 // The static build pipeline: bundles+minifies+hashes `app/globals.css`
 // and `fonts.css` via `Bun.build`, copies `public/` assets, and renders
-// every route in `routes.ts`'s `PAGE_ROUTES` table (T6a) into a flat
-// `<slug>.html` file. Run with `bun run build:static` (`package.json`);
+// every route in `routes.ts`'s `PAGE_ROUTES` table (including the
+// homepage, T6b) into a flat `<slug>.html` file. Run with `bun run
+// build:static` (`package.json`);
 // output goes to `dist-static/` — a new directory, gitignored, that
 // never collides with the Next/vinext `dist/`.
 //
@@ -17,8 +18,8 @@
 // static-assets/routing/advanced/html-handling). Production's real URL
 // shape has no trailing slash (confirmed against the live site's own
 // canonical tag), so this is the only shape that matches it with zero
-// redirects. The root page stays `index.html` (unaffected either way;
-// the homepage itself is T6b, not yet in `PAGE_ROUTES`).
+// redirects. The root page stays `index.html` either way (`writePage`
+// below maps `slug === ""` to that exact file name).
 //
 // The 404 route emits `404.html`: Cloudflare Workers Static Assets
 // serves it for unmatched paths once `not_found_handling: "404-page"`
@@ -77,7 +78,7 @@ export async function runStaticBuild(
 
   for (const route of PAGE_ROUTES) {
     const html = renderDocument({
-      title: `${route.title}${SITE_SUFFIX}`,
+      title: route.fullTitle ?? `${route.title}${SITE_SUFFIX}`,
       description: route.description,
       canonicalPath: route.canonicalPath,
       robots: route.robots,

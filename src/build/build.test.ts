@@ -25,6 +25,11 @@ import { join } from "node:path";
 import { PAGE_ROUTES } from "./routes";
 import { runStaticBuild } from "./build";
 
+/** Mirrors build.ts's writePage: slug "" (the homepage) is index.html. */
+function fileNameFor(slug: string): string {
+  return slug === "" ? "index.html" : `${slug}.html`;
+}
+
 async function withTempOutDir<T>(fn: (outDir: string) => Promise<T>): Promise<T> {
   // Under the repo, not /tmp: the CSS entry (`app/globals.css`) imports
   // the bare specifier "tailwindcss", which only resolves against this
@@ -43,9 +48,27 @@ describe("runStaticBuild", () => {
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
       for (const route of PAGE_ROUTES) {
+        if (route.slug === "") continue; // the homepage is index.html itself
         expect(await Bun.file(join(outDir, route.slug, "index.html")).exists()).toBe(false);
         expect(await Bun.file(join(outDir, `${route.slug}.html`)).exists()).toBe(true);
       }
+      expect(await Bun.file(join(outDir, "index.html")).exists()).toBe(true);
+    }));
+
+  test("emits the homepage as index.html with its brand-first title, no canonical, and the consultation form", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const html = await Bun.file(join(outDir, "index.html")).text();
+
+      expect(html).toContain("<!doctype html>");
+      expect(html).toContain(
+        "<title>COMINORSA | Consultoría minera y ambiental</title>",
+      );
+      expect(html).not.toContain('rel="canonical"');
+      expect(html).not.toContain('property="og:url"');
+      expect(html).toContain('<span class="reveal-line">Técnica que impulsa.</span>');
+      expect(html).toContain('<form class="consultation-form" id="consultation-form">');
+      expect(html).toContain('href="/seguridad-minera"');
     }));
 
   test("emits seguridad-minera.html with the expected key content (parity with the pre-route-table build)", () =>
@@ -127,7 +150,7 @@ describe("runStaticBuild", () => {
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
       for (const route of PAGE_ROUTES) {
-        const html = await Bun.file(join(outDir, `${route.slug}.html`)).text();
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
         expect(html).not.toContain(".com.pe");
       }
     }));
@@ -151,7 +174,7 @@ describe("runStaticBuild", () => {
       // build, shared across the whole route table, not one per page.
       for (const route of PAGE_ROUTES) {
         if (route.slug === "seguridad-minera") continue;
-        const html = await Bun.file(join(outDir, `${route.slug}.html`)).text();
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
         expect(html).toContain(`<link rel="stylesheet" href="${cssHref}">`);
         expect(html).toContain(`<link rel="stylesheet" href="${fontsHref}">`);
       }

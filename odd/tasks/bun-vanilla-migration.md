@@ -1065,6 +1065,16 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
   `e2e:static` script (or Playwright `webServer`) that builds with a
   fixed test ID and serves `dist-static/`, and run it in CI.
 
+## Parent verification of T8–T10
+
+- `_headers` CSP = `proxy.ts` policy minus the nonce, plus GA4 hosts in
+  `script-src`/`img-src`. Finding: production's CSP has no
+  `googletagmanager.com` in `script-src` and no `'strict-dynamic'`, so
+  GA4 may be silently blocked in production today even after opt-in —
+  verify in Chrome during the polish phase.
+- **T11 must also:** pass `SITEMAP_LAST_MODIFIED` from the deploy
+  commit date (the hand-bumped constant will go stale).
+
 ## Carried to the polish phase (after cutover)
 
 - Home `/` has **no canonical and no `og:url`** in production (root

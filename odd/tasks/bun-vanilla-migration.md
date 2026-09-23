@@ -848,6 +848,18 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
   Push/PR of `feat/bun-vanilla-migration-t7` into the feature branch is
   the user's decision (branch-chain strategy).
 
+## Parent verification of T7
+
+- Mutation test on the consent gate: injected an eager
+  `applyGrantedConsent(doc)` call at `initCookieConsent` start, rebuilt
+  with `NEXT_PUBLIC_GA_MEASUREMENT_ID=G-TEST123`, ran
+  `static-cookie-consent.spec.ts` → **2 failed / 4 passed** (mutant
+  killed); unmutated baseline → 6 passed. File restored, tree clean.
+- **T11 must fix:** the static e2e suite only exercises GA4 when
+  `dist-static/` was built with a GA ID. Make it deterministic: an
+  `e2e:static` script (or Playwright `webServer`) that builds with a
+  fixed test ID and serves `dist-static/`, and run it in CI.
+
 ## Carried to the polish phase (after cutover)
 
 - Home `/` has **no canonical and no `og:url`** in production (root

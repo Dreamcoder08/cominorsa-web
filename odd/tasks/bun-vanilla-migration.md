@@ -557,7 +557,18 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
       the `<script type="module">` tag was fixed by adding an explicit
       `defer` attribute — redundant on a module script per the HTML
       spec, but that ESLint rule doesn't special-case `type="module"`).
-      `pnpm test` → 193/193 pass (Next build unaffected).
+      **Second real defect found and fixed (parent verification, same
+      slice)**: `pnpm lint`'s own script only ignored `dist`/`.next`,
+      not `dist-static` — harmless before T7 (that directory held only
+      `.html`/`.css`/font/image output, nothing ESLint parses as JS),
+      but T7's minified `.js` bundles under `dist-static/assets/` are
+      real JavaScript, so ESLint started linting the *minified build
+      output* itself once it existed, surfacing 16 bogus warnings
+      (single-letter minified variable names, comma-expression
+      statements — meaningless in generated code). Fixed by adding
+      `--ignore-pattern dist-static` to `package.json`'s `lint` script,
+      the same treatment `dist` already gets. `pnpm test` → 193/193
+      pass (Next build unaffected).
       `bun run build:static` → 11 pages, JS emitted:
       `mobile-nav-entry-*.js` 1428 B raw / 794 B gzip,
       `consultation-form-entry-*.js` 1570 B raw / 874 B gzip,

@@ -214,4 +214,51 @@ describe("runStaticBuild", () => {
       await runStaticBuild(outDir);
       expect(await Bun.file(join(outDir, "logo-44.png")).exists()).toBe(true);
     }));
+
+  // T7: every route renders SiteHeader/SiteFooter (mobile nav + the
+  // cookie-preferences button), so every route needs the mobile-nav and
+  // consent widgets; only the homepage has a #consultation-form to wire.
+  test("every page links the mobile-nav and consent module scripts, built and copied to disk", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      for (const route of PAGE_ROUTES) {
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        const srcs = [
+          ...html.matchAll(/<script type="module" src="([^"]+)" defer><\/script>/g),
+        ].map((m) => m[1]!);
+
+        const mobileNavSrc = srcs.find((src) => src.includes("mobile-nav"));
+        const consentSrc = srcs.find((src) => src.includes("consent"));
+        expect(mobileNavSrc, `${route.slug || "index"}: missing mobile-nav script`).toBeDefined();
+        expect(consentSrc, `${route.slug || "index"}: missing consent script`).toBeDefined();
+        expect(mobileNavSrc).toMatch(/^\/assets\/mobile-nav-entry-[a-z0-9]+\.js$/);
+        expect(consentSrc).toMatch(/^\/assets\/consent-entry-[a-z0-9]+\.js$/);
+        expect(await Bun.file(join(outDir, mobileNavSrc!.replace(/^\//, ""))).exists()).toBe(true);
+        expect(await Bun.file(join(outDir, consentSrc!.replace(/^\//, ""))).exists()).toBe(true);
+      }
+    }));
+
+  test("only the homepage links the consultation-form module script", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const home = await Bun.file(join(outDir, "index.html")).text();
+      expect(home).toMatch(/<script type="module" src="\/assets\/consultation-form-entry-[a-z0-9]+\.js" defer><\/script>/);
+
+      const seguridad = await Bun.file(join(outDir, "seguridad-minera.html")).text();
+      expect(seguridad).not.toContain("consultation-form-entry");
+    }));
+
+  test("emits no inline <script> body anywhere (only src-based module scripts and the JSON-LD data block)", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      for (const route of PAGE_ROUTES) {
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        for (const [tag, body] of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)) {
+          const isJsonLd = tag.includes('type="application/ld+json"');
+          const isModule = tag.includes('type="module"') && tag.includes(" src=");
+          expect(isJsonLd || isModule, `unexpected inline script tag: ${tag}`).toBe(true);
+          if (isModule) expect(body).toBe("");
+        }
+      }
+    }));
 });

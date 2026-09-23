@@ -210,6 +210,63 @@ describe("renderDocument without canonicalPath (404 page)", () => {
   });
 });
 
+// T7: the site's 4 progressive-enhancement widgets load as
+// `<script type="module" src="...">` — no inline `<script>` at all (T10's
+// CSP will be `script-src 'self'` plus whatever GA4 needs), and no bare
+// specifiers or nonce/defer/async attributes to manage: module scripts
+// are deferred by the HTML spec on their own.
+describe("renderDocument scriptSrcs (T7)", () => {
+  test("emits no <script type=module> tags when scriptSrcs is omitted", () => {
+    expect(html).not.toContain('<script type="module"');
+  });
+
+  test("emits one <script type=module src=...> per entry, before </body>, in order", () => {
+    const withScripts = renderDocument({
+      title: "Seguridad minera y consultoría mensual | COMINORSA",
+      description: "Planes de Seguridad y Salud Ocupacional.",
+      canonicalPath: "/seguridad-minera",
+      cssHref: "/assets/globals-abc123.css",
+      fontsCssHref: "/assets/fonts-def456.css",
+      scriptSrcs: ["/assets/mobile-nav-aaa111.js", "/assets/consent-bbb222.js"],
+      children: raw("<main><p>body</p></main>"),
+    });
+
+    expect(withScripts).toContain(
+      '<script type="module" src="/assets/mobile-nav-aaa111.js" defer></script>',
+    );
+    expect(withScripts).toContain(
+      '<script type="module" src="/assets/consent-bbb222.js" defer></script>',
+    );
+    const firstIndex = withScripts.indexOf("mobile-nav-aaa111.js");
+    const secondIndex = withScripts.indexOf("consent-bbb222.js");
+    expect(firstIndex).toBeGreaterThan(-1);
+    expect(secondIndex).toBeGreaterThan(firstIndex);
+    expect(withScripts.indexOf("</body>")).toBeGreaterThan(secondIndex);
+  });
+
+  test("never emits an inline <script> body (only src-based module scripts, plus the JSON-LD data block)", () => {
+    const withScripts = renderDocument({
+      title: "x",
+      description: "y",
+      cssHref: "/a.css",
+      fontsCssHref: "/b.css",
+      scriptSrcs: ["/assets/consent-bbb222.js"],
+      children: raw("<main></main>"),
+    });
+
+    // Every <script> tag must either be the JSON-LD data block or a
+    // src-based module script — never carry an inline JS body.
+    const scriptTags = [...withScripts.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
+    expect(scriptTags.length).toBeGreaterThan(0);
+    for (const [tag, body] of scriptTags) {
+      const isJsonLd = tag.includes('type="application/ld+json"');
+      const isModule = tag.includes('type="module"') && tag.includes("src=");
+      expect(isJsonLd || isModule).toBe(true);
+      if (isModule) expect(body).toBe("");
+    }
+  });
+});
+
 // G2: the JSON-LD block is the site's one raw-HTML sink. `raw()` applies
 // no escaping — the caller (`jsonLdScript`) owns keeping it both valid
 // JSON and safe to embed inside a <script> element.

@@ -307,7 +307,24 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
       now matches exactly (Archivo headings/body, same weights/
       tracking); the only visible difference is Next's cookie-consent
       banner overlay (T7 leftover, unrelated, already documented).
-- [ ] **T6** — Port the remaining 9 pages. Route: delegated writer.
+- [x] **T6a** — Port the 5 remaining service pages, `/preguntas-frecuentes`,
+      `/privacidad`, `/terminos` and `404.html`. Route: delegated writer
+      (terminated by an API session limit after its code commits; parent
+      finished verification and this doc update). **DONE** — `53a0a38`
+      (shared route table + service data moved to `src/data/`, re-exported
+      by `app/services-data.ts` so Next keeps working), `7404b8c`
+      (FAQ/privacy/terms), `222eab4` (404, `noindex, follow`, no canonical).
+      Parent verification: `bun test src/` → 129 pass, 0 fail;
+      `pnpm typecheck` → 0; `pnpm lint` → 0 errors; `pnpm test` → 193/193;
+      title/canonical/description/JSON-LD of all 9 pages identical to
+      `https://cominorsa.com` (scripted diff, zero differences); only
+      `https://cominorsa.com` URLs emitted; Playwright screenshots at
+      1440/390 of FAQ, privacy, a service page and 404 (served with status
+      404) render correctly. RED evidence for these units was not reported
+      before the writer was cut off — recorded honestly as *not observed by
+      the parent*.
+- [ ] **T6b** — Port the home page `/` (`app/page.tsx`, 335 lines,
+      contains the consultation form). Route: delegated writer.
 - [ ] **T7** — Rewrite the 4 interactive widgets as vanilla ES modules
       with progressive enhancement. Route: delegated writer.
 - [ ] **T8** — Build-time generators for `sitemap.xml`, `robots.txt`,
@@ -466,13 +483,13 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
   - Push/PR of `feat/bun-vanilla-migration-t4` into the feature branch
     is the user's decision (branch-chain strategy).
 
+## Carried to the polish phase (after cutover)
+
+- `404` copy uses Rioplatense voseo ("buscás", "llegaste acá",
+  "avisanos") — same as production today, kept for parity; normalize to
+  neutral Spanish for a Peruvian audience in the polish pass.
+- `404.html` needs `not_found_handling: "404-page"` in T9's Worker config.
+
 ## Next step
 
-**T6** — port the remaining nine pages (home + 5 other service pages +
-`preguntas-frecuentes`, `privacidad`, `terminos`) using the now-complete
-`document.tsx` (head/metadata, G2, fonts) and the existing
-`site-shell.tsx`/`service-page.tsx` patterns from T3. Carried-forward,
-still open: the T7 widget/cookie-banner gaps in `site-shell.tsx`
-(`MobileNavStatic`, `CookiePreferencesButtonStatic`, the cookie-consent
-banner itself), and T1's remaining Bun-toolchain-adoption part
-(`bunfig.toml`, lockfile) — its CI half shipped this slice.
+T6b (home page), then T7 (widgets).

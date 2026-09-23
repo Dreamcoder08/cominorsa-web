@@ -613,6 +613,10 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
 
 ## Carried to the polish phase (after cutover)
 
+- Home `/` has **no canonical and no `og:url`** in production (root
+  layout sets no `alternates.canonical`). Kept for parity in T6b; add
+  `https://cominorsa.com/` canonical + `og:url` in the polish pass.
+
 - `404` copy uses Rioplatense voseo ("buscás", "llegaste acá",
   "avisanos") — same as production today, kept for parity; normalize to
   neutral Spanish for a Peruvian audience in the polish pass.

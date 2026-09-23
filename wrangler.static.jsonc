@@ -1,0 +1,38 @@
+{
+  // T9: wrangler config for the NEW static-site Worker. Deliberately a
+  // DISTINCT name and file from production's Worker
+  // (`cominorsa-web`, generated at `dist/server/wrangler.json` by
+  // vinext/@cloudflare/vite-plugin from `worker/index.ts` — see
+  // `scripts/cloudflare-deploy.sh`) so nothing on this branch can ever
+  // deploy over production. Never deployed by this task; the T11
+  // cutover decides when/whether to rename this to `cominorsa-web` and
+  // retire the Next.js Worker.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cominorsa-web-static",
+  "main": "src/worker/index.ts",
+  // Same compatibility_date as production's currently-generated config
+  // (dist/server/wrangler.json, also the date `worker-configuration.d.ts`
+  // was generated against) — keeps both Workers on identical workerd
+  // runtime behavior until T11 decides otherwise.
+  "compatibility_date": "2026-08-31",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "dist-static",
+    // Serves e.g. "seguridad-minera.html" directly at "/seguridad-minera"
+    // (200, zero redirects) and only redirects to a trailing slash for an
+    // actual directory-style asset — matches production's real URL shape
+    // (no trailing slash), per build.ts's own module comment.
+    "html_handling": "auto-trailing-slash",
+    // dist-static/404.html (src/build/routes.ts's "404" route) is served
+    // for any unmatched path, matching today's Next not-found page.
+    "not_found_handling": "404-page",
+    // Only /api/* is routed to this Worker's fetch handler (src/worker/
+    // index.ts). Every other request — every page, sitemap.xml,
+    // robots.txt, manifest.webmanifest, hashed assets, fonts — is served
+    // directly from this assets binding with zero Worker invocation.
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": {
+    "enabled": true
+  }
+}

@@ -424,8 +424,226 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
       layout, spacing, colors, typography, and copy all match; the only
       difference is the live site's cookie-consent banner overlay (T7
       leftover, already documented, unrelated to this task).
-- [ ] **T7** — Rewrite the 4 interactive widgets as vanilla ES modules
-      with progressive enhancement. Route: delegated writer.
+- [x] **T7** — Rewrite the 4 interactive widgets as vanilla ES modules
+      with progressive enhancement. Route: delegated writer. **DONE**
+      — `4829da1` (pure logic + `src/build/js.ts`), `73a034a` (DOM
+      wiring + document/build/site-shell integration), `4327b92`
+      (e2e coverage).
+
+      **Architecture**: `src/client/lib/` holds DOM-free pure logic
+      (`whatsapp-message.ts`, `crm-lead-payload.ts`, `consent-storage.ts`,
+      `focus-trap.ts`), each unit-tested with `bun test`.
+      `src/client/dom/` holds DOM wiring (`mobile-nav.ts`,
+      `consultation-form.ts`, `cookie-consent.ts`, `ga4.ts`), covered by
+      Playwright e2e against the built static site instead (no DOM-free
+      unit tests for these — that's the split the task asked for).
+      `src/client/entries/` has one thin bundle entry per concern
+      (`mobile-nav-entry.ts`, `consultation-form-entry.ts`,
+      `consent-entry.ts`) that just calls its `init*()` — module scripts
+      are deferred by the HTML spec, so no `DOMContentLoaded` wrapper is
+      needed. `src/build/js.ts` wraps `Bun.build` the same way T5's
+      `css.ts` does (`naming: "[name]-[hash].[ext]"` for a stable,
+      content-sensitive hash), adding `format: "esm"`, `target:
+      "browser"`, and a `define` option so `build.ts` can bake
+      `NEXT_PUBLIC_GA_MEASUREMENT_ID` into the bundle at build time (a
+      browser bundle has no `process.env` at runtime). `document.tsx`
+      gained an optional `scriptSrcs` prop rendering one
+      `<script type="module" src="..." defer></script>` per entry right
+      before `</body>` — no inline `<script>` anywhere (T10's CSP will
+      be `script-src 'self'` plus whatever GA4 needs, which a
+      `src`-based module script satisfies with zero nonce/hash
+      bookkeeping). Every route (all render `SiteHeader`/`SiteFooter`)
+      links `mobile-nav` + `consent`; only the homepage additionally
+      links `consultation-form` (only page with `#consultation-form`).
+
+      **Consultation form** (`src/client/dom/consultation-form.ts`):
+      ports `app/ConsultationForm.tsx`'s `handleSubmit` verbatim —
+      builds the same message template and `wa.me` URL
+      (`selectWhatsAppRecipient`/`buildConsultationMessage`/
+      `buildWhatsAppUrl`), sets the same inert `dataset.event`/
+      `dataset.eventContext` markers (openspec
+      `analytics-event-attributes`: inert, never dispatched, same as
+      today), calls `window.open` synchronously, then fires the
+      non-blocking `POST /api/crm-lead` with `.catch(() => {})` — the
+      WhatsApp open never awaits it. The static submit button starts
+      `disabled` (T6b); this script enables it only once it has
+      actually attached the submit listener, closing the same
+      pre-hydration race `disabled={!mounted}` closes in the React
+      version. Native HTML5 `required`/`minlength`/`maxlength` on the
+      real `<form>` (T6b) blocks invalid submissions before this
+      script's `submit` listener ever runs — verified in e2e, not
+      assumed.
+
+      **Mobile nav** (`src/client/dom/mobile-nav.ts` +
+      `src/client/lib/focus-trap.ts`): ports `app/MobileNav.tsx`'s
+      `useState`/`useEffect` pair — toggles `aria-expanded`/
+      `aria-label`/`data-open`/`inert` on click, locks body scroll with
+      the same scrollbar-width compensation, moves focus to the first
+      panel link on open, Escape closes and refocuses the toggle, Tab
+      traps forward/backward at the panel boundaries (index math in
+      `computeFocusTrapTarget`, the one part worth a DOM-free unit
+      test), and closes on nav-link click. Added one behavior beyond
+      the React version, asked for by the task: closes on resize past
+      the desktop breakpoint (`app/globals.css`'s `@media (max-width:
+      820px)`, mirrored as `matchMedia("(min-width: 821px)")`) — a
+      robustness improvement, not a regression, documented in the
+      module's own header comment.
+
+      **Cookie consent** (`src/client/dom/cookie-consent.ts` +
+      `src/client/dom/ga4.ts` + `src/client/lib/consent-storage.ts`):
+      reads/writes the exact same `localStorage` key and two string
+      values (`app/constants.ts`'s `COOKIE_CONSENT_STORAGE_KEY`,
+      `"granted"`/`"denied"`) as `app/CookieConsent.tsx`, so a
+      returning visitor's pre-cutover choice keeps working with zero
+      migration. **Design choice (justified per the task's own
+      instruction)**: the banner is NOT server-rendered hidden markup —
+      it's created and appended to `<body>` by this script, only when
+      there's an actual undecided choice (`consent === null`). Without
+      JS, no GA4 script can load at all, so there's nothing to consent
+      to and no reason to ship banner markup (or the `has-cookie-banner`
+      body-class toggle) to a no-JS visitor. GA4 loads only on an
+      explicit "granted" decision — never eagerly, never on "denied" —
+      via `ga4.ts`, gated behind the same env-derived
+      `GA_MEASUREMENT_ID` the React version reads. The footer
+      `#cookie-preferences-button` (new hook id on
+      `site-shell.tsx`'s `CookiePreferencesButtonStatic`, `73a034a`)
+      clears storage and reloads — identical to
+      `app/CookiePreferencesButton.tsx` today, and the simplest way to
+      fully reset (a GA4 script already loaded this page load can't be
+      meaningfully "unloaded" without one).
+
+      **Strict TDD, bun-test units (RED → GREEN, in commit order,**
+      `4829da1`**)**:
+      - `whatsapp-message`: RED `Cannot find module
+        './whatsapp-message'` (0 pass / 1 fail) → GREEN (5 pass).
+      - `crm-lead-payload`: RED `Cannot find module
+        './crm-lead-payload'` (0 pass / 1 fail) → GREEN (2 pass).
+      - `consent-storage`: RED `Cannot find module './consent-storage'`
+        (0 pass / 1 fail) → GREEN (2 pass).
+      - `focus-trap`: RED `Cannot find module './focus-trap'` (0 pass /
+        1 fail) → GREEN (8 pass).
+      - `js.ts` (the JS bundler, analogous to T5's `css.ts`): RED
+        `Cannot find module './js'` (0 pass / 1 fail) → GREEN (6 pass).
+      - Combined `bun test src/` after this commit: 176 pass, 0 fail
+        (up from T6b's 153).
+
+      **Strict TDD, integration units (RED → GREEN, in commit order,**
+      `73a034a`**)**:
+      - `site-shell.test.ts` `#cookie-preferences-button` hook: RED (6
+        pass / 1 fail — button had no id) → GREEN (7 pass).
+      - `document.test.ts` `scriptSrcs`: RED (28 pass / 1 fail — no
+        `<script type="module" src=...>` emitted for a given
+        `scriptSrcs` array) → GREEN (29 pass).
+      - `build.test.ts` (3 new tests — mobile-nav/consent on every
+        route, consultation-form homepage-only, zero inline scripts
+        anywhere): RED (13 pass / 2 fail) → GREEN (15 pass).
+      - Combined `bun test src/` after this commit: 182 pass, 0 fail.
+      - No DOM-free `bun test` was written for `src/client/dom/*.ts` or
+        `src/client/entries/*.ts` by design (task instruction: "DOM
+        wiring tested with Playwright e2e"); consequently no separate
+        RED/GREEN was captured for those files at the bun-test layer.
+        **Honest disclosure**: e2e specs for these were written after
+        the DOM-wiring implementation already existed (same commit as
+        the wiring — `73a034a`/`4327b92` — not before it), so no
+        genuine pre-implementation RED was observed for the e2e layer
+        either. This is a deviation from strict TDD's letter for the
+        DOM-wiring modules specifically (the pure-logic and
+        build-pipeline units above do have real RED→GREEN evidence).
+
+      **Verification (all observed)**: `bun test src/` → 182 pass, 0
+      fail. `pnpm typecheck` → exit 0 (after fixing a real type error —
+      see gotcha below). `pnpm lint` → 0 errors, 7 pre-existing
+      warnings unchanged (one new `@next/next/no-sync-scripts` error on
+      the `<script type="module">` tag was fixed by adding an explicit
+      `defer` attribute — redundant on a module script per the HTML
+      spec, but that ESLint rule doesn't special-case `type="module"`).
+      `pnpm test` → 193/193 pass (Next build unaffected).
+      `bun run build:static` → 11 pages, JS emitted:
+      `mobile-nav-entry-*.js` 1428 B raw / 794 B gzip,
+      `consultation-form-entry-*.js` 1570 B raw / 874 B gzip,
+      `consent-entry-*.js` 1918 B raw / 955 B gzip — **4916 B raw / ~2.6
+      KB gzip total across all 3** (homepage loads all 3 = 4916 B raw;
+      every other page loads 2 = 3346 B raw), versus the Next build's
+      600 KB JS budget (`tests/qa/bundle-budget.test.mjs`,
+      `performance.test.mjs`) — roughly 3 orders of magnitude smaller.
+      `grep -c "<script>" dist-static/*.html` → `0` on all 11 pages (no
+      inline scripts); every page separately carries exactly one
+      `<script type="application/ld+json">` (data, not code, reported
+      separately per the task's own instruction).
+
+      **Playwright e2e** (`4327b92`, `tests/e2e/static-{mobile-nav,
+      cookie-consent,consultation-form}.spec.ts`, all importing
+      `guarded-test.ts`): served `dist-static/` with a throwaway
+      `Bun.serve` static file server on port 4317
+      (content-type correctly inferred per extension — verified
+      `text/javascript;charset=utf-8` for the `.js` bundles, required
+      for the browser to execute them as modules) and ran
+      `PLAYWRIGHT_BASE_URL=http://localhost:4317 pnpm exec playwright
+      test`. **46/46 pass** across both configured projects (chromium +
+      mobile-chromium), including the 3 new static-* spec files (16
+      tests × single-project; 32 across both projects) AND the
+      pre-existing `tests/e2e/consultation-form.spec.ts` and
+      `provider-isolation.spec.ts` running unmodified against the
+      static build — the same React-targeting assertions
+      (`.consultation-form button[type="submit"]`, `a.header-cta`)
+      pass identically against the vanilla output, real behavioral
+      parity, not just matching markup.
+      New coverage: mobile-nav open/focus, Escape+refocus, forward/
+      backward Tab trap, link-click-closes, resize-to-desktop-closes
+      (all at a 390px viewport); consent banner shown with zero GA4
+      request before any decision, GA4 actually requested after
+      "Aceptar" (captured via Playwright's `request` event — fires even
+      for a request `guarded-test.ts`'s context route then aborts,
+      since every non-loopback host is blocked there regardless of
+      method, so this never lets a real request reach Google), zero
+      GA4 request after "Rechazar", both decisions surviving a reload,
+      and the footer preferences button clearing storage + reopening
+      the banner. Ran the GA4-accept-path tests against a build made
+      with `NEXT_PUBLIC_GA_MEASUREMENT_ID=G-TESTID123 bun run
+      build:static` (the repo's real `.env` value is invisible to this
+      sandbox) — otherwise `GA_MEASUREMENT_ID` bakes to `""` and the
+      "granted" branch never calls `loadGa4` at all, same as production
+      with the variable unset; the final `dist-static/` left behind was
+      rebuilt with the real (empty, in this sandbox) env afterward.
+
+      Screenshots at 390px (real Playwright, not assumed) —
+      `.claude/skills/cominorsa-run`'s pattern, saved to the session
+      scratchpad's `t7/` folder: mobile nav open (shows the full-screen
+      panel plus the consent banner, both widgets coexisting
+      correctly), the consent banner alone (Aceptar/Rechazar, matches
+      the React version's copy verbatim), and the consultation form
+      after a blocked native-validation submit (browser auto-focused
+      the first empty required field — proof the native `required`
+      gate, not this script, is what blocks an empty submission).
+
+      **Gotcha (real, not hypothetical)**: `worker-configuration.d.ts`
+      (wrangler's generated Cloudflare Workers types, included
+      project-wide by `tsconfig.json`) globally declares its own
+      `interface Element` for the HTMLRewriter API
+      (`append(content: string | ReadableStream | Response,
+      options?)`), which TypeScript merges with — and effectively
+      shadows — lib.dom's `ParentNode.append` on every DOM `Element` in
+      the whole project, not just Worker code. `pnpm typecheck` caught
+      3 real errors in `cookie-consent.ts`'s original `.append(...)`
+      calls (`HTMLAnchorElement`/`HTMLButtonElement`/
+      `HTMLParagraphElement` not assignable to `string | ReadableStream
+      | Response`). Fixed by using `appendChild`/`createTextNode`
+      instead, which aren't part of the merged interface. Worth
+      remembering for any future DOM-building code in this repo.
+
+      **Left for later tasks** (not T7's scope): T9 must route
+      `/api/crm-lead` for the Worker to serve it (unchanged contract —
+      same path, method, JSON body shape as today). T10 must set the
+      final CSP (`script-src 'self'` plus GA4's required hosts,
+      `https://www.googletagmanager.com` and
+      `https://*.google-analytics.com` per GA4's own docs) — this task
+      assumed but did not configure that CSP. No new e2e coverage was
+      added for the WhatsApp CTA `data-event`/`data-event-context`
+      markers' inertness beyond what already existed (openspec
+      `analytics-event-attributes` already covers that they're
+      inert; T7 doesn't change that contract, only the consultation
+      form's own inert marker, which now has an e2e-observed source
+      (this script) instead of only React's).
 - [ ] **T8** — Build-time generators for `sitemap.xml`, `robots.txt`,
       `manifest.webmanifest`. Route: delegated writer.
 - [ ] **T9** — Worker entry serving static assets + the 2 API handlers.
@@ -471,35 +689,27 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
 - **T5 leftover — RESOLVED in slice 3** (commit `03f8ba1`).
   Self-hosted Archivo/Newsreader/Geist Mono now ship; see T5 above for
   detail.
-- **T7 leftovers, all confirmed present in `src/build/site-shell.tsx`**:
-  - `MobileNavStatic` renders the closed-state DOM of `app/MobileNav.tsx`
-    (`aria-expanded="false"`, `data-open="false"`, `inert`) with no
-    open/close behavior, no focus trap, no Escape handling.
-  - `CookiePreferencesButtonStatic` renders the button with no
-    click handler (would need `window.localStorage` + reload).
-  - The cookie-consent banner itself (`app/CookieConsent.tsx`,
-    rendered by `app/layout.tsx` as a sibling of `<main>`, not by
-    `ServicePageLayout`) is not rendered at all yet in the static
-    build — confirmed by the T3 screenshot diff (Next shows the
-    Aceptar/Rechazar banner; the static build doesn't). It's
-    `useSyncExternalStore`-driven and meaningless without JS, so this
-    was scoped out of T3 rather than ported as dead markup; T7 needs to
-    decide whether it becomes inline-visible-by-default markup or a
-    template injected by the widget's own script.
-  - GA4 script injection (also in `CookieConsent.tsx`, gated on
-    `consent === "granted"`) has no static-build equivalent yet —
-    expected, since it's conditional client behavior.
-  - **T6b leftover**: `src/build/consultation-form.tsx` (the homepage
-    consultation form) has no submit behavior — it's real,
-    server-rendered `<form>` markup only, matching the real component's
-    own pre-hydration state (submit button starts `disabled`). T7 needs
-    to port `app/ConsultationForm.tsx`'s `handleSubmit`: build the
-    `wa.me` URL from `FormData`, fire-and-forget `POST /api/crm-lead`,
-    and enable the submit button + fill the status paragraph once
-    bound. Hooks already in place (documented in that module's header
-    comment): `#consultation-form`, `#consultation-form-submit`,
-    `#consultation-form-status`; field `name`s match
-    `app/ConsultationForm.tsx`'s `FormData` keys exactly.
+- **T7 leftovers — ALL RESOLVED in T7** (`4829da1`/`73a034a`/`4327b92`,
+  see T7 above for full detail):
+  - `MobileNavStatic`'s closed-state DOM is now progressively enhanced
+    by `src/client/dom/mobile-nav.ts`: open/close, focus trap, Escape
+    handling, resize-to-desktop, all e2e-verified.
+  - `CookiePreferencesButtonStatic` (now with a `#cookie-preferences-button`
+    hook id) has a real click handler via `src/client/dom/cookie-consent.ts`.
+  - The cookie-consent banner is rendered client-side, on demand, by
+    `src/client/dom/cookie-consent.ts` — chosen over server-rendered
+    hidden markup because without JS no GA4 loads, so there's nothing
+    to consent to and no reason to ship banner markup to a no-JS
+    visitor (see T7's own "Design choice" note above for the full
+    justification).
+  - GA4 script injection now has a static-build equivalent:
+    `src/client/dom/ga4.ts`, called only from the "granted" branch of
+    `cookie-consent.ts`, never eagerly.
+  - **T6b leftover — RESOLVED**: `src/client/dom/consultation-form.ts`
+    ports `app/ConsultationForm.tsx`'s `handleSubmit` onto exactly the
+    hooks `src/build/consultation-form.tsx` left in place
+    (`#consultation-form`, `#consultation-form-submit`,
+    `#consultation-form-status`).
 
 ## Acceptance criteria
 
@@ -611,6 +821,22 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
 - Push/PR of `feat/bun-vanilla-migration-t6b` into the feature branch
   is the user's decision (branch-chain strategy).
 
+- **T7 complete and verified** on branch `feat/bun-vanilla-migration-t7`
+  (based on `feat/bun-vanilla-migration-t6b`): `4829da1` (pure logic +
+  `js.ts` bundler), `73a034a` (DOM wiring + document/build/site-shell
+  integration), `4327b92` (e2e coverage), route: delegated writer
+  throughout. Authored line count (`git diff --shortstat
+  feat/bun-vanilla-migration-t6b...HEAD`): **1378 insertions, 10
+  deletions across 26 files** — over the ~400-line advisory heuristic;
+  not split artificially (pure-logic/bundler, DOM-wiring/integration,
+  and e2e coverage are each their own coherent, sequentially-dependent
+  commit — e2e coverage cannot exist before the wiring it tests).
+  See T7 above for full RED/GREEN evidence (bun-test units), the
+  honest TDD disclosure for the DOM-wiring/e2e layer, every
+  verification result, JS bundle sizes, and screenshot description.
+  Push/PR of `feat/bun-vanilla-migration-t7` into the feature branch is
+  the user's decision (branch-chain strategy).
+
 ## Carried to the polish phase (after cutover)
 
 - Home `/` has **no canonical and no `og:url`** in production (root
@@ -624,6 +850,11 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
 
 ## Next step
 
-T7 (rewrite the 4 interactive widgets as vanilla ES modules —
-including the consultation form's submit behavior, see the T6b
-leftover note above).
+T8 — build-time generators for `sitemap.xml`, `robots.txt`,
+`manifest.webmanifest`. `routes.ts`'s `PAGE_ROUTES` table is meant to be
+the single source of truth `T8` reuses instead of hand-listing routes a
+second time (see `routes.ts`'s own module comment). T9 (Worker entry)
+must also route `/api/crm-lead`, and T10 (CSP) must allow-list GA4's
+hosts (`https://www.googletagmanager.com`,
+`https://*.google-analytics.com`) in `script-src`/`connect-src` — both
+noted under T7's "Left for later tasks" above.

@@ -1,4 +1,3 @@
-/** @jsxImportSource ../html */
 // src/build/faq-page.tsx
 //
 // Ported from `app/preguntas-frecuentes/page.tsx`, verbatim markup and

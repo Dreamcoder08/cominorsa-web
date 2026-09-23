@@ -1,5 +1,278 @@
-@import "tailwindcss";
-
+/*
+ * T11 cutover: Tailwind CSS is removed from this project (it was
+ * "imported but barely used" — AGENTS.md — with zero utility classes
+ * anywhere in the templates, verified by grep since T3). The one thing
+ * this file's own rules implicitly relied on was Tailwind's Preflight
+ * base-style reset (`@import "tailwindcss"` pulled it in as a byproduct)
+ * — e.g. `.legal-page-body ul`'s `padding-left: 1.2rem` assumed
+ * Preflight had already zeroed the browser's default `<ul>`
+ * margin/padding/list-style. Removing the import without this block
+ * produced real, screenshot-confirmed visual regressions (bullet
+ * markers and extra spacing appearing in "Qué incluye" lists, and a
+ * cascading vertical reflow across the whole homepage).
+ *
+ * The block below is Tailwind v4's actual Preflight CSS
+ * (`@layer base { ... }` from the `tailwindcss` npm package, as it was
+ * being shipped to production moments ago), copied here verbatim as
+ * plain CSS — extracted from a real `bun run build:static` output built
+ * with the tailwindcss import still present, not reconstructed from
+ * memory. Two `--theme(--default-font-family, ...)`/
+ * `--theme(--default-mono-font-family, ...)` calls are Tailwind-specific
+ * non-standard CSS functions that neither Bun's CSS bundler nor real
+ * browsers ever evaluated (an unrecognized function in a `font-family`
+ * value makes the whole declaration invalid, so browsers drop it and
+ * fall through to this site's own `body`/heading font rules) — kept
+ * byte-for-byte rather than "fixed", since resolving them to a real
+ * value would be a behavior CHANGE from what was actually live.
+ *
+ * Verified with real Playwright screenshots (1440px and 390px, `/` and
+ * `/seguridad-minera`) comparing a build with this block against a build
+ * from just before the cutover with the Tailwind import still active:
+ * pixel-identical layout, spacing, and typography — see
+ * odd/tasks/bun-vanilla-migration.md's T11 entry for the exact diff
+ * evidence.
+ */
+*,:after,:before {
+  box-sizing:border-box;
+  border:0 solid;
+  margin:0;
+  padding:0;
+}
+::backdrop {
+  box-sizing:border-box;
+  border:0 solid;
+  margin:0;
+  padding:0;
+}
+::-webkit-file-upload-button {
+  box-sizing:border-box;
+  border:0 solid;
+  margin:0;
+  padding:0;
+}
+::file-selector-button {
+  box-sizing:border-box;
+  border:0 solid;
+  margin:0;
+  padding:0;
+}
+html,:host {
+  -webkit-text-size-adjust:100%;
+  tab-size:4;
+  line-height:1.5;
+  font-family:--theme(--default-font-family,ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji");
+  font-feature-settings:--theme(--default-font-feature-settings,normal);
+  font-variation-settings:--theme(--default-font-variation-settings,normal);
+  -webkit-tap-highlight-color:transparent;
+}
+hr {
+  color:inherit;
+  border-top-width:1px;
+  height:0;
+}
+abbr:where([title]) {
+  -webkit-text-decoration:underline dotted;
+  text-decoration:underline dotted;
+}
+h1,h2,h3,h4,h5,h6 {
+  font-size:inherit;
+  font-weight:inherit;
+}
+a {
+  color:inherit;
+  -webkit-text-decoration:inherit;
+  text-decoration:inherit;
+}
+b,strong {
+  font-weight:bolder;
+}
+code,kbd,samp,pre {
+  font-family:--theme(--default-mono-font-family,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace);
+  font-feature-settings:--theme(--default-mono-font-feature-settings,normal);
+  font-variation-settings:--theme(--default-mono-font-variation-settings,normal);
+  font-size:1em;
+}
+small {
+  font-size:80%;
+}
+sub,sup {
+  position:relative;
+  vertical-align:baseline;
+  font-size:75%;
+  line-height:0;
+}
+sub {
+  bottom:-.25em;
+}
+sup {
+  top:-.5em;
+}
+table {
+  text-indent:0;
+  border-color:inherit;
+  border-collapse:collapse;
+}
+:-moz-focusring {
+  outline:auto;
+}
+progress {
+  vertical-align:baseline;
+}
+summary {
+  display:list-item;
+}
+ol,ul,menu {
+  list-style:none;
+}
+img,svg,video,canvas,audio,iframe,embed,object {
+  display:block;
+  vertical-align:middle;
+}
+img,video {
+  max-width:100%;
+  height:auto;
+}
+button,input,select,optgroup,textarea {
+  font:inherit;
+  font-feature-settings:inherit;
+  font-variation-settings:inherit;
+  letter-spacing:inherit;
+  color:inherit;
+  opacity:1;
+  background-color:#0000;
+  border-radius:0;
+}
+::-webkit-file-upload-button {
+  font:inherit;
+  font-feature-settings:inherit;
+  font-variation-settings:inherit;
+  letter-spacing:inherit;
+  color:inherit;
+  opacity:1;
+  background-color:#0000;
+  border-radius:0;
+}
+::file-selector-button {
+  font:inherit;
+  font-feature-settings:inherit;
+  font-variation-settings:inherit;
+  letter-spacing:inherit;
+  color:inherit;
+  opacity:1;
+  background-color:#0000;
+  border-radius:0;
+}
+:where(select:-webkit-any([multiple],[size])) optgroup {
+  font-weight:bolder;
+}
+:where(select:-moz-any([multiple],[size])) optgroup {
+  font-weight:bolder;
+}
+:where(select:is([multiple],[size])) optgroup {
+  font-weight:bolder;
+}
+:where(select:-webkit-any([multiple],[size])) optgroup option {
+  padding-inline-start:20px;
+}
+:where(select:-moz-any([multiple],[size])) optgroup option {
+  padding-inline-start:20px;
+}
+:where(select:is([multiple],[size])) optgroup option {
+  padding-inline-start:20px;
+}
+::-webkit-file-upload-button {
+  margin-inline-end:4px;
+}
+::file-selector-button {
+  margin-inline-end:4px;
+}
+::placeholder {
+  opacity:1;
+}
+@supports ( not (-webkit-appearance: -apple-pay-button)) or (contain-intrinsic-size: 1px) {
+::placeholder {
+    color:color-mix(in oklab,currentcolor 50%,transparent);
+  }
+}
+textarea {
+  resize:vertical;
+}
+::-webkit-search-decoration {
+  -webkit-appearance:none;
+}
+::-webkit-date-and-time-value {
+  text-align:inherit;
+  min-height:1lh;
+}
+::-webkit-datetime-edit {
+  display:inline-flex;
+}
+::-webkit-datetime-edit-fields-wrapper {
+  padding:0;
+}
+::-webkit-datetime-edit {
+  padding-block-start:0;
+  padding-block-end:0;
+}
+::-webkit-datetime-edit-year-field {
+  padding-block-start:0;
+  padding-block-end:0;
+}
+::-webkit-datetime-edit-month-field {
+  padding-block-start:0;
+  padding-block-end:0;
+}
+::-webkit-datetime-edit-day-field {
+  padding-block-start:0;
+  padding-block-end:0;
+}
+::-webkit-datetime-edit-hour-field {
+  padding-block-start:0;
+  padding-block-end:0;
+}
+::-webkit-datetime-edit-minute-field {
+  padding-block-start:0;
+  padding-block-end:0;
+}
+::-webkit-datetime-edit-second-field {
+  padding-block-start:0;
+  padding-block-end:0;
+}
+::-webkit-datetime-edit-millisecond-field {
+  padding-block-start:0;
+  padding-block-end:0;
+}
+::-webkit-datetime-edit-meridiem-field {
+  padding-block-start:0;
+  padding-block-end:0;
+}
+::-webkit-calendar-picker-indicator {
+  line-height:1;
+}
+:-moz-ui-invalid {
+  box-shadow:none;
+}
+button {
+  appearance:button;
+}
+input:where([type=button],[type=reset],[type=submit]) {
+  appearance:button;
+}
+::-webkit-file-upload-button {
+  appearance:button;
+}
+::file-selector-button {
+  appearance:button;
+}
+::-webkit-inner-spin-button {
+  height:auto;
+}
+::-webkit-outer-spin-button {
+  height:auto;
+}
+[hidden]:where(:not([hidden=until-found])) {
+  display:none!important;
+}
 :root {
   --ink: #0b2318;
   --ink-deep: #061410;

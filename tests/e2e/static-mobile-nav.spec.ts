@@ -1,12 +1,14 @@
 // tests/e2e/static-mobile-nav.spec.ts
 //
 // T7: real browser coverage for `src/client/dom/mobile-nav.ts`, the
-// vanilla replacement for `app/MobileNav.tsx`, against the built static
-// site (`dist-static/`, served locally — see
-// odd/tasks/bun-vanilla-migration.md for the exact serve command). Mirrors
-// the assertions in tests/qa/mobile-nav-interaction.test.mjs (which
-// exercises the React component in jsdom); this file proves the same
-// behavior in a real browser against the framework-free build.
+// vanilla replacement for the former React `app/MobileNav.tsx` (removed at
+// the T11 cutover), against the built static site (`dist-static/`, served
+// locally — see odd/tasks/bun-vanilla-migration.md for the exact serve
+// command). Originally mirrored `tests/qa/mobile-nav-interaction.test.mjs`,
+// a jsdom+React unit suite for the focus-trap logic; that file was removed
+// at T11 once this spec plus `src/client/lib/focus-trap.test.ts` (bun
+// test, unit-tests `computeFocusTrapTarget` in isolation) covered the same
+// behavior against the real, framework-free build.
 //
 // Runs at a 390px viewport (a real phone width) because the panel only
 // renders at all under app/globals.css's `@media (max-width: 820px)`.

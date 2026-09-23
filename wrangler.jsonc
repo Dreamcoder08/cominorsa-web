@@ -1,19 +1,21 @@
 {
-  // T9: wrangler config for the NEW static-site Worker. Deliberately a
-  // DISTINCT name and file from production's Worker
-  // (`cominorsa-web`, generated at `dist/server/wrangler.json` by
-  // vinext/@cloudflare/vite-plugin from `worker/index.ts` — see
-  // `scripts/cloudflare-deploy.sh`) so nothing on this branch can ever
-  // deploy over production. Never deployed by this task; the T11
-  // cutover decides when/whether to rename this to `cominorsa-web` and
-  // retire the Next.js Worker.
+  // T11 cutover: this is now the canonical, ONLY wrangler config for
+  // `cominorsa-web` — the file `wrangler deploy`/`wrangler versions
+  // upload`/Cloudflare Workers Builds pick up by default at the repo
+  // root. It replaces T9's `wrangler.static.jsonc` (renamed here, same
+  // config) and retires the Next.js/vinext Worker that used to be
+  // generated at `dist/server/wrangler.json`. Kept the exact same
+  // Worker name (`cominorsa-web`) production already uses, so this repo's
+  // defaults deploy correctly with no Cloudflare dashboard change (see
+  // DEPLOY.md's "Cloudflare Workers Builds settings" section).
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "cominorsa-web-static",
+  "name": "cominorsa-web",
   "main": "src/worker/index.ts",
-  // Same compatibility_date as production's currently-generated config
-  // (dist/server/wrangler.json, also the date `worker-configuration.d.ts`
-  // was generated against) — keeps both Workers on identical workerd
-  // runtime behavior until T11 decides otherwise.
+  // Same compatibility_date production's Next.js Worker was last
+  // generated with (`dist/server/wrangler.json`, also the date
+  // `worker-configuration.d.ts` was generated against) — keeps the
+  // cutover on identical workerd runtime behavior. Bump this by hand on
+  // a deliberate compatibility-flag upgrade, not as part of routine work.
   "compatibility_date": "2026-08-31",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {

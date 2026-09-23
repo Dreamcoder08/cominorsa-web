@@ -1,4 +1,3 @@
-/** @jsxImportSource ../html */
 // src/build/build.ts
 //
 // The static build pipeline: bundles+minifies+hashes `app/globals.css`
@@ -80,14 +79,13 @@ async function buildClientScripts(
 }
 
 async function copyPublicAssets(outDir: string): Promise<void> {
+  // T11: the old SSR-era public/_headers (which documented its own
+  // comment that Cloudflare never even applied it) was deleted at the
+  // cutover — dist-static/_headers (written below by writeGeneratedFiles)
+  // is the one and only source of truth now, so there's no longer a
+  // stale file under public/ to skip copying.
   const glob = new Glob("**/*");
   for await (const relativePath of glob.scan({ cwd: PUBLIC_DIR, dot: false })) {
-    // public/_headers is the Next.js/SSR-era file — it documents its own
-    // comment that Cloudflare never even applies it there. T10's
-    // dist-static/_headers (written below by writeGeneratedFiles) is the
-    // one this static build actually ships; skip copying the stale one
-    // so there's no ambiguity about which file governs the output.
-    if (relativePath === "_headers") continue;
     const source = Bun.file(join(PUBLIC_DIR, relativePath));
     await Bun.write(join(outDir, relativePath), source);
   }

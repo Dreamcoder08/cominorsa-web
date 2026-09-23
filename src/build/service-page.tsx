@@ -1,10 +1,9 @@
-/** @jsxImportSource ../html */
 // src/build/service-page.tsx
 //
 // Ported from `app/ServicePageLayout.tsx`, verbatim markup and copy.
 
 import { buildWhatsAppLink } from "../../app/constants";
-import type { ServiceGroup } from "../../app/services-data";
+import type { ServiceGroup } from "../data/services-data";
 import { SiteFooter, SiteHeader } from "./site-shell";
 
 export function ServicePage({ service }: { service: ServiceGroup }) {

@@ -1,4 +1,3 @@
-/** @jsxImportSource ../html */
 // src/build/consultation-form.tsx
 //
 // Static server markup for the homepage consultation form, ported from

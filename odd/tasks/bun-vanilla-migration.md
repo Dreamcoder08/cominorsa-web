@@ -323,8 +323,107 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
       404) render correctly. RED evidence for these units was not reported
       before the writer was cut off — recorded honestly as *not observed by
       the parent*.
-- [ ] **T6b** — Port the home page `/` (`app/page.tsx`, 335 lines,
-      contains the consultation form). Route: delegated writer.
+- [x] **T6b** — Port the home page `/` (`app/page.tsx`, 335 lines,
+      contains the consultation form). Route: delegated writer. **DONE**
+      — `b0a75af` (shared consultation-form options), `4337d65` (static
+      consultation form), `2234686` (home page + route wiring).
+      Home page registered in `PAGE_ROUTES` with `slug: ""` (already
+      mapped to `index.html` by `build.ts`'s `writePage`, since T4).
+      Added `PageRoute.fullTitle` so the homepage keeps its real,
+      brand-first production title
+      (`"COMINORSA | Consultoría minera y ambiental"`) instead of every
+      other route's `"<page> | COMINORSA"` suffix pattern — verified
+      via `curl -sL https://cominorsa.com/` before writing any code:
+      the root layout's `generateMetadata` sets no `alternates.canonical`
+      and `app/page.tsx` exports no `generateMetadata` of its own, so
+      production emits **no** `<link rel="canonical">` and **no**
+      `og:url` for `/` at all (unlike every service page, which does
+      set one via `generateServiceMetadata`). Matched exactly by
+      omitting `canonicalPath` on the homepage route, the same way the
+      404 route already does — confirmed both in the raw curl response
+      and by checking where Next streams metadata into `<body>` (the
+      `data-vinext-streamed-icon` block): the service-page fetch has a
+      literal `<link rel="canonical">` right there; the homepage fetch
+      goes straight from the manifest link to the relocator `<script>`
+      with nothing in between.
+
+      **Consultation form**: ported as a real, no-JS-baseline `<form>`
+      (`src/build/consultation-form.tsx`) — same `name`s
+      (`name`/`city`/`service`/`whatsapp`/`question`), `required`,
+      `autocomplete`, `maxlength`/`minlength`, and the submit button
+      starting `disabled` (matching the real component's own
+      pre-hydration `disabled={!mounted}` state, not just a T7
+      convenience). Service-of-interest options moved to
+      `src/data/consultation-services.ts` (single source of truth;
+      `app/ConsultationForm.tsx` now imports the same array instead of
+      its own hand-copied list — same principle as T6a's
+      `services-data.ts`/`faq.ts`). No inline `<script>`, no
+      `onSubmit` — matches the T10 CSP plan (`script-src 'self'`).
+      **T7 hooks left, documented in the module's own header comment**:
+      `#consultation-form` (the `<form>` to bind to),
+      `#consultation-form-submit` (submit button; T7 removes its
+      `disabled` attribute once it attaches the submit handler),
+      `#consultation-form-status` (the `aria-live="polite"` status
+      paragraph T7 fills after building the wa.me link). Field `name`s
+      match `app/ConsultationForm.tsx`'s `FormData` keys exactly so
+      T7's submit handler can be ported near-verbatim.
+
+      One JSX-runtime gotcha discovered while porting the address block:
+      JSX text `&nbsp;` compiles to a literal U+00A0 character (not the
+      string `"&nbsp;"`) under this runtime, same as under React/JSX in
+      general — confirmed byte-for-byte identical to production's own
+      output via `curl -sL https://cominorsa.com/` (two of four
+      `"N.º"` occurrences in the raw HTML are U+00A0, matching our
+      output; the other two, in the JSON-LD and legal-footer copy, use
+      a plain space in both — same source, same output). Not a defect;
+      the test's own initial expectation (literal `"&nbsp;"`) was wrong
+      and was corrected to match.
+
+      Strict TDD, in commit order:
+      - `consultation-services` (`b0a75af`): RED
+        `Cannot find module './consultation-services'` (0 pass / 1
+        fail) → GREEN (4 pass).
+      - `consultation-form` (`4337d65`): RED
+        `Cannot find module './consultation-form'` (0 pass / 1 fail) →
+        GREEN (9 pass).
+      - `home-page` (`2234686`): RED
+        `Cannot find module './home-page'` (0 pass / 1 fail) → GREEN
+        (7 pass, after fixing the test's own `&nbsp;` assumption above).
+      - `routes.ts` home-route wiring (`2234686`): RED — 3 failures
+        (missing `""` slug, missing `fullTitle`, `route.render is not a
+        function`) / 7 pass → GREEN (10 pass).
+      - `build.ts` `fullTitle` support (`2234686`): RED reproduced
+        *retroactively* (see note below) — reverting the `fullTitle ??`
+        line and re-running `bun test src/build/build.test.ts` gave 11
+        pass / 1 fail (`<title>Inicio | COMINORSA</title>` instead of
+        the expected brand-first title) → re-applying the fix gave 12
+        pass, 0 fail.
+      - Combined `bun test src/`: **153 pass, 0 fail** (up from T6a's
+        129).
+      - **Process note (honest disclosure)**: the `build.ts`
+        `fullTitle` line and the corresponding `build.test.ts`
+        assertions were written in the wrong order — the source fix
+        landed before the new test, so the first run was already
+        green. Caught during this same task before commit: reverted
+        the fix, reran to capture a genuine RED, then re-applied it.
+        Recorded here so the RED/GREEN trail for that one unit is
+        accurate rather than retrofitted after the fact.
+
+      Verification (all observed): `bun test src/` → 153 pass, 0 fail.
+      `pnpm typecheck` → exit 0. `pnpm lint` → 0 errors (7 pre-existing
+      warnings, unchanged). `bun run build:static` → 11 files in
+      `dist-static/*.html` including `index.html` and `404.html`.
+      Scripted metadata diff (`title`, meta description, canonical,
+      every `og:*`/`twitter:*`, `robots`, `application-name`,
+      `theme-color`, and the full JSON-LD object) between
+      `dist-static/index.html` and `https://cominorsa.com/`: **zero
+      differences** on every field, including the JSON-LD object
+      comparing deep-equal. `pnpm test` → 193/193 pass (Next build
+      unaffected). Real Playwright screenshots of the served
+      `dist-static/` homepage vs. the live site at 1440px and 390px:
+      layout, spacing, colors, typography, and copy all match; the only
+      difference is the live site's cookie-consent banner overlay (T7
+      leftover, already documented, unrelated to this task).
 - [ ] **T7** — Rewrite the 4 interactive widgets as vanilla ES modules
       with progressive enhancement. Route: delegated writer.
 - [ ] **T8** — Build-time generators for `sitemap.xml`, `robots.txt`,
@@ -390,6 +489,17 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
   - GA4 script injection (also in `CookieConsent.tsx`, gated on
     `consent === "granted"`) has no static-build equivalent yet —
     expected, since it's conditional client behavior.
+  - **T6b leftover**: `src/build/consultation-form.tsx` (the homepage
+    consultation form) has no submit behavior — it's real,
+    server-rendered `<form>` markup only, matching the real component's
+    own pre-hydration state (submit button starts `disabled`). T7 needs
+    to port `app/ConsultationForm.tsx`'s `handleSubmit`: build the
+    `wa.me` URL from `FormData`, fire-and-forget `POST /api/crm-lead`,
+    and enable the submit button + fill the status paragraph once
+    bound. Hooks already in place (documented in that module's header
+    comment): `#consultation-form`, `#consultation-form-submit`,
+    `#consultation-form-status`; field `name`s match
+    `app/ConsultationForm.tsx`'s `FormData` keys exactly.
 
 ## Acceptance criteria
 
@@ -483,6 +593,24 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
   - Push/PR of `feat/bun-vanilla-migration-t4` into the feature branch
     is the user's decision (branch-chain strategy).
 
+- **T6b complete and verified** on branch `feat/bun-vanilla-migration-t6b`
+  (based on `feat/bun-vanilla-migration-t6a`): `b0a75af` (shared
+  consultation-form data), `4337d65` (static consultation form),
+  `2234686` (home page + route/build wiring), route: delegated writer
+  throughout. Authored line count
+  (`git diff --shortstat feat/bun-vanilla-migration-t6a...HEAD`):
+  **746 insertions, 32 deletions across 11 files** — over the
+  ~400-line advisory heuristic; not split artificially (the
+  consultation-form data move, the static form, and the home page are
+  each their own commit, but the home page and the form it embeds are
+  one coherent, mutually-dependent unit, and the metadata/route-table
+  wiring is inseparable from registering the page itself). See T6b
+  above for full RED/GREEN evidence, the metadata-parity diff (zero
+  differences vs. production), and screenshot comparison.
+
+- Push/PR of `feat/bun-vanilla-migration-t6b` into the feature branch
+  is the user's decision (branch-chain strategy).
+
 ## Carried to the polish phase (after cutover)
 
 - `404` copy uses Rioplatense voseo ("buscás", "llegaste acá",
@@ -492,4 +620,6 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
 
 ## Next step
 
-T6b (home page), then T7 (widgets).
+T7 (rewrite the 4 interactive widgets as vanilla ES modules —
+including the consultation form's submit behavior, see the T6b
+leftover note above).

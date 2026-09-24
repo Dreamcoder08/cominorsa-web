@@ -168,8 +168,28 @@ trust, speed and one obvious action — not WebGL or scroll-jacking.
       - Final: `bun test src/` 332/332, `pnpm test` 196/196,
         `pnpm test:e2e` 58/58, typecheck ok, lint ok.
 
+## Delivery
+
+Strategy `ask-on-risk` → user chose **chained PRs**, chain strategy
+**feature-branch-chain** (2026-09-24): nothing reaches `main` (which
+deploys) until the tracker merges, so the T3 copy can wait for client
+sign-off. Slices follow the existing commit boundaries (no rewrite):
+
+| PR | Branch | Commits | Authored lines |
+|---|---|---|---|
+| Tracker (draft, no-merge) → `main` | `feat/landing-craft` | `17af1f5` plan + research | 168 |
+| 01 → tracker | `feat/landing-craft-01-say-once` | `9286671`, `e22f8f1` (T1) | 240 |
+| 02 → 01 | `feat/landing-craft-02-route` | `7e87308`, `d88adab` (T3) | 188 |
+| 03 → 02 | `feat/landing-craft-03-contours` | `aa87774`, `a507704` (T4) | 736 — `size:exception` |
+| 04 → 03 | `feat/landing-craft-04-strata` | `bea336b`, `fc2f094` (T5) | 188 |
+| 05 → 04 | `feat/landing-craft-05-motion-qa` | `863a2b0` … this doc (T6, T7) | ~200 |
+
+T4 exception: the contour engine (329) and its tests (195) are one
+cohesive unit; separating code from tests is not allowed and nothing
+else splits it under 400. The generated SVG is excluded from the count.
+
 ## Next step
 
-Client review before production: T3 route copy + 4 open questions
-(`odd/research/formalization-route.md`). Then push `feat/landing-craft`
-and open a PR — user's decision (every push to `main` deploys).
+Client review of the T3 route copy + 4 open questions
+(`odd/research/formalization-route.md`) before the tracker merges.
+Review and merge children in order, then the tracker — user's decision.

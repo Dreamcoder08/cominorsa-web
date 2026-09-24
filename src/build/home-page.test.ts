@@ -52,6 +52,40 @@ describe("HomePage", () => {
     expect(html).toContain('<form class="consultation-form" id="consultation-form" method="post">');
   });
 
+  describe("says each thing once (landing-craft T1)", () => {
+    const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
+    const count = (haystack: string, needle: string) =>
+      haystack.split(needle).length - 1;
+
+    test("each phone tel: link appears exactly once inside <main>", () => {
+      expect(count(main, 'href="tel:+51910728575"')).toBe(1);
+      expect(count(main, 'href="tel:+51987817100"')).toBe(1);
+    });
+
+    test("both phones live in the #contacto block", () => {
+      const contact = main.slice(main.indexOf('id="contacto"'));
+      expect(contact).toContain('href="tel:+51910728575"');
+      expect(contact).toContain('href="tel:+51987817100"');
+    });
+
+    test("has no impact section and no hero-footer strip", () => {
+      expect(html).not.toContain('class="section impact"');
+      expect(html).not.toContain("impact-panel");
+      expect(html).not.toContain("hero-footer");
+    });
+
+    test("the hero card routes to every service page", () => {
+      const start = html.indexOf('<aside class="hero-card"');
+      const card = html.slice(start, html.indexOf("</aside>", start));
+      expect(start).toBeGreaterThan(-1);
+      expect(card).toContain("¿Qué necesitas?");
+      for (const service of serviceGroups) {
+        expect(card).toContain(`href="/${service.slug}"`);
+      }
+      expect(card).not.toContain("tel:");
+    });
+  });
+
   test("renders the contact address and map link", () => {
     // The JSX text `&nbsp;` compiles to a literal U+00A0 character, not
     // the literal string "&nbsp;" — verified to match production's own

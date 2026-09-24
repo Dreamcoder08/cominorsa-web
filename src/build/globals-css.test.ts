@@ -74,8 +74,8 @@ describe("colour tokens (P9, audit P2-15)", () => {
   const RAW_COLOUR = /#[0-9a-f]{3,8}\b|rgba?\(\s*\d[^)]*\)/gi;
 
   // Remaining literals, each a documented token gap (not palette hues):
-  // Preflight's transparent, the hero gradient's greens, the impact
-  // section's copper-orange glow and contour line, the hero card shadow,
+  // Preflight's transparent, the hero gradient's greens, the hero card's
+  // copper-orange glow and contour line, the hero card shadow,
   // and the form's neutral drop shadow.
   const ALLOWED = new Map<string, number>([
     ["#0000", 3],

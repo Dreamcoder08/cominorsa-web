@@ -103,6 +103,10 @@ export function ConsultationForm() {
         </button>
       </div>
 
+      <p className="form-disclaimer form-consent">
+        Al enviar, aceptas que COMINORSA use estos datos para responder tu
+        consulta. <a href="/privacidad">Ver Política de Privacidad</a>.
+      </p>
       <p className="form-disclaimer">
         Al continuar se abrirá WhatsApp. El pago y el horario de atención se
         coordinan directamente con COMINORSA.

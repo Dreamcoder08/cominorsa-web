@@ -22,6 +22,14 @@ import { TermsPage } from "./terms-page";
 const ROOT_DESCRIPTION =
   "Formalización minera, instrumentos ambientales, ingeniería y asistencia técnica desde Piura, Perú.";
 
+/** Build-wide facts every page render may depend on (P1). */
+export type RenderContext = {
+  /** True when the build bakes in a GA measurement ID (see build.ts). */
+  analyticsEnabled: boolean;
+};
+
+const NO_ANALYTICS: RenderContext = { analyticsEnabled: false };
+
 export type PageRoute = {
   /** URL slug, no leading/trailing slash. "" emits `index.html` (the homepage); "404" emits `404.html` (see build.ts). */
   slug: string;
@@ -37,11 +45,11 @@ export type PageRoute = {
    * pattern `generateServiceMetadata` uses for every other page.
    */
   fullTitle?: string;
-  /** Absolute path with no trailing slash, e.g. "/privacidad". Omit for the homepage and the 404 page (neither has a canonical URL in production — verified against the live site). */
+  /** Absolute path with no trailing slash, e.g. "/privacidad", or "/" for the homepage (P2). Omit only for the 404 page, which has no canonical URL. */
   canonicalPath?: string;
   /** e.g. "noindex, follow" — only the 404 route sets this today. */
   robots?: string;
-  render: () => Child;
+  render: (ctx?: RenderContext) => Child;
 };
 
 export const PAGE_ROUTES: PageRoute[] = [
@@ -50,7 +58,8 @@ export const PAGE_ROUTES: PageRoute[] = [
     title: "Inicio",
     fullTitle: "COMINORSA | Consultoría minera y ambiental",
     description: ROOT_DESCRIPTION,
-    render: () => HomePage({ serviceGroups }),
+    canonicalPath: "/",
+    render: (ctx = NO_ANALYTICS) => HomePage({ serviceGroups, ...ctx }),
   },
   ...serviceGroups.map(
     (service): PageRoute => ({
@@ -58,7 +67,7 @@ export const PAGE_ROUTES: PageRoute[] = [
       title: service.pageTitle,
       description: service.pageDescription,
       canonicalPath: `/${service.slug}`,
-      render: () => ServicePage({ service }),
+      render: (ctx = NO_ANALYTICS) => ServicePage({ service, ...ctx }),
     }),
   ),
   {
@@ -67,7 +76,7 @@ export const PAGE_ROUTES: PageRoute[] = [
     description:
       "Respuestas generales sobre IGAFOM, REINFO, DIA, PAMA, DAC, ESTAMIN, planes de minado y consultoría minera en Piura.",
     canonicalPath: "/preguntas-frecuentes",
-    render: () => FaqPage({ faqs }),
+    render: (ctx = NO_ANALYTICS) => FaqPage({ faqs, ...ctx }),
   },
   {
     slug: "privacidad",
@@ -75,7 +84,7 @@ export const PAGE_ROUTES: PageRoute[] = [
     description:
       "Cómo COMINORSA S.A.C. trata los datos personales que nos compartes, conforme a la Ley N.º 29733 de Protección de Datos Personales del Perú.",
     canonicalPath: "/privacidad",
-    render: () => PrivacyPage(),
+    render: (ctx = NO_ANALYTICS) => PrivacyPage(ctx),
   },
   {
     slug: "terminos",
@@ -83,7 +92,7 @@ export const PAGE_ROUTES: PageRoute[] = [
     description:
       "Condiciones de uso del sitio web de COMINORSA S.A.C. y del contenido publicado en él.",
     canonicalPath: "/terminos",
-    render: () => TermsPage(),
+    render: (ctx = NO_ANALYTICS) => TermsPage(ctx),
   },
   {
     slug: "404",

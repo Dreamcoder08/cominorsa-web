@@ -17,7 +17,7 @@
 // where it's invisible anyway — a robustness improvement the task asked
 // for, not a behavior this is trying to hide a regression in.
 
-import { computeFocusTrapTarget } from "../lib/focus-trap";
+import { buildFocusCycle, computeFocusTrapTarget } from "../lib/focus-trap";
 
 const DESKTOP_QUERY = "(min-width: 821px)";
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled])';
@@ -30,8 +30,14 @@ export function initMobileNav(doc: Document = document): void {
   let open = false;
   let keydownHandler: ((event: KeyboardEvent) => void) | null = null;
 
-  function getFocusable(): HTMLElement[] {
+  function getPanelFocusable(): HTMLElement[] {
     return Array.from(panel!.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+  }
+
+  // The trap cycle includes the toggle itself (P3), so Tab from the last
+  // panel item reaches "Cerrar menú" instead of skipping it.
+  function getTrapCycle(): HTMLElement[] {
+    return buildFocusCycle<HTMLElement>(toggle!, getPanelFocusable());
   }
 
   function lockScroll() {
@@ -57,14 +63,14 @@ export function initMobileNav(doc: Document = document): void {
 
     if (open) {
       lockScroll();
-      getFocusable()[0]?.focus();
+      getPanelFocusable()[0]?.focus();
       keydownHandler = (event: KeyboardEvent) => {
         if (event.key === "Escape") {
           close();
           return;
         }
         if (event.key !== "Tab") return;
-        const focusable = getFocusable();
+        const focusable = getTrapCycle();
         const activeIndex = focusable.indexOf(doc.activeElement as HTMLElement);
         const target = computeFocusTrapTarget(activeIndex, focusable.length, event.shiftKey);
         if (target === null) return;

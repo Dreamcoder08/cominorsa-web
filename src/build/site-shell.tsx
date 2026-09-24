@@ -13,6 +13,7 @@
 // `scriptSrcs` on every route (`src/build/routes.ts`). The
 // `#cookie-preferences-button` id is that script's hook.
 
+import type { Child } from "../html/jsx-runtime";
 import { WHATSAPP_INFORMATION } from "../../app/constants";
 import {
   PRIMARY_WHATSAPP_DISPLAY,
@@ -116,7 +117,19 @@ export function SiteHeader({ basePath = "" }: { basePath?: string }) {
   );
 }
 
-export function SiteFooter({ basePath = "" }: { basePath?: string }) {
+export type SiteFooterProps = {
+  basePath?: string;
+  /**
+   * P1 (audit P0-2): true only when the build has a GA measurement ID
+   * (`runStaticBuild`'s `gaMeasurementId`). Without one no tracker can
+   * load, so there is no consent choice to reopen and the button is not
+   * rendered. Defaults to false: a missing flag hides the control rather
+   * than advertising a choice that does not exist.
+   */
+  analyticsEnabled?: boolean;
+};
+
+export function SiteFooter({ basePath = "", analyticsEnabled = false }: SiteFooterProps) {
   return (
     <footer>
       <a className="brand footer-brand" href={`${basePath}#inicio`}>
@@ -141,12 +154,50 @@ export function SiteFooter({ basePath = "" }: { basePath?: string }) {
         <a href="/preguntas-frecuentes">FAQ</a>
         <a href="/privacidad">Privacidad</a>
         <a href="/terminos">Términos</a>
-        <CookiePreferencesButtonStatic />
+        {analyticsEnabled ? <CookiePreferencesButtonStatic /> : null}
       </div>
 
       <a className="back-to-top" href={`${basePath}#inicio`} aria-label="Volver al inicio">
         ↑
       </a>
     </footer>
+  );
+}
+
+/**
+ * P3 (audit P1-4, P1-5): the one skip link on every page. It must be the
+ * first focusable element in `<body>` and target `<main id="contenido">`.
+ */
+export function SkipLink() {
+  return (
+    <a className="skip-link" href="#contenido">
+      Ir al contenido
+    </a>
+  );
+}
+
+/**
+ * P3: the page frame every site-chrome page renders — skip link, then
+ * the `<header>` landmark, then `<main id="contenido">` holding only the
+ * page's own content, then the `<footer>` landmark. Header and footer
+ * sit OUTSIDE `<main>` so assistive tech exposes banner/contentinfo
+ * landmarks and "skip to content" lands past the navigation.
+ */
+export function SiteLayout({
+  basePath = "",
+  analyticsEnabled = false,
+  children,
+}: {
+  basePath?: string;
+  analyticsEnabled?: boolean;
+  children?: Child;
+}) {
+  return (
+    <>
+      <SkipLink />
+      <SiteHeader basePath={basePath} />
+      <main id="contenido">{children}</main>
+      <SiteFooter basePath={basePath} analyticsEnabled={analyticsEnabled} />
+    </>
   );
 }

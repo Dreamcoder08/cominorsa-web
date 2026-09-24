@@ -29,3 +29,14 @@ export function computeFocusTrapTarget(
   if (!shiftKey && activeIndex === count - 1) return 0;
   return null;
 }
+
+/**
+ * P3 (audit P2-5): the ordered list of elements the open mobile-nav
+ * trap cycles through — the toggle (which reads "Cerrar menú" while
+ * open) first, matching its DOM position right before the panel, then
+ * the panel's own focusables. Without the toggle in the cycle a
+ * keyboard user could never Tab back to the close control.
+ */
+export function buildFocusCycle<T>(toggle: T, panelFocusables: readonly T[]): T[] {
+  return [toggle, ...panelFocusables];
+}

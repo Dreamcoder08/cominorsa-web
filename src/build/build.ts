@@ -31,7 +31,7 @@ import { buildCss } from "./css";
 import { renderDocument } from "./document";
 import { buildHeadersFile } from "./headers";
 import { buildJs } from "./js";
-import { PAGE_ROUTES } from "./routes";
+import { PAGE_ROUTES, type RenderContext } from "./routes";
 import { buildRobotsTxt } from "./robots";
 import { buildSitemapXml } from "./sitemap";
 import { SITEMAP_LAST_MODIFIED } from "./site-config";
@@ -56,14 +56,13 @@ const CONSULTATION_FORM_JS_ENTRY = join(CLIENT_ENTRIES_DIR, "consultation-form-e
 
 async function buildClientScripts(
   outDir: string,
+  gaMeasurementId: string,
 ): Promise<{ mobileNavHref: string; consentHref: string; consultationFormHref: string }> {
-  // Bakes NEXT_PUBLIC_GA_MEASUREMENT_ID in at build time (same env var
-  // `app/constants.ts`'s GA_MEASUREMENT_ID already reads) — a browser
-  // bundle has no `process.env` at runtime.
+  // Bakes the GA measurement ID in at build time (the same value the
+  // page render uses for `analyticsEnabled`, see runStaticBuild) — a
+  // browser bundle has no `process.env` at runtime.
   const define = {
-    "process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID": JSON.stringify(
-      process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "",
-    ),
+    "process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID": JSON.stringify(gaMeasurementId),
   };
   const jsOutDir = join(outDir, ASSETS_DIR_NAME);
   const [mobileNav, consent, consultationForm] = await Promise.all([
@@ -115,9 +114,26 @@ async function writePage(outDir: string, slug: string, html: string): Promise<vo
   await Bun.write(join(outDir, fileName), html);
 }
 
+export type StaticBuildOptions = {
+  /**
+   * P1: the single source of truth for analytics in a build. Defaults to
+   * `NEXT_PUBLIC_GA_MEASUREMENT_ID` (empty when unset). It is baked into
+   * the consent bundle AND decides whether pages render the
+   * "Preferencias de cookies" button and the GA4 paragraph of the
+   * privacy policy — so markup and behavior can never disagree.
+   */
+  gaMeasurementId?: string;
+};
+
 export async function runStaticBuild(
   outDir: string,
+  options: StaticBuildOptions = {},
 ): Promise<{ cssFileName: string; fontsCssFileName: string }> {
+  const gaMeasurementId = (
+    options.gaMeasurementId ?? process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? ""
+  ).trim();
+  const renderContext: RenderContext = { analyticsEnabled: gaMeasurementId !== "" };
+
   const { fileName: cssFileName } = await buildCss(CSS_ENTRY, join(outDir, ASSETS_DIR_NAME));
   const cssHref = `/${ASSETS_DIR_NAME}/${cssFileName}`;
 
@@ -135,7 +151,10 @@ export async function runStaticBuild(
   await copyPublicAssets(outDir);
   await writeGeneratedFiles(outDir);
 
-  const { mobileNavHref, consentHref, consultationFormHref } = await buildClientScripts(outDir);
+  const { mobileNavHref, consentHref, consultationFormHref } = await buildClientScripts(
+    outDir,
+    gaMeasurementId,
+  );
 
   for (const route of PAGE_ROUTES) {
     const scriptSrcs =
@@ -151,7 +170,7 @@ export async function runStaticBuild(
       cssHref,
       fontsCssHref,
       scriptSrcs,
-      children: route.render(),
+      children: route.render(renderContext),
     });
 
     await writePage(outDir, route.slug, html);

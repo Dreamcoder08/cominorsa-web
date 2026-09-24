@@ -23,14 +23,15 @@ async function getOpenedUrls(page: Page): Promise<string[]> {
   return page.evaluate(() => (window as unknown as { __openCalls: string[] }).__openCalls);
 }
 
-/** The submit button starts `disabled` in the static markup and is only
- * enabled once `src/client/dom/consultation-form.ts` attaches its submit
- * handler — same race-closing contract as the React version's
- * `disabled={!mounted}`. */
+/** P7: the submit button renders enabled; `src/client/dom/consultation-form.ts`
+ * marks the form `data-enhanced` once its submit handler is attached. */
 async function gotoAndWaitForEnhancement(page: Page) {
   await page.goto("/");
-  await expect(page.locator("#consultation-form-submit")).toBeEnabled({ timeout: 15000 });
+  await expect(page.locator("#consultation-form[data-enhanced]")).toHaveCount(1, { timeout: 15000 });
 }
+
+const PREPARED_STATUS =
+  "Preparamos tu mensaje en WhatsApp. Revísalo y envíalo para completar tu consulta.";
 
 const SAMPLE_LEAD = {
   name: "Rosa Elvira Quispe Mamani",
@@ -74,9 +75,7 @@ test.describe("static consultation form", () => {
       whatsappLine: "51910728575",
     });
 
-    await expect(page.locator("#consultation-form-status")).toHaveText(
-      "Se abrió WhatsApp con tu mensaje preparado. Revísalo y envíalo para completar tu consulta.",
-    );
+    await expect(page.locator("#consultation-form-status")).toContainText(PREPARED_STATUS);
   });
 
   test("selecting the secondary WhatsApp line routes both effects to that number", async ({
@@ -138,9 +137,43 @@ test.describe("static consultation form", () => {
     await page.click("#consultation-form-submit");
 
     await expect.poll(() => getOpenedUrls(page)).toHaveLength(1);
-    await expect(page.locator("#consultation-form-status")).toHaveText(
-      "Se abrió WhatsApp con tu mensaje preparado. Revísalo y envíalo para completar tu consulta.",
-      { timeout: 2000 },
-    );
+    await expect(page.locator("#consultation-form-status")).toContainText(PREPARED_STATUS, {
+      timeout: 2000,
+    });
+  });
+});
+
+// P7 (audit P2-3): `window.open(..., "noopener")` always returns null, so
+// the page can't tell whether a popup blocker stopped WhatsApp. The
+// status always carries a visible link to the same prepared URL.
+test.describe("static consultation form fallbacks (P7)", () => {
+  test("after submitting, the status offers a link to the prepared WhatsApp URL", async ({ page }) => {
+    await stubWindowOpen(page);
+    await gotoAndWaitForEnhancement(page);
+    await page.locator("#consulta").scrollIntoViewIfNeeded();
+
+    await page.fill('input[name="name"]', SAMPLE_LEAD.name);
+    await page.fill('input[name="city"]', SAMPLE_LEAD.city);
+    await page.selectOption('select[name="service"]', { label: SAMPLE_LEAD.service });
+    await page.fill('textarea[name="question"]', SAMPLE_LEAD.question);
+    await page.click("#consultation-form-submit");
+
+    await expect.poll(() => getOpenedUrls(page)).toHaveLength(1);
+    const [openedUrl] = await getOpenedUrls(page);
+    const fallback = page.locator("#consultation-form-status a");
+    await expect(fallback).toHaveText("Si WhatsApp no se abrió, toca aquí");
+    await expect(fallback).toBeVisible();
+    expect(await fallback.getAttribute("href")).toBe(openedUrl);
+  });
+});
+
+test.describe("static consultation form without JavaScript (P7)", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("the submit button is enabled and a direct WhatsApp link is shown", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("#consultation-form-submit")).toBeEnabled();
+    const direct = page.locator('#consultation-form a[href^="https://wa.me/51910728575"]');
+    await expect(direct).toBeVisible();
   });
 });

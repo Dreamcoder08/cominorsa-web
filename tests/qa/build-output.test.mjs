@@ -33,7 +33,8 @@ test("dist-static/ has the expected pages, including the homepage and 404", asyn
 test("dist-static/assets has hashed CSS and JS bundles", async () => {
   const entries = await readdir(ASSETS);
   assert.ok(entries.some((f) => /^globals-.+\.css$/.test(f)), "globals-*.css missing");
-  assert.ok(entries.some((f) => /^fonts-.+\.css$/.test(f)), "fonts-*.css missing");
+  // P9: @font-face rules are bundled into globals-*.css (one stylesheet).
+  assert.ok(!entries.some((f) => /^fonts-.+\.css$/.test(f)), "stray fonts-*.css (should be bundled)");
   assert.ok(entries.some((f) => /^mobile-nav-entry-.+\.js$/.test(f)), "mobile-nav-entry-*.js missing");
   assert.ok(entries.some((f) => /^consent-entry-.+\.js$/.test(f)), "consent-entry-*.js missing");
   assert.ok(entries.some((f) => /^consultation-form-entry-.+\.js$/.test(f)), "consultation-form-entry-*.js missing");

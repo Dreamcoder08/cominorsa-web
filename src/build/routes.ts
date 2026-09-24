@@ -13,6 +13,7 @@ import { NotFoundPage } from "./not-found-page";
 import { PrivacyPage } from "./privacy-page";
 import { ServicePage } from "./service-page";
 import { faqs, serviceGroups } from "./site-data";
+import { breadcrumbJsonLd, serviceBreadcrumbTrail, serviceJsonLd } from "./structured-data";
 import { TermsPage } from "./terms-page";
 
 // Root layout's description (`app/layout.tsx`'s `generateMetadata`) —
@@ -50,6 +51,10 @@ export type PageRoute = {
   /** e.g. "noindex, follow" — only the 404 route sets this today. */
   robots?: string;
   render: (ctx?: RenderContext) => Child;
+  /** P9: preload Newsreader italic too — only for pages whose above-the-fold text uses it (the homepage h1). */
+  preloadEditorialFont?: boolean;
+  /** Page-specific JSON-LD objects (P5), emitted after the site-wide organization. */
+  jsonLd?: readonly unknown[];
 };
 
 export const PAGE_ROUTES: PageRoute[] = [
@@ -59,6 +64,7 @@ export const PAGE_ROUTES: PageRoute[] = [
     fullTitle: "COMINORSA | Consultoría minera y ambiental",
     description: ROOT_DESCRIPTION,
     canonicalPath: "/",
+    preloadEditorialFont: true,
     render: (ctx = NO_ANALYTICS) => HomePage({ serviceGroups, ...ctx }),
   },
   ...serviceGroups.map(
@@ -68,6 +74,7 @@ export const PAGE_ROUTES: PageRoute[] = [
       description: service.pageDescription,
       canonicalPath: `/${service.slug}`,
       render: (ctx = NO_ANALYTICS) => ServicePage({ service, ...ctx }),
+      jsonLd: [serviceJsonLd(service), breadcrumbJsonLd(serviceBreadcrumbTrail(service))],
     }),
   ),
   {

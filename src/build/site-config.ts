@@ -18,6 +18,13 @@ import { spawnSync } from "node:child_process";
 
 export const SITE_URL = "https://cominorsa.com";
 
+/**
+ * P9 (audit P2-13): the `--paper` token (app/globals.css) — the colour the
+ * header and body actually paint. Used for `<meta name="theme-color">`
+ * and the manifest's theme/background colours; tests pin it to the token.
+ */
+export const PAGE_BACKGROUND_COLOR = "#f6f1e2";
+
 // T11: reads the current HEAD commit's committer date (`%cI`, ISO 8601)
 // via a plain `git log -1` — no dependency, works under both `bun run`
 // and `node`. Returns null (never throws) when git itself can't answer:

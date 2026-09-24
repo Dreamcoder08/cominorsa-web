@@ -9,9 +9,9 @@ import { expect, test, type Page } from "./guarded-test";
  * native-submission race documented on `gotoAndWaitForEnhancement` below —
  * with no submit listener attached yet, neither `window.open` nor `fetch`
  * ever ran, so there was nothing for either waiter to catch. That race is
- * now closed at the source (the static markup's submit button starts
- * `disabled`; src/client/dom/consultation-form.ts enables it once its
- * listener is actually attached), but stubbing `window.open` remains the
+ * now handled by waiting for the form's `data-enhanced` marker, set by
+ * src/client/dom/consultation-form.ts once its listener is attached (P7:
+ * the button itself renders enabled), but stubbing `window.open` remains the
  * right approach on its own merits: it needs no browser-level popup/tab
  * machinery and can't flake on tab-timing regardless.
  */
@@ -46,23 +46,23 @@ function isKnownUnrelatedError(text: string) {
   return KNOWN_UNRELATED_ERROR_SUBSTRINGS.some((s) => text.includes(s));
 }
 
-/** The static markup's submit button starts `disabled` (src/build/consultation-form.tsx) —
- * specifically so a click can never land before
- * src/client/dom/consultation-form.ts has actually attached its submit
- * listener. Waiting for that instead of a fixed delay is what makes this
- * deterministic rather than "probably enough time" flakiness. */
+/** src/client/dom/consultation-form.ts sets `data-enhanced` on the form
+ * once its submit listener is attached (P7: the button renders enabled,
+ * so it no longer signals readiness). Waiting for that instead of a fixed
+ * delay is what makes this deterministic rather than "probably enough
+ * time" flakiness. */
 async function gotoAndWaitForEnhancement(page: Page, path = "/") {
   await page.goto(path);
   // Playwright's default 5s expect-timeout assumes normal load; running
   // this whole suite's browsers in parallel against one shared dev server
   // can genuinely push real script-execution past that under CPU
   // contention — this is a generous ceiling for a legitimately slow
-  // environment, not a race being paved over (the button becomes enabled
+  // environment, not a race being paved over (the marker appears
   // deterministically once the listener attaches; there's no scenario
   // where waiting longer changes the outcome).
-  await expect(
-    page.locator('.consultation-form button[type="submit"]'),
-  ).toBeEnabled({ timeout: 15000 });
+  await expect(page.locator(".consultation-form[data-enhanced]")).toHaveCount(1, {
+    timeout: 15000,
+  });
 }
 
 test.describe("homepage smoke", () => {
@@ -150,8 +150,8 @@ test.describe("consultation form — the real client-facing lead flow", () => {
       whatsappLine: "51910728575",
     });
 
-    await expect(page.locator(".form-status")).toHaveText(
-      "Se abrió WhatsApp con tu mensaje preparado. Revísalo y envíalo para completar tu consulta.",
+    await expect(page.locator(".form-status")).toContainText(
+      "Preparamos tu mensaje en WhatsApp. Revísalo y envíalo para completar tu consulta.",
     );
   });
 

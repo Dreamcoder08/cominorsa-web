@@ -16,19 +16,21 @@ const html = render(ConsultationForm());
 
 describe("ConsultationForm", () => {
   test("renders a real <form> with the T7 hook id, no inline script and no onSubmit wiring", () => {
-    expect(html).toContain('<form class="consultation-form" id="consultation-form">');
+    // P7: POST, so a submit that lands before (or without) the script
+    // never puts the visitor's data into a URL, history or access log.
+    expect(html).toContain('<form class="consultation-form" id="consultation-form" method="post">');
     expect(html).not.toContain("<script");
   });
 
   test("renders the name field", () => {
     expect(html).toContain(
-      '<input type="text" name="name" autocomplete="name" maxlength="120" placeholder="Escribe tu nombre" required>',
+      '<input type="text" name="name" autocomplete="name" maxlength="120" placeholder="Escribe tu nombre…" required>',
     );
   });
 
   test("renders the city field", () => {
     expect(html).toContain(
-      '<input type="text" name="city" autocomplete="address-level1" maxlength="120" placeholder="Ej. Piura" required>',
+      '<input type="text" name="city" autocomplete="address-level1" maxlength="120" placeholder="Ej. Piura…" required>',
     );
   });
 
@@ -47,13 +49,30 @@ describe("ConsultationForm", () => {
 
   test("renders the question textarea", () => {
     expect(html).toContain(
-      '<textarea name="question" rows="5" minlength="10" maxlength="2000" placeholder="Cuéntanos brevemente qué necesitas resolver" required></textarea>',
+      '<textarea name="question" rows="5" minlength="10" maxlength="2000" placeholder="Cuéntanos brevemente qué necesitas resolver…" required></textarea>',
     );
   });
 
-  test("submit button starts disabled (pre-hydration baseline) with the T7 hook id", () => {
-    expect(html).toContain('<button type="submit" id="consultation-form-submit" disabled>');
+  // P7 (audit P2-6): the button used to start `disabled`, so without JS
+  // the form was dead. It now renders enabled, and <noscript> offers the
+  // direct WhatsApp link with the site's default inquiry text.
+  test("submit button renders enabled with the T7 hook id", () => {
+    expect(html).toContain('<button type="submit" id="consultation-form-submit">');
     expect(html).toContain("Enviar por WhatsApp");
+  });
+
+  test("offers a direct WhatsApp link when JavaScript is off", () => {
+    const noscript = html.match(/<noscript>[\s\S]*?<\/noscript>/);
+    expect(noscript).not.toBeNull();
+    expect(noscript![0]).toContain(
+      `href="https://wa.me/51910728575?text=${encodeURIComponent("Hola COMINORSA, deseo información sobre sus servicios.")}"`,
+    );
+  });
+
+  test("every placeholder ends with an ellipsis (Web Interface Guidelines)", () => {
+    const placeholders = [...html.matchAll(/placeholder="([^"]*)"/g)].map((m) => m[1]);
+    expect(placeholders.length).toBe(3);
+    for (const placeholder of placeholders) expect(placeholder!.endsWith("…")).toBe(true);
   });
 
   test("renders the disclaimer copy verbatim", () => {

@@ -10,13 +10,11 @@
 // WhatsApp, and fires the non-blocking CRM POST — covered by Playwright
 // e2e against the built static site, not a DOM-free unit test.
 //
-// The submit button starts `disabled` in the static markup, matching the
-// real component's own pre-hydration `disabled={!mounted}` state
-// (`handleSubmit` is a React prop, not an HTML attribute, so a click
-// landing before hydration would otherwise fall through to a native GET
-// with the fields in the URL). Enabling it here, at the moment this
-// module actually attaches the submit listener, closes that same race
-// for the vanilla build.
+// P7: the submit button renders enabled (no JS → still clickable, and
+// the form's `method="post"` keeps a pre-script submit's data out of
+// URLs); this module only intercepts the submit. `window.open` with
+// `noopener` always returns null, so a blocked popup is undetectable —
+// the status always carries a link to the same prepared URL.
 
 import { CONTACT_SUBMIT_EVENT } from "../../../app/constants";
 import { buildCrmLeadPayload } from "../lib/crm-lead-payload";
@@ -27,17 +25,22 @@ import {
 } from "../lib/whatsapp-message";
 
 const WHATSAPP_OPENED_STATUS =
-  "Se abrió WhatsApp con tu mensaje preparado. Revísalo y envíalo para completar tu consulta.";
+  "Preparamos tu mensaje en WhatsApp. Revísalo y envíalo para completar tu consulta. ";
+const WHATSAPP_FALLBACK_LABEL = "Si WhatsApp no se abrió, toca aquí";
+
+function renderStatus(status: HTMLElement, url: string): void {
+  const link = status.ownerDocument.createElement("a");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = WHATSAPP_FALLBACK_LABEL;
+  status.replaceChildren(WHATSAPP_OPENED_STATUS, link);
+}
 
 export function initConsultationForm(doc: Document = document): void {
   const form = doc.getElementById("consultation-form") as HTMLFormElement | null;
-  const submitButton = doc.getElementById(
-    "consultation-form-submit",
-  ) as HTMLButtonElement | null;
   const status = doc.getElementById("consultation-form-status");
-  if (!form || !submitButton || !status) return;
-
-  submitButton.disabled = false;
+  if (!form || !status) return;
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -61,7 +64,7 @@ export function initConsultationForm(doc: Document = document): void {
     form.dataset.eventContext = service;
 
     window.open(url, "_blank", "noopener,noreferrer");
-    status.textContent = WHATSAPP_OPENED_STATUS;
+    renderStatus(status, url);
 
     const payload = buildCrmLeadPayload(
       { name, city, service, question, website },
@@ -73,4 +76,7 @@ export function initConsultationForm(doc: Document = document): void {
       body: JSON.stringify(payload),
     }).catch(() => {});
   });
+
+  // Readiness marker for e2e (the button no longer flips from disabled).
+  form.dataset.enhanced = "true";
 }

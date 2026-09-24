@@ -10,7 +10,10 @@ import { describe, expect, test } from "bun:test";
 import { buildWebManifest } from "./webmanifest";
 
 describe("buildWebManifest", () => {
-  test("matches the live production manifest byte-for-byte", () => {
+  // P9 (audit P2-13): background_color/theme_color were #f4eed9/#001713,
+  // neither of which the site renders; both now equal --paper, the
+  // colour the header and body actually paint.
+  test("matches the expected manifest byte-for-byte", () => {
     expect(buildWebManifest()).toBe(
       [
         "{",
@@ -19,8 +22,8 @@ describe("buildWebManifest", () => {
         '  "description": "Consultoría minera y soluciones ambientales desde Piura, Perú.",',
         '  "start_url": "/",',
         '  "display": "standalone",',
-        '  "background_color": "#f4eed9",',
-        '  "theme_color": "#001713",',
+        '  "background_color": "#f6f1e2",',
+        '  "theme_color": "#f6f1e2",',
         '  "lang": "es-PE",',
         '  "icons": [',
         "    {",
@@ -44,4 +47,12 @@ describe("buildWebManifest", () => {
   test("has no trailing newline (matches production exactly)", () => {
     expect(buildWebManifest().endsWith("\n")).toBe(false);
   });
+});
+
+test("theme_color and background_color equal the --paper token", async () => {
+  const css = await Bun.file("app/globals.css").text();
+  const paper = css.match(/--paper:\s*(#[0-9a-f]{6});/i)![1];
+  const manifest = JSON.parse(buildWebManifest());
+  expect(manifest.theme_color).toBe(paper);
+  expect(manifest.background_color).toBe(paper);
 });

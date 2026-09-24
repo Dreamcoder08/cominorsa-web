@@ -149,6 +149,27 @@ trust, speed and one obvious action — not WebGL or scroll-jacking.
         `@view-transition`; frames at 1440 show the mid-entry fade and
         full opacity at rest; at 390 every service card (393–574 px
         tall) is opacity 1.00 with its top at 60 % of the viewport.
-- [ ] **T7 — Visual QA & full checks**: screenshots 1440/390 of every
+- [x] **T7 — Visual QA & full checks**: screenshots 1440/390 of every
       changed page, contrast check of new pairs, `pnpm test`,
       `bun test src/`, `pnpm test:e2e`.
+      - Commit `d7d9558` (fix found by QA). `pnpm shots` full-page
+        captures showed every section below the hero blank: capture
+        never scrolls, so the T6 reveals stayed pre-entry. Real
+        scrolling was already verified in T6. The tool now uses
+        `reducedMotion: "reduce"` (test added; skill note added).
+      - Contrast (text over the new contour lines, WCAG calculator
+        logic): contact `--copper-ink` 6.28, `--ink` 10.30 on the
+        worst line pixel; hero lead `white/0.72` measured on the real
+        render with the text hidden: 6.13 (1440) / 5.51 (390). No new
+        text/background token pair was introduced.
+      - Full-page shots home + `/seguridad-minera` at 1440/390: the
+        whole page reads hero → strata → about → services → route →
+        consultation → contact → footer; service page unaffected.
+      - Final: `bun test src/` 332/332, `pnpm test` 196/196,
+        `pnpm test:e2e` 58/58, typecheck ok, lint ok.
+
+## Next step
+
+Client review before production: T3 route copy + 4 open questions
+(`odd/research/formalization-route.md`). Then push `feat/landing-craft`
+and open a PR — user's decision (every push to `main` deploys).

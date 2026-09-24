@@ -1138,14 +1138,19 @@ blockquote {
   line-height: 1.7;
 }
 
+/* Formalization route (landing-craft T3): six stops laid out as a
+   3 x 2 path. Each stop owns its own segment of the path (.step::before)
+   so the line survives the row wrap; the first stop of every row starts
+   the segment at its node. */
 .steps {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+  row-gap: var(--space-7);
   margin-top: 7rem;
 }
 
-.steps::before {
+.step::before {
   content: "";
   position: absolute;
   top: 0;
@@ -1156,18 +1161,18 @@ blockquote {
   transform-origin: left center;
 }
 
-/* Progressive line draw as the section scrolls into view — native
+/* Progressive path draw as each stop scrolls into view — native
    scroll-driven animation, no JS/library. Base state (no transform) is the
    fallback for browsers without view() support and for reduced-motion. */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
-    .steps::before {
+    .step::before {
       transform: scaleX(0);
       animation-name: draw-line;
       animation-timing-function: var(--ease-out);
       animation-fill-mode: forwards;
       animation-timeline: view();
-      animation-range: entry 10% cover 55%;
+      animation-range: entry 10% cover 45%;
     }
   }
 }
@@ -1180,13 +1185,14 @@ blockquote {
 
 .step {
   position: relative;
-  min-height: 250px;
-  padding: 2.2rem clamp(1.2rem, 2.5vw, 2.5rem) 0 0;
+  min-height: 230px;
+  padding: 2.2rem clamp(1.2rem, 2.5vw, 2.5rem) 0;
+  border-left: 1px solid var(--line);
 }
 
-.step + .step {
-  padding-left: clamp(1.2rem, 2.5vw, 2.5rem);
-  border-left: 1px solid var(--line);
+.step:nth-child(3n + 1) {
+  padding-left: 0;
+  border-left: 0;
 }
 
 .step > span {
@@ -1206,23 +1212,43 @@ blockquote {
   box-shadow: 0 0 0 6px var(--cream);
 }
 
-.step:first-child .step-node {
+.step:nth-child(3n + 1) .step-node {
   left: 0;
 }
 
+/* The last stop is the destination: a hollow marker, like the end pin
+   of a route on a map. */
+.step:last-child .step-node {
+  background: var(--cream);
+  outline: 2px solid var(--copper);
+  outline-offset: -2px;
+}
+
 .step h3 {
-  margin-top: 3.6rem;
+  margin-top: 3rem;
   font-size: clamp(1.2rem, 2vw, 1.65rem);
   font-weight: 600;
   letter-spacing: -0.035em;
 }
 
 .step p {
-  max-width: 260px;
+  max-width: 280px;
   margin-top: 1rem;
   color: var(--muted);
   font-size: 0.88rem;
   line-height: 1.65;
+}
+
+.method-source {
+  margin-top: var(--space-7);
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+.method-source a {
+  color: var(--copper-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .contact {
@@ -2054,14 +2080,19 @@ footer > .brand {
 
   .steps {
     grid-template-columns: 1fr 1fr;
+    row-gap: 0;
     border-top: 0;
   }
 
   .step,
-  .step + .step {
+  .step:nth-child(3n + 1) {
     padding: 2rem;
     border-top: 1px solid var(--line);
     border-left: 0;
+  }
+
+  .step::before {
+    display: none;
   }
 
   .step:nth-child(even) {
@@ -2154,12 +2185,27 @@ footer > .brand {
     width: 100%;
   }
 
+  /* One column: the route becomes a vertical rail with a node per stop,
+     so the path metaphor survives on the phone. */
   .steps {
     grid-template-columns: 1fr;
+    margin-left: var(--space-1);
+    border-left: 1px solid var(--line);
   }
 
+  .step,
+  .step:nth-child(3n + 1),
   .step:nth-child(even) {
+    padding: var(--space-5) 0 var(--space-5) var(--space-5);
+    border-top: 0;
     border-left: 0;
+  }
+
+  .step-node,
+  .step:nth-child(3n + 1) .step-node {
+    display: block;
+    top: calc(var(--space-5) + 0.1rem);
+    left: -0.4rem;
   }
 
   .contact {

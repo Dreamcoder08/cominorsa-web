@@ -69,9 +69,24 @@ trust, speed and one obvious action — not WebGL or scroll-jacking.
         and uncertain after the archive transfer to MINEM, so the site
         does not name DREM. 6-step copy drafted, REVIEW: client,
         4 open questions.
-- [ ] **T3 — Method → formalization route**: replace the 4 generic steps
+- [x] **T3 — Method → formalization route**: replace the 4 generic steps
       with the researched route, presented as a path on the map; copy
       flagged `REVIEW: client` in the task doc.
+      - Commit `7e87308`. Route: inline (1 TSX + its test + CSS, already
+        understood). Six stops from `odd/research/formalization-route.md`
+        as an `<ol class="steps route">`; kicker "Ruta de formalización",
+        title "Tu ruta hacia la formalización."; source line linking
+        gob.pe/101185. Layout: 3 × 2 path with a per-stop segment
+        (scroll-drawn under `@supports`/no-preference), hollow marker
+        on the destination; 2 columns ≤820 px; vertical rail with nodes
+        ≤560 px.
+      - **REVIEW: client** — all six step texts, the intro paragraph, and
+        the 4 open questions in the research doc.
+      - Evidence: RED 3 fail → GREEN; `bun test src/` 308/308,
+        `pnpm test` 195/195; section screenshots 1440/900/700/390:
+        0 px overflow, 0 console errors. Color pairs reused
+        (`--muted`/`--copper-ink` on `--cream`), no new pair.
+        RDD: off (clone-local), assess `medium`/`under_budget`.
 - [ ] **T4 — Real Piura contours**: build-time script (no deps) that
       decodes Terrarium tiles and runs marching squares to emit an SVG of
       real Piura contour lines; replace the hero gradient and reuse it as

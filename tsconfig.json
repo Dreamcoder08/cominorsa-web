@@ -12,23 +12,13 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
+    "jsxImportSource": "@html",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
     "paths": {
-      "@/*": ["./*"]
+      "@html/jsx-runtime": ["./src/html/jsx-runtime.ts"],
+      "@html/jsx-dev-runtime": ["./src/html/jsx-dev-runtime.ts"]
     }
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "worker-configuration.d.ts"],
   "exclude": ["node_modules"]
 }

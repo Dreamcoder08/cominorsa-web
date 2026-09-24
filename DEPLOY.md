@@ -1,108 +1,93 @@
 # DEPLOY — Cloudflare Workers
 
-Guía paso a paso para llevar **COMINORSA — Web** a producción en Cloudflare Workers + Pages.
+Guía de despliegue de **COMINORSA — Web** a Cloudflare Workers.
 
-> **Estado actual del proyecto**: el código está listo para deployar, pero el `db/schema.ts` está vacío y la app no consume D1 ni R2. El formulario de consulta se envía por WhatsApp. Antes de activar D1/R2 hay que definir el schema.
+> **T11 cutover (2026-09)**: el sitio dejó de ser Next.js/vinext SSR y
+> pasó a ser un sitio **estático** (Cloudflare Workers Static Assets)
+> más un Worker chico que sólo atiende `/api/crm-lead` y
+> `/api/next-business-day`. No hay D1 ni R2 — el formulario de consulta
+> se envía por WhatsApp; el lead se reenvía opcionalmente a Twenty CRM.
 
 ---
 
 ## Tabla de contenidos
 
 1. [Prerrequisitos](#prerrequisitos)
-2. [Configuración inicial de Cloudflare](#configuración-inicial-de-cloudflare)
-3. [Bindings de D1 y R2](#bindings-de-d1-y-r2)
-4. [Deploy manual con Wrangler](#deploy-manual-con-wrangler)
-5. [Deploy automático desde GitHub](#deploy-automático-desde-github)
-6. [Dominio custom](#dominio-custom)
-7. [Variables de entorno y secrets](#variables-de-entorno-y-secrets)
-8. [Troubleshooting](#troubleshooting)
-9. [Checklist pre-producción](#checklist-pre-producción)
+2. [Hecho crítico: Cloudflare Workers Builds](#hecho-crítico-cloudflare-workers-builds)
+3. [Deploy manual con Wrangler](#deploy-manual-con-wrangler)
+4. [Dominio custom](#dominio-custom)
+5. [Variables de entorno y secrets](#variables-de-entorno-y-secrets)
+6. [Headers de seguridad](#headers-de-seguridad)
+7. [Troubleshooting](#troubleshooting)
+8. [Checklist pre-producción](#checklist-pre-producción)
 
 ---
 
 ## Prerrequisitos
 
-| Herramienta | Versión mínima | Cómo instalar                                                   |
+| Herramienta | Versión mínima | Cómo instalar                                                  |
 | ----------- | -------------- | --------------------------------------------------------------- |
-| Node.js     | 22.13.0        | `nvm install 22` o [fnm](https://github.com/Schniz/fnm)         |
-| pnpm        | 11.0.0         | `corepack enable && corepack prepare pnpm@11.22.0 --activate`   |
-| Wrangler    | 4.128+         | `pnpm add -g wrangler` (o usar el `wrangler` del proyecto)      |
+| Node.js     | 22.18.0        | `nvm install 22` o [fnm](https://github.com/Schniz/fnm)         |
+| pnpm        | 11.0.0         | `corepack enable && corepack prepare pnpm@11.25.0 --activate`   |
+| Bun         | latest         | `curl -fsSL https://bun.sh/install \| bash` — build/dev/test runtime; never runs in production (Cloudflare Workers runs `workerd`, not Bun) |
+| Wrangler    | 4.128+         | ya es una devDependency del proyecto (`pnpm exec wrangler`)     |
 | Cuenta CF   | —              | <https://dash.cloudflare.com/sign-up> (plan Free alcanza)         |
 
-Wrangler lee `dist/server/wrangler.json` que Vinext genera automáticamente al correr `pnpm build`.
+Wrangler lee el **`wrangler.jsonc` de la raíz del repo** — es el único
+config de Wrangler que queda en el proyecto desde el cutover (el
+`dist/server/wrangler.json` que generaba vinext, y el `worker/index.ts`
++ `vite.config.ts` que lo producían, ya no existen).
 
 ---
 
-## Configuración inicial de Cloudflare
+## Hecho crítico: Cloudflare Workers Builds
 
-### 1. Login
+**Cloudflare Workers Builds está conectado a este repo de GitHub** para
+el Worker `cominorsa-web`: cada push a cualquier rama dispara un
+**preview** (alias `https://<rama>-cominorsa-web.dreamcoder-dev08.workers.dev`),
+y un push a `main` muy probablemente **deploya producción**. El comando
+de build/deploy que usa Workers Builds vive en el **dashboard de
+Cloudflare** — este repo no lo controla ni lo puede ver.
 
-```bash
-pnpm exec wrangler login
-# Abre el navegador, autorizá la app. El token se guarda en ~/.config/.wrangler/config/default.toml
-```
+Por eso los **defaults del repo tienen que andar solos, sin tocar el
+dashboard**:
 
-### 2. Crear el proyecto
+- `pnpm build` (o `npm run build`) → corre `bun run src/build/build.ts`
+  → produce `dist-static/` completo (HTML + `assets/` + `_headers` +
+  `sitemap.xml`/`robots.txt`/`manifest.webmanifest`).
+- El `wrangler.jsonc` de la raíz (el que `wrangler deploy`/
+  `wrangler versions upload` recogen por defecto) es el config estático,
+  con `"name": "cominorsa-web"` — el mismo nombre que producción ya usa,
+  a propósito, para que el preview de cualquier rama ejercite el Worker
+  real sin tener que tocar nada en el dashboard.
 
-Si es la primera vez:
+### Qué revisar en el dashboard de Cloudflare (Workers Builds)
 
-```bash
-pnpm exec wrangler deploy --dry-run --outdir=dist
-# Verifica que wrangler.json está bien formado
-```
+Dashboard → Workers & Pages → **cominorsa-web** → Settings → Builds:
 
-El `wrangler.json` que vinext genera tiene `name: "cominorsa-web"`, que es el nombre que CF le va a dar al Worker.
+| Campo | Valor esperado |
+| --- | --- |
+| Build command | `pnpm install --frozen-lockfile && pnpm run build` (o equivalente — el build debe correr `bun run src/build/build.ts`, que requiere Bun disponible en el builder; si Workers Builds no trae Bun preinstalado, el build command necesita instalarlo primero, p. ej. `curl -fsSL https://bun.sh/install \| bash && export PATH="$HOME/.bun/bin:$PATH"`) |
+| Deploy command | `pnpm exec wrangler deploy` (sin `--config`: recoge el `wrangler.jsonc` de la raíz automáticamente) |
+| Root directory | `/` (raíz del repo) |
+| Non-production branch deployments | según se quiera (cada rama ya generará un preview funcional una vez el build ande) |
 
-### 3. Bindings de D1 (opcional, sólo si activás DB)
+**Variables de entorno del build** (Settings → Variables and Secrets,
+scope "Build"): deben estar seteadas **en build time**, no sólo en
+runtime, porque `NEXT_PUBLIC_GA_MEASUREMENT_ID` se **inlinea** dentro
+del JS bundle en el momento del build (`src/build/js.ts`'s `define`) —
+un Worker corriendo con la variable seteada pero un build viejo sin
+ella sigue sirviendo GA4 apagado.
 
-```bash
-# Crear la base D1
-pnpm exec wrangler d1 create site-creator-d1
-# Output:
-# database_name = "site-creator-d1"
-# database_id   = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-```
+| Variable | Requerida | Efecto si falta |
+| --- | --- | --- |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Sí, para que GA4 funcione | Se inlinea como `""`; el bundle de consentimiento nunca llama a `loadGa4` (mismo comportamiento que hoy con la variable sin setear — no rompe el build, sólo apaga analytics) |
+| `SITEMAP_LAST_MODIFIED` | No | Si falta, `sitemap.ts` usa la fecha del commit actual vía `git log -1` (T11); si el builder no tiene metadata de git (clone sin `.git/`), cae a una constante fija — ver `src/build/site-config.ts` |
 
-Editá `vite.config.ts` o `.openai/hosting.json` y reemplazá el `database_id` placeholder por el real. Si agregás `db/schema.ts`, definí las tablas con Drizzle y corré:
-
-```bash
-pnpm db:generate           # genera archivos en drizzle/
-pnpm exec wrangler d1 migrations apply site-creator-d1 --remote
-```
-
-### 4. Bindings de R2 (opcional)
-
-```bash
-pnpm exec wrangler r2 bucket create site-creator-r2
-```
-
----
-
-## Bindings de D1 y R2
-
-`dist/server/wrangler.json` ya viene con placeholders:
-
-```json
-"d1_databases": [
-  {
-    "binding": "SITE_CREATOR_DB",
-    "database_name": "site-creator-d1",
-    "database_id": "00000000-0000-4000-8000-000000000000"
-  }
-],
-"r2_buckets": [
-  { "binding": "SITE_CREATOR_BUCKET", "bucket_name": "site-creator-r2" }
-]
-```
-
-Para activarlos de verdad:
-
-1. Creá los recursos en Cloudflare (`wrangler d1 create`, `wrangler r2 bucket create`).
-2. Reemplazá el `database_id` placeholder con el UUID real.
-3. Re-corré `pnpm build` para que vinext reemita el `wrangler.json`.
-4. Commit el cambio.
-
-> **Importante**: hasta que el código no consuma estos bindings con `env.SITE_CREATOR_DB.prepare(...).run(...)`, el deploy funciona sin ellos. No hay coste extra ni runtime check.
+> El nombre `NEXT_PUBLIC_GA_MEASUREMENT_ID` es un remanente de la era
+> Next.js — renombrarlo apagaría GA4 en el próximo deploy sin avisar.
+> Mantenido tal cual a propósito; un rename es tarea de limpieza para
+> la fase de polish (T12), no de este cutover.
 
 ---
 
@@ -110,146 +95,112 @@ Para activarlos de verdad:
 
 ```bash
 # 1. Compilar
-pnpm build
+pnpm run build          # -> dist-static/
 
-# 2. Deploy
+# 2. Deploy (recoge wrangler.jsonc de la raíz automáticamente)
+pnpm run cf:deploy
+# o directamente:
 pnpm exec wrangler deploy
-# Output esperado:
-# Uploaded cominorsa-web (X.XX sec)
-# Published cominorsa-web (X.XX sec)
-#   https://cominorsa-web.<tu-subdominio>.workers.dev
 ```
 
-El primer deploy asigna una URL `*.workers.dev` automática. Los siguientes sólo actualizan el código.
+### Verificar sin deployar (dry-run)
+
+```bash
+pnpm exec wrangler deploy --dry-run --outdir /tmp/cominorsa-dryrun
+```
+
+`--dry-run` construye y valida el Worker (bundlea, resuelve bindings,
+valida el config) pero **nunca sube nada** a Cloudflare — confirmado en
+`wrangler deploy --help`. Es la forma segura de probar que
+`wrangler.jsonc` está bien formado sin arriesgar producción.
 
 ### Rollback
 
 ```bash
-# Listar versiones
 pnpm exec wrangler deployments list
-
-# Volver a una versión anterior
 pnpm exec wrangler rollback --message "regresando a versión estable"
 ```
 
 ---
 
-## Deploy automático desde GitHub
-
-### Opción A: Wrangler GitHub Action (recomendado)
-
-Creá `.github/workflows/deploy.yml`:
-
-```yaml
-name: Deploy
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.22.0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Test
-        run: pnpm test
-
-      - name: Build
-        run: pnpm build
-
-      - name: Deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          workingDirectory: .
-          command: deploy
-```
-
-### Opción B: Cloudflare Pages directo
-
-Conectá el repo desde <https://dash.cloudflare.com> → Workers & Pages → Create → Pages → Connect to Git.
-
-- **Build command**: `pnpm build`
-- **Build output directory**: `dist/client`
-- **Root directory**: `/`
-
----
-
 ## Dominio custom
 
-1. En Cloudflare Dashboard → **Workers & Pages** → cominorsa-web → **Settings** → **Triggers** → **Custom Domains**
-2. Click **Add Custom Domain** → escribí `cominorsa.com.pe` (o el que tengas)
-3. Si el dominio ya está en Cloudflare (DNS autoritativo), se configura solo.
-4. Si está en otro registrar (GoDaddy, Namecheap, etc.), agregá el CNAME que CF te indica.
+1. Dashboard → **Workers & Pages** → `cominorsa-web` → **Settings** →
+   **Triggers** → **Custom Domains**.
+2. El dominio real de producción es **`cominorsa.com`** (sin `.pe` —
+   `cominorsa.com.pe` no resuelve; ver `src/build/site-config.ts`'s
+   propio comentario y `COMINORSA-COM-DOMAIN-SETUP.md`).
+3. Si el dominio ya está en Cloudflare (DNS autoritativo), se configura
+   solo. Si está en otro registrar, agregar el CNAME que CF indica.
 
-> **HTTPS automático**: Cloudflare provisiona un cert Let's Encrypt en segundos. No hay que hacer nada extra.
+> **HTTPS automático**: Cloudflare provisiona un cert Let's Encrypt en
+> segundos, sin pasos extra.
 
 ---
 
 ## Variables de entorno y secrets
 
-### Vars (no sensibles, se commitean en `wrangler.json`)
+### Vars (no sensibles)
 
-Editá `dist/server/wrangler.json` → sección `"vars"`:
-
-```json
-"vars": {
-  "ENVIRONMENT": "production",
-  "PUBLIC_SITE_URL": "https://cominorsa.com.pe"
-}
-```
+Se configuran en el dashboard de Cloudflare (Settings → Variables and
+Secrets) — ver la tabla de la sección anterior. No hay `"vars"` en
+`wrangler.jsonc` hoy porque las 2 rutas `/api/*` sólo necesitan
+secrets, no vars públicas del lado del Worker.
 
 ### Secrets (sensibles, NUNCA commitear)
 
 ```bash
-# Setear un secret
-pnpm exec wrangler secret put SENDGRID_API_KEY
-# Pegás el valor, queda cifrado en CF
+pnpm exec wrangler secret put TWENTY_API_KEY
+pnpm exec wrangler secret put TWENTY_API_URL
+pnpm exec wrangler secret put RESEND_API_KEY
 
-# Listar secrets
 pnpm exec wrangler secret list
-
-# Borrar
-pnpm exec wrangler secret delete SENDGRID_API_KEY
+pnpm exec wrangler secret delete TWENTY_API_KEY
 ```
 
-En el código se accede via `env.SENDGRID_API_KEY` en handlers del Worker, o via `process.env.SENDGRID_API_KEY` si vinext lo expone en RSC.
+Leídas en el código vía `process.env.TWENTY_API_KEY` (etc.) en
+`app/api/crm-lead/route.ts` — disponibles en runtime gracias al
+`compatibility_flags: ["nodejs_compat"]` de `wrangler.jsonc`. Si faltan,
+`/api/crm-lead` sigue respondiendo `200 {"ok":true}` sin hacer nada
+(no-op silencioso, por diseño — ver ese archivo).
 
 ---
 
-## Headers de seguridad (CSP, HSTS, etc.)
+## Headers de seguridad
 
-El proyecto incluye un `public/_headers` con la política de seguridad lista para producción. Cloudflare Pages lo lee y aplica automáticamente en el edge — **no hay que hacer nada extra en el deploy**.
+`dist-static/_headers` — generado en build time por
+`src/build/headers.ts` a partir de `src/build/security-policy.ts` — es
+la **única** fuente de verdad para los headers de seguridad de cada
+página (CSP, HSTS, X-Frame-Options, Permissions-Policy, etc.).
+Cloudflare lo aplica automáticamente a toda respuesta servida desde el
+binding de assets estáticos.
 
-El archivo define:
+Las 2 rutas `/api/*` **no** pasan por `_headers` (Cloudflare nunca lo
+aplica a una respuesta que el propio script del Worker devuelve) — por
+eso `src/worker/security-headers.ts` envuelve esas 2 respuestas con la
+misma política, importada del mismo `security-policy.ts`, para que no
+puedan divergir.
 
-- `Content-Security-Policy`: default-src 'self', permite sólo recursos de `wa.me` y la CDN de WhatsApp para imágenes/conectividad del formulario.
-- `X-Frame-Options: DENY` y `frame-ancestors 'none'`: previene clickjacking.
-- `Strict-Transport-Security`: HSTS por 2 años, con subdominios y preload.
-- `Permissions-Policy`: desactiva cámara, micrófono, geolocalización y otros APIs sensibles.
-- `Referrer-Policy: strict-origin-when-cross-origin`: limita fuga de referrer.
-- `X-Content-Type-Options: nosniff`: previene MIME sniffing.
-
-Si necesitás agregar una excepción (por ejemplo, sumar un dominio de analytics o un CDN de imágenes), editá `public/_headers` y volvé a buildear. Los cambios en headers **requieren re-deploy** — no se hot-reloadan.
-
-> **Local vs producción**: el worker local (`pnpm start`) **no aplica** `_headers` — esos los inyecta Cloudflare en el edge. Por eso los tests de headers validan el **archivo fuente**, no el response. La validación real se hace abriendo las DevTools → Network → Response Headers en `cominorsa-web.workers.dev`.
+Si hace falta agregar una excepción (por ejemplo, un nuevo dominio de
+analytics), editar `src/build/security-policy.ts` y volver a buildear —
+`dist-static/_headers` se regenera solo. **No editar `_headers` a
+mano**: se sobreescribe en cada build.
 
 ---
 
 ## Troubleshooting
+
+### `wrangler dev`/`wrangler deploy` sirve/deploya contenido viejo (Next.js), aunque `wrangler.jsonc` ya es el config estático
+
+**Causa real, encontrada durante T11**: un `.wrangler/deploy/config.json`
+viejo (dejado por un `vinext build`/`wrangler deploy --dry-run` previo
+al cutover) fija el config a la ruta vieja
+(`dist/server/wrangler.json`) y Wrangler lo prioriza por sobre el
+`wrangler.jsonc` de la raíz. Solución:
+
+```bash
+rm -rf .wrangler   # gitignored, se regenera solo
+```
 
 ### `wrangler deploy` falla con "Authentication error [code: 10000]"
 
@@ -260,36 +211,25 @@ pnpm exec wrangler logout
 pnpm exec wrangler login
 ```
 
-### "Could not resolve binding 'SITE_CREATOR_DB'"
+### El deploy funciona pero la página da 500 (en `/api/*`)
 
-El binding está en `wrangler.json` pero no existe en Cloudflare. O:
+Probable mismatch de compatibilidad. Verificá en `wrangler.jsonc`:
 
-- Lo creaste con `wrangler d1 create` y no actualizaste el `database_id`, o
-- Borraste la base en el dashboard.
-
-Solución: crear la D1 (o sacar el binding si no la usás).
-
-### El deploy funciona pero la página da 500
-
-Probable mismatch de Node compat. Verificá en `dist/server/wrangler.json`:
-
-```json
+```jsonc
 "compatibility_date": "2026-08-31",
 "compatibility_flags": ["nodejs_compat"]
 ```
 
-Si CF actualizó la default version, bumpeá `compatibility_date` a la fecha actual.
+Si Cloudflare actualizó la versión default, bumpear `compatibility_date`
+a mano (deliberadamente, no en cada deploy rutinario).
 
 ### El sitio carga pero sin estilos (CSS 404)
 
-`dist/client/_next/static/css/*.css` no se está sirviendo. Verificá:
-
-1. `dist/client/_headers` tiene `/  next/static/*  Cache-Control: public, ...`
-2. La sección `"assets"` de `wrangler.json` apunta a `../client`.
+Verificar que `dist-static/assets/globals-*.css` existe (`pnpm run
+build` lo genera) y que `wrangler.jsonc`'s `assets.directory` apunta a
+`"dist-static"`.
 
 ### Cambios en código no se reflejan
-
-Wrangler a veces sirve desde el último deploy. Forzá:
 
 ```bash
 pnpm exec wrangler deploy --force
@@ -302,15 +242,25 @@ pnpm exec wrangler deploy --force
 Antes de hacer deploy a producción:
 
 - [x] `pnpm install --frozen-lockfile` corre sin warnings
-- [x] `pnpm audit` muestra **0 vulns**
-- [x] `pnpm test` pasa completo (55 tests: suite QA + render + headers de seguridad)
-- [x] `pnpm build` termina sin errores ni warnings
-- [x] Headers de seguridad aplicados vía `public/_headers` (CSP, HSTS, X-Frame-Options, etc.)
-- [x] Páginas de error con branding (`app/not-found.tsx`, `app/error.tsx`, `app/loading.tsx`)
-- [x] `robots.txt` y `sitemap.xml` servidos desde `app/robots.ts` y `app/sitemap.ts`
-- [ ] `dist/server/wrangler.json` tiene los `database_id` reales (si usás D1)
-- [ ] No hay secrets hardcodeados en el código
-- [ ] El dominio custom tiene HTTPS activo (candado verde en el browser)
-- [ ] Variables de entorno configuradas vía `wrangler secret put` (no en código)
-- [ ] Primer deploy de prueba en staging (subdominio `*.workers.dev`) antes del dominio final
-- [ ] Smoke test manual: cargar `/`, clickear CTA, abrir WhatsApp, verificar imagen OG
+- [x] `pnpm audit` sin vulns `high`+
+- [x] `pnpm run validate` pasa
+- [x] `pnpm run lint` y `pnpm run typecheck` sin errores
+- [x] `bun test src/` pasa completo
+- [x] `pnpm test` pasa completo (build + suite QA)
+- [x] `pnpm run e2e:static` pasa completo (Playwright, build determinístico)
+- [x] Headers de seguridad generados en `dist-static/_headers`
+- [x] `robots.txt`, `sitemap.xml`, `manifest.webmanifest` generados en
+      `dist-static/`
+- [ ] Variables de build (`NEXT_PUBLIC_GA_MEASUREMENT_ID`,
+      `SITEMAP_LAST_MODIFIED`) confirmadas en el dashboard de Cloudflare
+      Workers Builds (build-time, no sólo runtime)
+- [ ] Build command / Deploy command / Root directory de Workers Builds
+      confirmados según la tabla de arriba
+- [ ] Secrets (`TWENTY_API_KEY`, `TWENTY_API_URL`, `RESEND_API_KEY`)
+      seteados vía `wrangler secret put` (no en código, no en vars)
+- [ ] Preview URL de la rama del cutover revisado manualmente antes de
+      mergear a `main`
+- [ ] El dominio custom (`cominorsa.com`) sigue con HTTPS activo tras el
+      deploy
+- [ ] Smoke test manual: cargar `/`, clickear el CTA de WhatsApp, abrir
+      el formulario de consulta, verificar la imagen OG al compartir

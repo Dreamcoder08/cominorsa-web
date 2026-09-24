@@ -13,6 +13,7 @@
 // `scriptSrcs` on every route (`src/build/routes.ts`). The
 // `#cookie-preferences-button` id is that script's hook.
 
+import type { Child } from "../html/jsx-runtime";
 import { WHATSAPP_INFORMATION } from "../../app/constants";
 import {
   PRIMARY_WHATSAPP_DISPLAY,
@@ -160,5 +161,43 @@ export function SiteFooter({ basePath = "", analyticsEnabled = false }: SiteFoot
         ↑
       </a>
     </footer>
+  );
+}
+
+/**
+ * P3 (audit P1-4, P1-5): the one skip link on every page. It must be the
+ * first focusable element in `<body>` and target `<main id="contenido">`.
+ */
+export function SkipLink() {
+  return (
+    <a className="skip-link" href="#contenido">
+      Ir al contenido
+    </a>
+  );
+}
+
+/**
+ * P3: the page frame every site-chrome page renders — skip link, then
+ * the `<header>` landmark, then `<main id="contenido">` holding only the
+ * page's own content, then the `<footer>` landmark. Header and footer
+ * sit OUTSIDE `<main>` so assistive tech exposes banner/contentinfo
+ * landmarks and "skip to content" lands past the navigation.
+ */
+export function SiteLayout({
+  basePath = "",
+  analyticsEnabled = false,
+  children,
+}: {
+  basePath?: string;
+  analyticsEnabled?: boolean;
+  children?: Child;
+}) {
+  return (
+    <>
+      <SkipLink />
+      <SiteHeader basePath={basePath} />
+      <main id="contenido">{children}</main>
+      <SiteFooter basePath={basePath} analyticsEnabled={analyticsEnabled} />
+    </>
   );
 }

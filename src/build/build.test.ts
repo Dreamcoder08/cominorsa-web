@@ -291,6 +291,47 @@ describe("runStaticBuild", () => {
       expect(new Set(descriptions).size).toBe(descriptions.length);
     }));
 
+  // P3 (audit P1-4, P1-5, P1-6): landmark structure and heading text,
+  // checked on every emitted page.
+  test("every page: skip link first in <body> targeting main#contenido; header/footer outside <main>", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      for (const route of PAGE_ROUTES) {
+        const label = route.slug || "index";
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+
+        expect(html, `${label}: skip link first in body`).toMatch(
+          /<body><a class="skip-link" href="#contenido">Ir al contenido<\/a>/,
+        );
+        expect(html.match(/class="skip-link"/g)?.length, `${label}: skip link count`).toBe(1);
+        expect(html.match(/<main\b/g)?.length, `${label}: main count`).toBe(1);
+        expect(html.match(/id="contenido"/g)?.length, `${label}: #contenido count`).toBe(1);
+        expect(html, `${label}: main carries the target id`).toMatch(/<main id="contenido"/);
+
+        const mainStart = html.indexOf("<main");
+        const mainEnd = html.indexOf("</main>");
+        for (const tag of ['<header class="site-header">', "<footer>"]) {
+          const at = html.indexOf(tag);
+          if (at === -1) continue; // the 404 page renders no site chrome
+          expect(at < mainStart || at > mainEnd, `${label}: ${tag} inside <main>`).toBe(true);
+        }
+      }
+    }));
+
+  test("no heading's text content runs two words together", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      for (const route of PAGE_ROUTES) {
+        const label = route.slug || "index";
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        for (const [, inner] of html.matchAll(/<h[1-6]\b[^>]*>([\s\S]*?)<\/h[1-6]>/g)) {
+          const text = inner!.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ");
+          expect(text, `${label}: "${text}"`).not.toMatch(/[a-záéíóúñ][.,][A-ZÁÉÍÓÚ]/);
+          expect(text, `${label}: "${text}"`).not.toMatch(/[a-z]por\b/);
+        }
+      }
+    }));
+
   // P1 (audit P0-2): one source of truth for "does this build have
   // analytics": the GA measurement ID passed to runStaticBuild (defaults
   // to NEXT_PUBLIC_GA_MEASUREMENT_ID). It both bakes into the consent

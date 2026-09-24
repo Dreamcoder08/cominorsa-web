@@ -21,7 +21,7 @@ import {
   PRIMARY_WHATSAPP_DISPLAY,
   SECONDARY_WHATSAPP_DISPLAY,
 } from "../../app/constants";
-import { SiteFooter, SiteHeader } from "./site-shell";
+import { SiteLayout } from "./site-shell";
 
 // Bump this date whenever the policy text changes (section 6 promises
 // the date at the top reflects the latest version).
@@ -36,9 +36,7 @@ export const PRIVACY_LAST_UPDATED_LABEL = new Intl.DateTimeFormat("es-PE", {
 
 export function PrivacyPage({ analyticsEnabled = false }: { analyticsEnabled?: boolean } = {}) {
   return (
-    <main>
-      <SiteHeader basePath="/" />
-
+    <SiteLayout basePath="/" analyticsEnabled={analyticsEnabled}>
       <section className="legal-page">
         <div className="legal-page-header">
           <h1>Política de Privacidad</h1>
@@ -168,7 +166,6 @@ export function PrivacyPage({ analyticsEnabled = false }: { analyticsEnabled?: b
         </p>
       </section>
 
-      <SiteFooter basePath="/" analyticsEnabled={analyticsEnabled} />
-    </main>
+    </SiteLayout>
   );
 }

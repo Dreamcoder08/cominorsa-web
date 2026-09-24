@@ -2,13 +2,11 @@
 //
 // Ported from `app/terminos/page.tsx`, verbatim markup and copy.
 
-import { SiteFooter, SiteHeader } from "./site-shell";
+import { SiteLayout } from "./site-shell";
 
 export function TermsPage({ analyticsEnabled = false }: { analyticsEnabled?: boolean } = {}) {
   return (
-    <main>
-      <SiteHeader basePath="/" />
-
+    <SiteLayout basePath="/" analyticsEnabled={analyticsEnabled}>
       <section className="legal-page">
         <div className="legal-page-header">
           <h1>Términos y Condiciones</h1>
@@ -95,7 +93,6 @@ export function TermsPage({ analyticsEnabled = false }: { analyticsEnabled?: boo
         </p>
       </section>
 
-      <SiteFooter basePath="/" analyticsEnabled={analyticsEnabled} />
-    </main>
+    </SiteLayout>
   );
 }

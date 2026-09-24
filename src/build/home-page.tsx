@@ -18,7 +18,7 @@ import {
 } from "../../app/constants";
 import type { ServiceGroup } from "../data/services-data";
 import { ConsultationForm } from "./consultation-form";
-import { SiteFooter, SiteHeader } from "./site-shell";
+import { SiteLayout } from "./site-shell";
 
 const steps = [
   {
@@ -51,13 +51,7 @@ export function HomePage({
   analyticsEnabled?: boolean;
 }) {
   return (
-    <main>
-      <a className="skip-link" href="#contenido">
-        Ir al contenido
-      </a>
-
-      <SiteHeader />
-
+    <SiteLayout analyticsEnabled={analyticsEnabled}>
       <section className="hero" id="inicio">
         <div className="hero-contours" aria-hidden="true" />
         <div className="hero-grid">
@@ -67,7 +61,7 @@ export function HomePage({
               Piura · Norte del Perú
             </p>
             <h1>
-              <span className="reveal-line">Técnica que impulsa.</span>
+              <span className="reveal-line">Técnica que impulsa.</span>{" "}
               <em className="reveal-line">Responsabilidad que permanece.</em>
             </h1>
             <p className="hero-intro">
@@ -130,217 +124,213 @@ export function HomePage({
         </div>
       </section>
 
-      <div id="contenido">
-        <section className="section about" id="nosotros">
+      <section className="section about" id="nosotros">
+        <div className="section-kicker">
+          <span>01</span>
+          <p>Quiénes somos</p>
+        </div>
+
+        <div className="about-grid">
+          <div>
+            <h2 className="section-title">
+              Soluciones integrales para una minería formal, segura y
+              sostenible.
+            </h2>
+          </div>
+          <div className="about-copy">
+            <p className="lead">
+              COMINORSA S.A.C. brinda consultoría minera y soluciones
+              ambientales desde Piura.
+            </p>
+            <p>
+              Acompañamos a nuestros clientes en la formalización, elaboración
+              de instrumentos, planeamiento técnico y trámites, con atención
+              cercana y responsabilidad profesional.
+            </p>
+            <div className="principles">
+              <div>
+                <span aria-hidden="true">01</span>
+                <strong>Seguridad</strong>
+                <p>Orientación técnica para operar con mayor prevención.</p>
+              </div>
+              <div>
+                <span aria-hidden="true">02</span>
+                <strong>Compromiso ambiental</strong>
+                <p>Soluciones que consideran el entorno desde el inicio.</p>
+              </div>
+              <div>
+                <span aria-hidden="true">03</span>
+                <strong>Confianza</strong>
+                <p>Acompañamiento directo y comunicación transparente.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="section services" id="servicios">
+        <div className="section-heading">
+          <div className="section-kicker light">
+            <span>02</span>
+            <p>Nuestros servicios</p>
+          </div>
+          <h2 className="section-title light-title">
+            Gestión minera y ambiental, de principio a fin.
+          </h2>
+          <p>
+            Servicios especializados para formalización, cumplimiento,
+            planeamiento y operación minera.
+          </p>
+        </div>
+
+        <div className="detailed-services-grid">
+          {serviceGroups.map((service) => (
+            <a className="detailed-service-card" href={`/${service.slug}`}>
+              <div className="detailed-service-head">
+                <span>{service.number}</span>
+                <i aria-hidden="true">↗</i>
+              </div>
+              <h3>{service.title}</h3>
+              <p>{service.description}</p>
+              <ul>
+                {service.items.map((item) => (
+                  <li>{item}</li>
+                ))}
+              </ul>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section className="section method" id="metodo">
+        <div className="method-intro">
           <div className="section-kicker">
-            <span>01</span>
-            <p>Quiénes somos</p>
+            <span>03</span>
+            <p>Cómo trabajamos</p>
           </div>
+          <h2 className="section-title">Del caso a una ruta clara.</h2>
+          <p>
+            Cada servicio comienza escuchando tu situación y revisando la
+            información necesaria.
+          </p>
+        </div>
 
-          <div className="about-grid">
-            <div>
-              <h2 className="section-title">
-                Soluciones integrales para una minería formal, segura y
-                sostenible.
-              </h2>
-            </div>
-            <div className="about-copy">
-              <p className="lead">
-                COMINORSA S.A.C. brinda consultoría minera y soluciones
-                ambientales desde Piura.
-              </p>
-              <p>
-                Acompañamos a nuestros clientes en la formalización, elaboración
-                de instrumentos, planeamiento técnico y trámites, con atención
-                cercana y responsabilidad profesional.
-              </p>
-              <div className="principles">
-                <div>
-                  <span aria-hidden="true">01</span>
-                  <strong>Seguridad</strong>
-                  <p>Orientación técnica para operar con mayor prevención.</p>
-                </div>
-                <div>
-                  <span aria-hidden="true">02</span>
-                  <strong>Compromiso ambiental</strong>
-                  <p>Soluciones que consideran el entorno desde el inicio.</p>
-                </div>
-                <div>
-                  <span aria-hidden="true">03</span>
-                  <strong>Confianza</strong>
-                  <p>Acompañamiento directo y comunicación transparente.</p>
-                </div>
-              </div>
-            </div>
+        <div className="steps">
+          {steps.map((step) => (
+            <article className="step">
+              <span>{step.number}</span>
+              <div className="step-node" aria-hidden="true" />
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="section consultation" id="consulta">
+        <div className="consultation-intro">
+          <div className="section-kicker consultation-kicker">
+            <span>04</span>
+            <p>Consulta profesional</p>
           </div>
-        </section>
+          <h2>
+            Ingresa tu consulta.{" "}
+            <em>Recibe atención por WhatsApp.</em>
+          </h2>
+          <p>
+            Describe tu caso y selecciona el servicio relacionado. El mensaje
+            llegará directamente a COMINORSA para coordinar la atención.
+          </p>
+        </div>
 
-        <section className="section services" id="servicios">
-          <div className="section-heading">
-            <div className="section-kicker light">
-              <span>02</span>
-              <p>Nuestros servicios</p>
-            </div>
-            <h2 className="section-title light-title">
-              Gestión minera y ambiental, de principio a fin.
-            </h2>
-            <p>
-              Servicios especializados para formalización, cumplimiento,
-              planeamiento y operación minera.
-            </p>
-          </div>
+        <ConsultationForm />
+      </section>
 
-          <div className="detailed-services-grid">
-            {serviceGroups.map((service) => (
-              <a className="detailed-service-card" href={`/${service.slug}`}>
-                <div className="detailed-service-head">
-                  <span>{service.number}</span>
-                  <i aria-hidden="true">↗</i>
-                </div>
-                <h3>{service.title}</h3>
-                <p>{service.description}</p>
-                <ul>
-                  {service.items.map((item) => (
-                    <li>{item}</li>
-                  ))}
-                </ul>
-              </a>
-            ))}
-          </div>
-        </section>
-
-        <section className="section method" id="metodo">
-          <div className="method-intro">
-            <div className="section-kicker">
-              <span>03</span>
-              <p>Cómo trabajamos</p>
-            </div>
-            <h2 className="section-title">Del caso a una ruta clara.</h2>
-            <p>
-              Cada servicio comienza escuchando tu situación y revisando la
-              información necesaria.
-            </p>
-          </div>
-
-          <div className="steps">
-            {steps.map((step) => (
-              <article className="step">
-                <span>{step.number}</span>
-                <div className="step-node" aria-hidden="true" />
-                <h3>{step.title}</h3>
-                <p>{step.text}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="section consultation" id="consulta">
-          <div className="consultation-intro">
-            <div className="section-kicker consultation-kicker">
-              <span>04</span>
-              <p>Consulta profesional</p>
-            </div>
-            <h2>
-              Ingresa tu consulta.
-              <em>Recibe atención por WhatsApp.</em>
-            </h2>
-            <p>
-              Describe tu caso y selecciona el servicio relacionado. El mensaje
-              llegará directamente a COMINORSA para coordinar la atención.
-            </p>
-          </div>
-
-          <ConsultationForm />
-        </section>
-
-        <section className="section impact">
-          <div className="impact-panel">
-            <div>
-              <p className="eyebrow impact-eyebrow">
-                <span />
-                Nuestro compromiso
-              </p>
-              <h2>
-                Formalización, seguridad y cuidado del ambiente en una misma
-                dirección.
-              </h2>
-            </div>
-            <blockquote>
-              “Soluciones técnicas para una minería formal, segura y
-              sostenible.”
-            </blockquote>
-          </div>
-        </section>
-
-        <section className="contact" id="contacto">
-          <div className="contact-top">
-            <p className="eyebrow contact-eyebrow">
+      <section className="section impact">
+        <div className="impact-panel">
+          <div>
+            <p className="eyebrow impact-eyebrow">
               <span />
-              Coordinemos
+              Nuestro compromiso
             </p>
             <h2>
-              Hablemos de tu proyecto
-              <em>por WhatsApp.</em>
+              Formalización, seguridad y cuidado del ambiente en una misma
+              dirección.
             </h2>
           </div>
+          <blockquote>
+            “Soluciones técnicas para una minería formal, segura y
+            sostenible.”
+          </blockquote>
+        </div>
+      </section>
 
-          <div className="contact-grid">
-            <div className="contact-note">
-              <div className="section-kicker">
-                <span>05</span>
-                <p>Contacto</p>
-              </div>
-              <div className="contact-note-body">
-                <p>
-                  Escríbenos para solicitar información, coordinar una consulta
-                  o conversar sobre el servicio que necesitas.
-                </p>
-                <a
-                  className="phone-link"
-                  href={telLink(PRIMARY_WHATSAPP_NUMBER)}
-                  aria-label={`Llamar al ${PRIMARY_WHATSAPP_DISPLAY}`}
-                >
-                  {PRIMARY_WHATSAPP_DISPLAY}
-                </a>
-                <a
-                  className="phone-link"
-                  href={telLink(SECONDARY_WHATSAPP_NUMBER)}
-                  aria-label={`Llamar al ${SECONDARY_WHATSAPP_DISPLAY}`}
-                >
-                  {SECONDARY_WHATSAPP_DISPLAY}
-                </a>
-                <a
-                  className="whatsapp-link"
-                  href={WHATSAPP_INFORMATION}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Escríbenos por WhatsApp
-                  <span aria-hidden="true">↗</span>
-                </a>
-              </div>
+      <section className="contact" id="contacto">
+        <div className="contact-top">
+          <p className="eyebrow contact-eyebrow">
+            <span />
+            Coordinemos
+          </p>
+          <h2>
+            Hablemos de tu proyecto{" "}
+            <em>por WhatsApp.</em>
+          </h2>
+        </div>
+
+        <div className="contact-grid">
+          <div className="contact-note">
+            <div className="section-kicker">
+              <span>05</span>
+              <p>Contacto</p>
             </div>
-            <address>
-              <span>Sede registrada</span>
-              <strong>
-                Calle B N.º&nbsp;12, Urb. Santa Margarita
-                <br />
-                Veintiséis de Octubre, Piura · Perú
-              </strong>
+            <div className="contact-note-body">
+              <p>
+                Escríbenos para solicitar información, coordinar una consulta
+                o conversar sobre el servicio que necesitas.
+              </p>
               <a
-                href="https://www.google.com/maps/search/?api=1&query=Calle+B+12+Urbanizacion+Santa+Margarita+Veintiseis+de+Octubre+Piura+Peru"
+                className="phone-link"
+                href={telLink(PRIMARY_WHATSAPP_NUMBER)}
+                aria-label={`Llamar al ${PRIMARY_WHATSAPP_DISPLAY}`}
+              >
+                {PRIMARY_WHATSAPP_DISPLAY}
+              </a>
+              <a
+                className="phone-link"
+                href={telLink(SECONDARY_WHATSAPP_NUMBER)}
+                aria-label={`Llamar al ${SECONDARY_WHATSAPP_DISPLAY}`}
+              >
+                {SECONDARY_WHATSAPP_DISPLAY}
+              </a>
+              <a
+                className="whatsapp-link"
+                href={WHATSAPP_INFORMATION}
                 target="_blank"
                 rel="noreferrer"
               >
-                Ver ubicación
+                Escríbenos por WhatsApp
                 <span aria-hidden="true">↗</span>
               </a>
-            </address>
+            </div>
           </div>
-        </section>
-      </div>
-
-      <SiteFooter analyticsEnabled={analyticsEnabled} />
-    </main>
+          <address>
+            <span>Sede registrada</span>
+            <strong>
+              Calle B N.º&nbsp;12, Urb. Santa Margarita
+              <br />
+              Veintiséis de Octubre, Piura · Perú
+            </strong>
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=Calle+B+12+Urbanizacion+Santa+Margarita+Veintiseis+de+Octubre+Piura+Peru"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Ver ubicación
+              <span aria-hidden="true">↗</span>
+            </a>
+          </address>
+        </div>
+      </section>
+    </SiteLayout>
   );
 }

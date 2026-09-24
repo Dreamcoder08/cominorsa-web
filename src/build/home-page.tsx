@@ -85,42 +85,27 @@ export function HomePage({
             </div>
           </div>
 
-          <aside className="hero-card" aria-label="Enfoque de COMINORSA">
+          {/* landing-craft T1: the card routes to a service instead of
+              repeating the phones (they live once, in #contacto). It also
+              replaces the old "Especialidades" strip. */}
+          <aside className="hero-card" aria-label="Servicios de COMINORSA">
             <div className="hero-card-top">
-              <span>Atención directa</span>
+              <span>Por dónde empezar</span>
             </div>
             <div className="hero-card-copy">
-              <h2>Escríbenos por WhatsApp.</h2>
-              <p>
-                Resolvemos dudas sobre formalización minera, gestión ambiental
-                y asistencia técnica.
-              </p>
-              <div className="hero-card-numbers">
-                <a
-                  href={telLink(PRIMARY_WHATSAPP_NUMBER)}
-                  className="inline-phone"
-                  aria-label={`Llamar al ${PRIMARY_WHATSAPP_DISPLAY}`}
-                >
-                  {PRIMARY_WHATSAPP_DISPLAY}
-                </a>
-                <a
-                  href={telLink(SECONDARY_WHATSAPP_NUMBER)}
-                  className="inline-phone"
-                  aria-label={`Llamar al ${SECONDARY_WHATSAPP_DISPLAY}`}
-                >
-                  {SECONDARY_WHATSAPP_DISPLAY}
-                </a>
-              </div>
+              <h2>¿Qué necesitas?</h2>
+              <ul className="hero-card-routes">
+                {serviceGroups.map((service) => (
+                  <li>
+                    <a href={`/${service.slug}`}>
+                      <span aria-hidden="true">{service.number}</span>
+                      {service.pageTitle}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
           </aside>
-        </div>
-
-        <div className="hero-footer">
-          <span className="hero-footer-label">Especialidades</span>
-          <span>IGAFOM</span>
-          <span>REINFO</span>
-          <span>Gestión ambiental</span>
-          <span>Asistencia técnica</span>
         </div>
       </section>
 
@@ -244,25 +229,6 @@ export function HomePage({
         </div>
 
         <ConsultationForm />
-      </section>
-
-      <section className="section impact">
-        <div className="impact-panel">
-          <div>
-            <p className="eyebrow impact-eyebrow">
-              <span />
-              Nuestro compromiso
-            </p>
-            <h2>
-              Formalización, seguridad y cuidado del ambiente en una misma
-              dirección.
-            </h2>
-          </div>
-          <blockquote>
-            “Soluciones técnicas para una minería formal, segura y
-            sostenible.”
-          </blockquote>
-        </div>
       </section>
 
       <section className="contact" id="contacto">

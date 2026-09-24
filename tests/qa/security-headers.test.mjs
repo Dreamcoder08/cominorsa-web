@@ -56,6 +56,13 @@ test("CSP allows the GA4 hosts this site actually needs (script-src, connect-src
   assert.match(rawHeadersFile, /connect-src[^\n]*https:\/\/www\.googletagmanager\.com/);
 });
 
+// P11: the edge auto-injects Cloudflare Web Analytics' beacon script;
+// it reports to same-origin /cdn-cgi/rum, covered by connect-src 'self'.
+test("CSP allows the Cloudflare Web Analytics beacon script host", () => {
+  assert.match(rawHeadersFile, /script-src[^;\n]*https:\/\/static\.cloudflareinsights\.com/);
+  assert.match(rawHeadersFile, /connect-src 'self'/);
+});
+
 test("CSP forbids framing (clickjacking protection)", () => {
   assert.match(rawHeadersFile, /frame-ancestors 'none'/);
 });

@@ -46,6 +46,22 @@ describe("buildCsp", () => {
     expect(directive("connect-src")).toContain("https://*.analytics.google.com");
   });
 
+  // P11: Cloudflare Web Analytics, auto-injected by the edge into HTML
+  // (developers.cloudflare.com/web-analytics/faq/#what-do-i-need-to-add-to-my-content-security-policy-csp).
+  // The injected snippet carries `"version"` in data-cf-beacon, and the
+  // beacon then reports to the same-origin `/cdn-cgi/rum` (only a manual
+  // snippet reports to cloudflareinsights.com) — so connect-src needs
+  // nothing beyond 'self'.
+  test("P11: script-src allows the Cloudflare Web Analytics beacon host; its reports stay same-origin", () => {
+    expect(directive("script-src").trim().split(/\s+/)).toEqual([
+      "'self'",
+      "https://www.googletagmanager.com",
+      "https://static.cloudflareinsights.com",
+    ]);
+    expect(directive("connect-src")).toContain("'self'");
+    expect(directive("connect-src")).not.toContain("cloudflareinsights");
+  });
+
   test("keeps the WhatsApp allow-list untouched (img-src, connect-src, form-action)", () => {
     expect(directive("img-src")).toContain("https://wa.me");
     expect(directive("connect-src")).toContain("https://wa.me");

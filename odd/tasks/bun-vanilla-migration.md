@@ -655,14 +655,358 @@ The ~613 uncommitted lines on `main` were committed there (`519e8fb`..
       inert; T7 doesn't change that contract, only the consultation
       form's own inert marker, which now has an e2e-observed source
       (this script) instead of only React's).
-- [ ] **T8** — Build-time generators for `sitemap.xml`, `robots.txt`,
-      `manifest.webmanifest`. Route: delegated writer.
-- [ ] **T9** — Worker entry serving static assets + the 2 API handlers.
-      Route: delegated writer.
-- [ ] **T10** — Move security headers to `public/_headers`; drop the
-      `proxy.ts` nonce. Route: inline.
-- [ ] **T11** — Cutover: remove Next/React/vinext/Tailwind deps, update
-      CI, deploy scripts, and affected tests. Route: delegated writer.
+- [x] **T8** — Build-time generators for `sitemap.xml`, `robots.txt`,
+      `manifest.webmanifest`. Route: delegated writer. **DONE** —
+      `96f883b`. `src/build/sitemap.ts`/`robots.ts`/`webmanifest.ts`,
+      each a pure function reused by `build.ts`'s `writeGeneratedFiles`,
+      built from `routes.ts`'s `PAGE_ROUTES` (sitemap) or `site-config.ts`
+      constants (robots/manifest) — no second hand-listed route table.
+      `lastmod`: production's `app/sitemap.ts` calls `new Date()` per
+      request; a build-time equivalent of that is non-reproducible, so
+      `site-config.ts`'s new `SITEMAP_LAST_MODIFIED` is a fixed ISO
+      constant instead (overridable via the `SITEMAP_LAST_MODIFIED` env
+      var, e.g. for a CI step to pass a commit date, without touching
+      source). Verified byte-for-byte against the live production
+      responses (`curl -s https://cominorsa.com/{sitemap.xml,robots.txt,
+      manifest.webmanifest}`, 2026-09-22): **zero differences** on
+      `robots.txt` and `manifest.webmanifest`; `sitemap.xml` identical on
+      every field except `lastmod` (documented, intentional). `robots.txt`
+      keeps `Disallow: /_next/` for byte-for-byte parity even though this
+      build has no such path — flagged below for T11 to drop once Next is
+      actually gone.
+      Strict TDD, in commit order: `sitemap.test.ts` RED (`Cannot find
+      module './sitemap'`, 0 pass/1 fail) → GREEN (3 pass). `robots.test.ts`
+      RED (same shape) → GREEN (1 pass). `webmanifest.test.ts` RED → GREEN
+      (2 pass). `site-config.test.ts`'s new `SITEMAP_LAST_MODIFIED`
+      describe block RED (`Export named 'SITEMAP_LAST_MODIFIED' not
+      found`) → GREEN. `build.test.ts`'s 2 new wiring tests RED (15 pass/2
+      fail — `ENOENT` on `sitemap.xml`; `_headers` picked up the stale
+      copied `public/_headers` instead) → GREEN (17 pass) once `build.ts`
+      wired `writeGeneratedFiles` in and `copyPublicAssets` stopped
+      copying `public/_headers` into `dist-static/`.
+- [x] **T9** — Worker entry serving static assets + the 2 API handlers.
+      Route: delegated writer. **DONE** — `dd745d2`.
+      `wrangler.static.jsonc` (Static Assets from `dist-static/`,
+      `html_handling: "auto-trailing-slash"`, `not_found_handling:
+      "404-page"`, `run_worker_first: ["/api/*"]`) + `src/worker/index.ts`.
+      Deliberately a DISTINCT Worker name (`cominorsa-web-static`) and
+      config file from production (`cominorsa-web` /
+      `dist/server/wrangler.json`) so nothing on this branch can ever
+      deploy over it; same `compatibility_date` (`2026-08-31`) as
+      production's currently-generated config.
+      Both API handlers (`app/api/crm-lead/route.ts`,
+      `app/api/next-business-day/route.ts`) are imported and reused
+      VERBATIM, not copied — confirmed by reading their source (zero
+      imports in either file, plain `Request`/`Response` only) and by
+      `tests/qa/crm-lead-route.test.mjs` already importing
+      `app/api/crm-lead/route.ts` directly with no Next.js runtime
+      involved. No move into `src/` was needed (the task's own fallback
+      plan), since importing them dragged in nothing Next-specific — same
+      env var names (`TWENTY_API_KEY`, `TWENTY_API_URL`,
+      `RESEND_API_KEY`), read via `process.env`, available under this
+      config's `nodejs_compat` flag same as production.
+      `src/worker/security-headers.ts`'s `applySecurityHeaders` wraps
+      both API responses with T10's policy (see T10 below) — Cloudflare's
+      `_headers` file is never applied to a Worker-script response, so
+      without this the 2 API routes would ship with zero security headers
+      once `dist-static/_headers` is the only other source of them, a
+      regression from today (`proxy.ts`'s matcher already covers `/api/*`).
+      `Env.ASSETS` is typed narrowly (`{ fetch(request): Promise<Response>
+      }`), not the ambient `Fetcher` interface — that one also requires an
+      unused `connect()` TCP-socket method, which only complicated test
+      mocking for no behavioral benefit.
+      Strict TDD, in commit order: `security-headers.test.ts` RED
+      (`Cannot find module './security-headers'`) → GREEN (3 pass).
+      `index.test.ts` RED (`Cannot find module './index'`) → GREEN (5
+      pass; 2 real `pnpm typecheck` errors found and fixed in the same
+      slice — see gotcha below).
+      **Gotcha (real, not hypothetical)**: this project's global
+      `Response`/`Body` types (from `worker-configuration.d.ts` /
+      `@types/bun`, both included project-wide) type `.json()` as
+      returning `unknown`, not DOM's `Promise<any>` — `pnpm typecheck`
+      caught 2 real errors on unchecked property access
+      (`body.date`)/`toEqual` overload mismatches in the new tests. Fixed
+      by casting the awaited `.json()` result to an explicit local type at
+      each call site (`(await response.json()) as { date: string }`, one
+      already-known-shape assertion, not an `any` escape hatch).
+      Verification (all observed): `bun test src/` → 212 pass, 0 fail
+      (from T8's 208 — the 4 new worker tests plus 3 from
+      `security-headers.test.ts`, minus overlap already counted). `pnpm
+      typecheck` → exit 0. `pnpm lint` → 0 errors, 7 pre-existing warnings
+      unchanged. Real `wrangler dev --config wrangler.static.jsonc --port
+      8788` (backgrounded, PID captured, killed by exact PID afterward —
+      never `pkill -f`), curled: `GET /` → 200; `GET /seguridad-minera` →
+      200, no redirect; `GET /seguridad-minera/` → 307 to the no-slash
+      form (`auto-trailing-slash`'s documented behavior); `GET /nope` →
+      404 serving `404.html`'s real body; `GET /sitemap.xml` /
+      `/robots.txt` /`/manifest.webmanifest` → 200; `POST /api/crm-lead`
+      with a valid body → 200 `{"ok":true}` (this sandbox's real `.env`
+      happened to have `TWENTY_API_KEY`/`TWENTY_API_URL` set, so the
+      handler actually attempted — and logged a failed — outbound call;
+      the contract held regardless, per the handler's own
+      always-200-`{"ok":true}` design); `GET /api/next-business-day` →
+      200 with a valid ISO date. Response headers of `/` and of a built
+      `/assets/*.css` file: both carry the full CSP (no nonce)/HSTS/
+      X-Frame-Options/nosniff/Referrer-Policy/Permissions-Policy set; the
+      CSS file additionally carries `Cache-Control: public,
+      max-age=31536000, immutable` while `/`'s own is
+      `public, max-age=0, must-revalidate` (not immutable) — proving
+      `_headers`' `/*` and `/assets/*` rules merge as designed. `POST
+      /api/crm-lead`'s own response headers were checked directly too:
+      identical security-header set, proving `applySecurityHeaders`
+      parity on the Worker-script path `_headers` never reaches.
+- [x] **T10** — Move security headers to `public/_headers`; drop the
+      `proxy.ts` nonce. Route: inline (done as part of this same slice,
+      alongside T8/T9). **DONE** — `4667510` (core), wired into the build
+      by `96f883b`, consumed by T9's Worker in `dd745d2`.
+      Re-scoped from the task's literal wording: headers move to
+      **`dist-static/_headers`** (generated by `src/build/headers.ts`),
+      not `public/_headers` — `public/_headers` is the Next/SSR-era file
+      the task's own constraints say must stay untouched until T11
+      ("production `public/_headers` stays until T11"); writing the new
+      policy there would have edited a file production still reads today.
+      `src/build/security-policy.ts` is the single source of truth for
+      both `headers.ts` (writes `_headers`) and T9's
+      `worker/security-headers.ts` (wraps the 2 API responses), so they
+      cannot drift apart.
+      CSP: identical to `proxy.ts`'s directive list, minus the
+      per-request nonce (T7 already left zero inline `<script>` in the
+      static build, so `script-src 'self'` is strictly stronger than a
+      nonce exception) and plus GA4's required hosts. GA4 hosts verified
+      against Google's own CSP guidance
+      (developers.google.com/tag-platform/security/guides/csp, fetched
+      2026-09-22): for a GA4-only, non-advertising setup, the minimum is
+      `https://www.googletagmanager.com` in `script-src`, plus that host
+      and `https://*.google-analytics.com` in `img-src`/`connect-src`.
+      `https://*.analytics.google.com` was already in `proxy.ts`'s
+      `connect-src` pre-migration (GA4's region-specific collect
+      endpoint) and is kept for parity, not dropped as scope creep.
+      `style-src 'unsafe-inline'` is unchanged (CSS, not JS — out of
+      scope). No `'unsafe-inline'`/`'unsafe-eval'` in `script-src`,
+      confirmed by `security-policy.test.ts`.
+      JSON-LD confirmed NOT governed by `script-src`: per MDN, `script-src`
+      "specifies valid sources for **JavaScript**", and per the HTML
+      Living Standard a `<script>` element whose `type` isn't a JavaScript
+      MIME type (or `module`/`importmap`) is an inert data block, never
+      parsed or executed — browsers correspondingly never evaluate a CSP
+      script-src check against a `type="application/ld+json"` element.
+      Documented in `security-policy.ts`'s own header comment; no test
+      needed since this is a browser/spec guarantee, not project code.
+      Caching: `/assets/*` and `/fonts/*` get
+      `Cache-Control: public, max-age=31536000, immutable`; the `/*`
+      (HTML) rule sets no `Cache-Control` at all, so HTML is never cached
+      immutably — pinned by `headers.test.ts`. The stale
+      `/_next/static/*` rule is dropped from this output (this build has
+      no `/_next/` path — its own asset paths are `/assets/*`/`/fonts/*`);
+      `public/_headers` itself is untouched, still serving its original
+      purpose for the live Next.js Worker until T11.
+      Documented (per this task's own instruction): `_headers` is NEVER
+      applied to a response the Worker script itself returns (only to
+      responses served directly from the static-assets binding) — see
+      `headers.ts`'s and `worker/security-headers.ts`'s own header
+      comments, each citing Cloudflare's docs. That is exactly why T9's
+      2 API routes need `applySecurityHeaders` at all; without it they
+      would carry zero security headers under this architecture, a
+      silent regression from today where `proxy.ts`'s middleware matcher
+      already decorates `/api/*` too.
+      `proxy.ts`'s nonce was NOT touched/dropped in this slice — the task
+      description's "drop the proxy.ts nonce" applies to the production
+      SSR path, which per this feature's own constraints ("Next.js must
+      keep serving until the final cutover task") stays live and
+      unmodified until T11. Removing the nonce now would change
+      production's live security posture ahead of the cutover.
+      Strict TDD, in commit order: `security-policy.test.ts` RED
+      (`Cannot find module './security-policy'`) → GREEN (8 pass).
+      `headers.test.ts` RED (`Cannot find module './headers'`) → GREEN (5
+      pass). `security-headers.test.ts` (T9, same policy) RED → GREEN (3
+      pass, see T9 above).
+      Verification (all observed, combined with T8/T9's shared build):
+      `bun test src/` → 212 pass, 0 fail. `pnpm typecheck` → exit 0.
+      `pnpm lint` → 0 errors. Real `wrangler dev` response headers (see
+      T9's verification note above) confirm the policy actually reaches
+      both the asset-served pages and the Worker-served API responses,
+      with the documented cache-header split.
+- [x] **T1** (closed at T11) — Adopt Bun toolchain. **Decision**: keep
+      **pnpm** as the package manager (lockfile, `allowBuilds` security
+      allowlist, pre-commit hook, and CI all depend on it); Bun is
+      build/dev/test **runtime** only (`bun run src/build/build.ts`,
+      `bun test src/`), never a package-manager replacement. Rationale:
+      switching package managers mid-migration would have touched the
+      lockfile, `.npmrc`/`pnpm-workspace.yaml` security config, and CI
+      caching for zero functional benefit — Bun's value here is its
+      build/test APIs (`Bun.build`, `bun test`), not its package
+      installer. `verify` gate (typecheck + `bun test src/` + `pnpm
+      test`) already pinned by `tests/qa/verify-script.test.mjs` since
+      the earlier partial slice.
+- [x] **T11** — Cutover: remove Next/React/vinext/Tailwind deps, update
+      CI, deploy scripts, and affected tests. Route: delegated writer
+      (this slice). **DONE** — 3 commits on this branch:
+      `4ebb2cd` (build/scripts switch + Tailwind removal + jsxImportSource),
+      `06dd59a` (QA/e2e suite translation + CI + deterministic e2e),
+      `567d737` (docs/skills/scripts).
+
+      **Build/scripts**: `package.json`'s `build`/`dev`/`start` now run
+      `bun run src/build/build.ts` (+ `wrangler dev` for dev/start —
+      simplest working option; documented in README.md that it has no
+      live rebuild-on-save, with the `bun --watch` + separate `wrangler
+      dev` alternative noted for anyone who wants that). `test:e2e`
+      points at the new `e2e:static` (Playwright's own `webServer`
+      builds with a fixed `NEXT_PUBLIC_GA_MEASUREMENT_ID=G-TEST123` and
+      serves via the real `wrangler dev` — closes the T7 "Parent
+      verification" follow-up: GA4 specs are no longer silently skipped
+      depending on `.env`).
+
+      **jsxImportSource, project-wide**: `tsconfig.json` sets
+      `jsxImportSource: "@html"` with a `paths` alias
+      (`@html/jsx-runtime`/`@html/jsx-dev-runtime` → `./src/html/...`) —
+      replacing all 10 per-file `/** @jsxImportSource ../html */`
+      pragmas T3 introduced. The earlier per-file-pragma design was
+      chosen specifically because a *relative* `jsxImportSource` value
+      can't work project-wide (it resolves differently depending on
+      each file's own depth); routing through `paths` with a stable
+      bare specifier sidesteps that — verified empirically (not assumed)
+      with a throwaway probe before touching real files: temporarily set
+      the real `tsconfig.json` to this shape, confirmed both `tsc
+      --noEmit` (full project) and `bun build` resolved a pragma-less
+      file correctly at both root depth and 2-levels-deep, then applied
+      it for real. `tsc --noEmit` after: 0 errors (this correctly
+      surfaced the still-present `app/*.tsx` React files as broken
+      during the transition — expected, since they were deleted in the
+      same slice).
+
+      **Tailwind removed, real regression found and fixed**: `app/globals.css`'s
+      `@import "tailwindcss";` was removed (T3 already confirmed zero
+      Tailwind utility classes anywhere), but a real visual regression
+      showed up on rebuild: `.legal-page-body ul`'s `padding-left:
+      1.2rem` rule implicitly relied on Tailwind's Preflight having
+      already zeroed the browser's default `<ul>` margin/padding/
+      list-style — without it, "Qué incluye" lists on every service page
+      grew bullet markers and extra spacing, and the resulting height
+      change reflowed content below it on every page (confirmed via
+      pixel diff: `compare -metric AE`, 5–17% of pixels differed across
+      the 4 before/after screenshots). Fixed by extracting Tailwind
+      v4's actual Preflight CSS from a real pre-cutover build (not
+      reconstructed from memory or docs) and porting it into
+      `app/globals.css` as plain CSS, keeping 2 non-standard
+      `--theme(...)` calls byte-for-byte inert (browsers already
+      dropped those invalid `font-family` declarations before this
+      change; resolving them to a real value would have been a
+      behavior *change*, not a faithful port). Re-verified: `compare
+      -metric AE` → `0 (0)` on 3 of 4 screenshots, `11.5 (2.8e-06)` on
+      the 4th (sub-pixel anti-aliasing noise) — pixel-identical.
+
+      **File removal**: deleted every Next-era `app/*.tsx`/`*.ts` file
+      except `app/constants.ts`, `app/globals.css`,
+      `app/api/crm-lead/route.ts`, `app/api/next-business-day/route.ts`
+      (still imported by `src/build/`/`src/client/`/`src/worker/`) —
+      `app/services-data.ts` (Next-specific `generateServiceMetadata`)
+      was deleted too, with its one consumer
+      (`src/build/service-page.tsx`) repointed to import `ServiceGroup`
+      directly from `src/data/services-data.ts`. Also deleted:
+      `next.config.ts`, `vite.config.ts`, `postcss.config.mjs`,
+      `proxy.ts`, `worker/index.ts` (old), `build/sites-vite-plugin.ts`
+      (old), `.openai/hosting.json` (nothing left to consume it once
+      `vite.config.ts` is gone), `public/_headers` (superseded by
+      generated `dist-static/_headers`, the "exactly one source of
+      truth" the task asked for). **Deliberately kept**: `app/`'s 4
+      surviving files stay at their current paths rather than moving
+      into `src/` — moving them touches ~15 import sites across
+      `src/build/`/`src/client/`/`src/worker/` for zero functional
+      benefit and adds risk to an already-large cutover; noted here as
+      an intentionally deferred, not forgotten, cleanup.
+
+      **`wrangler.jsonc`**: `wrangler.static.jsonc` renamed to the root
+      `wrangler.jsonc` with `name: "cominorsa-web"` reverted to the real
+      production name (was deliberately `cominorsa-web-static` through
+      T8–T10 so nothing could deploy over production early). Same
+      `compatibility_date`. `worker-configuration.d.ts` regenerated
+      against it (`pnpm run types:worker`, script updated to reference
+      `wrangler.jsonc` instead of the retired
+      `dist/server/wrangler.json`).
+
+      **Real defect found and fixed while wiring `e2e:static`**: a
+      stale `.wrangler/deploy/config.json` (left over from an earlier
+      `vinext build`/`wrangler deploy --dry-run`, before this branch's
+      work even started) pinned `wrangler dev`/`wrangler deploy` to the
+      retired `dist/server/wrangler.json` even with the new root
+      `wrangler.jsonc` present — Wrangler prioritizes an existing
+      deploy-config pointer over auto-discovering the root config.
+      Symptom: `wrangler dev` silently served the old Next/vinext RSC
+      HTML (confirmed via `curl`, byte-for-byte the old
+      `vinext.navigationRuntime` bootstrap scripts) instead of the
+      static build — which is why the first `e2e:static` run failed 16
+      specs (GA4 never requested, `#consultation-form-submit` "not
+      found"). Fixed: `rm -rf .wrangler dist` (both gitignored, both
+      Next-era state). Documented in `DEPLOY.md`'s troubleshooting
+      section and `.claude/skills/cominorsa-deploy/SKILL.md` so it isn't
+      rediscovered the hard way on another clone.
+
+      **Tests**: `tests/qa/mobile-nav-interaction.test.mjs` and
+      `consultation-form-nonblocking.test.mjs` deleted — both exercised
+      the removed React components (`app/MobileNav.tsx`,
+      `app/ConsultationForm.tsx`) directly via jsdom +
+      `@testing-library/react`; their coverage (focus-trap index math,
+      non-blocking CRM POST) is superseded by
+      `src/client/lib/focus-trap.test.ts` (bun test, unit-tests the pure
+      logic in isolation), `src/client/lib/whatsapp-message.test.ts`/
+      `crm-lead-payload.test.ts`, and the real-browser
+      `tests/e2e/static-mobile-nav.spec.ts`/`static-consultation-form.spec.ts`
+      (T7). `tests/qa/hosting-config-types.test.mjs` deleted — tested
+      `vite.config.ts`'s `readOptionalBinding` helper, which no longer
+      exists. Every other qa test file translated in place (same file,
+      new assertions) rather than deleted — see the commit messages for
+      the per-file mapping (helpers.mjs → reads `dist-static/` directly;
+      security-headers/build-output/bundle-budget/performance → read the
+      real generated `dist-static/_headers`/`assets/`; analytics-events'
+      2 source-inspection tests → point at
+      `src/client/dom/consultation-form.ts`/`src/build/site-shell.tsx`).
+      JS budget tightened from 600 KB to a meaningful <20 KB gzip (real
+      output: ~4.9 KB raw / ~2.6 KB gzip across 3 widgets).
+
+      **Constraint check**: `jq '.dependencies' package.json` → `null`
+      (absent). Final `devDependencies` (8, each justified):
+      `@eslint/js`/`eslint`/`typescript-eslint` (lint, now that
+      `eslint-config-next` is gone), `@types/bun`/`@types/node` (type
+      declarations for the 2 runtimes this project's code targets),
+      `@playwright/test` (e2e), `typescript` (typecheck), `wrangler`
+      (dev/deploy). No `tsx`, `jsdom`, `@testing-library/*` (only
+      consumed by the 2 deleted test files above).
+
+      **Verification (all observed)**: `pnpm install` → lockfile
+      updated, `Already up to date` on a second run. `pnpm audit
+      --audit-level=high` → "No known vulnerabilities found". `pnpm
+      run validate` → all checks pass. `pnpm run lint` → 0
+      errors/warnings (full rewrite of `eslint.config.mjs`, dropping
+      `eslint-config-next`; see commit for the `no-unused-vars`
+      underscore-convention and the 1 targeted `no-control-regex`
+      inline disable on the security-critical attribute-name regex).
+      `pnpm run typecheck` → exit 0. `bun test src/` → 214 pass, 0
+      fail. `pnpm run build` → `dist-static/` with all 11 pages +
+      `assets/`+`_headers`+`sitemap.xml`+`robots.txt`+`manifest.webmanifest`.
+      `pnpm test` → 175 pass, 0 fail (down from 193 pre-cutover: -3
+      deleted-feature test files, net translated/added tests elsewhere).
+      `pnpm run e2e:static` → 46/46 pass (chromium + mobile-chromium),
+      including the GA4-dependent specs that are now deterministic.
+      `rg` sweep for `next|react|vinext|tailwind` (case-insensitive,
+      excluding lockfile/odd/openspec/node_modules): every hit reviewed;
+      all are either historical/negation prose ("no more X", "used to
+      be X", T-number narration) or unrelated substring matches
+      (`next-business-day`, "the next step"); the 2 genuinely
+      *forward-looking* stale mentions found —
+      `.env.example`'s `vinext build` comment (file is permission-denied
+      to this agent, flagged for a human to fix) and
+      `pnpm-workspace.yaml`'s `unrs-resolver`/`vinext` entries (fixed:
+      removed, confirmed absent from the lockfile first). `jq
+      '.dependencies' package.json` → `null`. `wrangler deploy --dry-run
+      --outdir <scratch>` → "Read 36 files from the assets directory
+      dist-static", "No bindings found", exits before uploading
+      (confirmed `--dry-run`'s exact semantics via `wrangler deploy
+      --help` first) — proves the *default* root config (no `--config`
+      flag) bundles the static site correctly. Real Playwright
+      screenshots (1440px/390px, `/` and `/seguridad-minera`) of a
+      pre-cutover build vs. this cutover's build: pixel-identical (see
+      the Tailwind-removal note above for the one real regression this
+      caught and fixed before it shipped).
 - [ ] **T12** — Create skills via `skill-creator` for the workflows this
       migration establishes, and automate anything done more than twice.
       Register in `AGENTS.md`. Route: delegated writer.
@@ -848,6 +1192,46 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
   Push/PR of `feat/bun-vanilla-migration-t7` into the feature branch is
   the user's decision (branch-chain strategy).
 
+- **T8 + T9 + T10 complete and verified** on branch
+  `feat/bun-vanilla-migration-t8` (based on `feat/bun-vanilla-migration-t7`):
+  `4667510` (T10 core: `security-policy.ts`/`headers.ts`), `96f883b` (T8:
+  `sitemap.ts`/`robots.ts`/`webmanifest.ts` + build wiring, which also
+  wires T10's `_headers`), `dd745d2` (T9: `wrangler.static.jsonc` +
+  `src/worker/index.ts` + `security-headers.ts`), route: delegated writer
+  throughout (T10 ended up delegated-writer too, folded into the same
+  slice as T8/T9 rather than done separately inline — see T10 above for
+  why). Authored line count (`git diff --shortstat
+  feat/bun-vanilla-migration-t7...HEAD`): **19 files changed, 911
+  insertions(+), 1 deletion(-)** — over the ~400-line advisory heuristic
+  for 3 tasks combined; not split artificially (T8/T9/T10 share one
+  integration point — `build.ts`'s `writeGeneratedFiles` and the Worker's
+  `applySecurityHeaders` both depend on `security-policy.ts`, so
+  committing them out of dependency order would have left one commit's
+  build or typecheck broken in isolation).
+  See T8/T9/T10 above for full RED/GREEN evidence per unit, the
+  production byte-diff results, the real `wrangler dev` curl/header
+  verification, and the two real gotchas found (the `.json()` → `unknown`
+  typing quirk; the stale `public/_headers` being copied into
+  `dist-static/` before the fix).
+  **Playwright e2e, real** (all 3 pre-existing static-* spec files plus
+  `consultation-form.spec.ts`/`provider-isolation.spec.ts`, against the
+  ACTUAL `wrangler dev --config wrangler.static.jsonc` Worker on port
+  8788 — not T7's throwaway `Bun.serve` static server, so this is the
+  first time the real Worker + `_headers` + API routing all ran together
+  under Playwright): built with `NEXT_PUBLIC_GA_MEASUREMENT_ID=G-TEST123
+  bun run build:static` first (so the consent specs exercise GA4, same
+  as T7's own approach), then **46/46 pass** across chromium +
+  mobile-chromium. A separate one-off Playwright script (not committed —
+  a throwaway verification aid, deleted after use) loaded `/`, accepted
+  the cookie-consent banner, and asserted zero console messages matching
+  `content security policy|refused to|csp`: **zero CSP violations**
+  found. `dist-static/` was rebuilt with the real (empty, in this
+  sandbox) env afterward, same reset T7 already established as the
+  pattern.
+  `pnpm test` → 193/193 pass (Next build unaffected).
+  Push/PR of `feat/bun-vanilla-migration-t8` into the feature branch is
+  the user's decision (branch-chain strategy).
+
 ## Parent verification of T7
 
 - Mutation test on the consent gate: injected an eager
@@ -860,6 +1244,20 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
   `e2e:static` script (or Playwright `webServer`) that builds with a
   fixed test ID and serves `dist-static/`, and run it in CI.
 
+## Parent verification of T8–T10
+
+- `_headers` CSP = `proxy.ts` policy minus the nonce, plus GA4 hosts in
+  `script-src`/`img-src`. Finding: production's CSP has no
+  `googletagmanager.com` in `script-src` and no `'strict-dynamic'`, so
+  GA4 may be silently blocked in production today even after opt-in —
+  verify in Chrome during the polish phase.
+- ~~**T11 must also:** pass `SITEMAP_LAST_MODIFIED` from the deploy
+  commit date (the hand-bumped constant will go stale).~~ **RESOLVED in
+  T11** — `site-config.ts`'s `SITEMAP_LAST_MODIFIED` now reads
+  `git log -1 --format=%cI` by default, env-var override still
+  supported, fixed-constant fallback for a git-metadata-less
+  environment.
+
 ## Carried to the polish phase (after cutover)
 
 - Home `/` has **no canonical and no `og:url`** in production (root
@@ -869,15 +1267,120 @@ real screenshot via `.claude/skills/cominorsa-run` (T3, T6, T7)
 - `404` copy uses Rioplatense voseo ("buscás", "llegaste acá",
   "avisanos") — same as production today, kept for parity; normalize to
   neutral Spanish for a Peruvian audience in the polish pass.
-- `404.html` needs `not_found_handling: "404-page"` in T9's Worker config.
+- ~~`404.html` needs `not_found_handling: "404-page"` in T9's Worker
+  config.~~ **RESOLVED in T9** — `wrangler.static.jsonc` sets it; verified
+  live (`GET /nope` → 404 serving `404.html`'s body).
+- ~~`robots.txt`'s `Disallow: /_next/` rule is dead weight in the static
+  build (no such path exists once Next is gone) — kept in T8 only for
+  byte-for-byte parity with today's production output; drop it in
+  T11.~~ **RESOLVED in T11** — dropped, with a real RED→GREEN test
+  update (`robots.test.ts`).
 
-## Next step
+## What T11 (cutover) must do
 
-T8 — build-time generators for `sitemap.xml`, `robots.txt`,
-`manifest.webmanifest`. `routes.ts`'s `PAGE_ROUTES` table is meant to be
-the single source of truth `T8` reuses instead of hand-listing routes a
-second time (see `routes.ts`'s own module comment). T9 (Worker entry)
-must also route `/api/crm-lead`, and T10 (CSP) must allow-list GA4's
-hosts (`https://www.googletagmanager.com`,
-`https://*.google-analytics.com`) in `script-src`/`connect-src` — both
-noted under T7's "Left for later tasks" above.
+- Rename/point the real deploy at `wrangler.static.jsonc` (or merge its
+  config into the canonical one) and retire
+  `dist/server/wrangler.json`/`worker/index.ts`/`vite.config.ts`'s
+  vinext+Cloudflare plugin pipeline — `cominorsa-web-static` was
+  deliberately a distinct, never-deployed Worker name through T8–T10;
+  T11 decides the final name (`cominorsa-web` reused, or a clean
+  cutover under the current name) and updates `scripts/cloudflare-*.sh`
+  + `package.json`'s `cf:*` scripts accordingly.
+- Remove `next`/`react`/`react-dom`/`vinext`/`@cloudflare/vite-plugin`/
+  `@vitejs/plugin-react`/`@vitejs/plugin-rsc`/`tailwindcss`/
+  `@tailwindcss/postcss` and every `app/`/`vite.config.ts`/`proxy.ts`
+  file they exist for, once `dist-static/` fully replaces them.
+- Drop `robots.txt`'s now-meaningless `Disallow: /_next/` line
+  (see above).
+- Update `tests/qa/*.test.mjs` that assert against `dist/` (Next's
+  build output) or `proxy.ts`'s nonce-based CSP
+  (`security-headers.test.ts`, `build-output.test.mjs`,
+  `hosting-config-types.test.mjs`) to assert against `dist-static/` and
+  the nonce-free CSP instead — these currently still pass because
+  `proxy.ts`/`public/_headers`/`dist/` are untouched, by design, until
+  cutover.
+- Wire the T7 "Parent verification of T7" follow-up: a deterministic
+  `e2e:static` script/`webServer` config building with a fixed GA test ID
+  and serving `dist-static/` (ideally via the real
+  `wrangler.static.jsonc` Worker now that T9 exists, not a throwaway
+  static server), run in CI.
+- `worker-configuration.d.ts` may need regenerating once
+  `wrangler.static.jsonc` is the canonical config (`pnpm run
+  types:worker` currently points at `dist/server/wrangler.json`).
+
+## Progress (T11 slice)
+
+- **T1 and T11 complete and verified** on branch
+  `feat/bun-vanilla-migration-t11` (based on
+  `feat/bun-vanilla-migration-t8`): `4ebb2cd` (build/scripts switch +
+  Tailwind removal + jsxImportSource), `06dd59a` (QA/e2e suite
+  translation + CI + deterministic e2e), `567d737`
+  (docs/skills/scripts), route: delegated writer throughout. See T1/T11
+  above for full evidence: the jsxImportSource empirical verification,
+  the real Tailwind-Preflight-removal regression found and fixed
+  (pixel-diff proof), the stale-`.wrangler/deploy/config.json` defect
+  found while wiring `e2e:static`, the test-translation mapping, and
+  every verification command's observed result.
+- Authored line count
+  (`git diff --shortstat feat/bun-vanilla-migration-t8...HEAD`):
+  **86 files changed, 1344 insertions(+), 8057 deletions(-)** — a net
+  deletion, as expected for a cutover that retires an entire framework;
+  not split artificially (build-switch, test-translation, and docs are
+  each their own coherent, sequentially-dependent commit — the docs
+  commit narrates decisions the first two commits actually made).
+- Push/PR of `feat/bun-vanilla-migration-t11` into the feature branch,
+  and of the feature branch into `main`, is the user's decision
+  (branch-chain strategy — `main` receives the whole migration only at
+  this cutover, per the feature's own resolved delivery strategy).
+
+## What's left for T12 (polish phase, separate task)
+
+- Create skills via `skill-creator` for workflows this migration
+  established (e.g. "port a React component to the vanilla static
+  build"), and automate anything done more than twice. Register in
+  `AGENTS.md`.
+- Home `/` canonical + `og:url` (kept parity-omitted through T6b/T11 —
+  see "Carried to the polish phase" above).
+- 404 copy: normalize Rioplatense voseo to neutral Spanish.
+- Verify in Chrome whether GA4 was actually silently blocked in
+  production before this migration (`'strict-dynamic'`/`googletagmanager.com`
+  finding under "Parent verification of T8–T10" above) — informational,
+  not a regression this migration introduced or needs to fix.
+- Evaluate whether to move `app/constants.ts`/`app/globals.css`/
+  `app/api/*` into `src/` now that nothing Next-specific remains in
+  `app/` (deliberately deferred at T11 — see T11's "File removal" note
+  above for why).
+- Consider the scoped-tsconfig fix for `worker-configuration.d.ts`'s
+  global `Element` interface clash (T7's gotcha, still worked around
+  via `appendChild`/`createTextNode` in `cookie-consent.ts`) — evaluated
+  during T11 and deferred: a second `tsconfig.worker.json` project adds
+  a two-pass typecheck and its own `lib`/`Request`/`Response` conflicts
+  to resolve, for a purely cosmetic win (removing one workaround
+  comment); not worth the risk this late in a large cutover.
+- Rename `NEXT_PUBLIC_GA_MEASUREMENT_ID` to a framework-neutral name
+  (flagged, not renamed, in T11 — a rename changes a build-time env var
+  contract and needs coordination with wherever it's set in Cloudflare
+  Workers Builds, so it's a deliberate follow-up, not a same-slice
+  rename).
+- Fix `.env.example`'s stale `vinext build` comment (T11 could not edit
+  this file — permission-denied by the harness's `.env*` sandbox rule;
+  flagged here for a human or a differently-scoped session).
+
+## What's left for the production go-live (human decisions, not code)
+
+- Confirm the Cloudflare Workers Builds dashboard settings match
+  DEPLOY.md's "Hecho crítico" table (build command actually installs/
+  invokes Bun; deploy command has no stale `--config`; root directory
+  `/`) — this repo's code cannot verify dashboard-only configuration.
+- Confirm `NEXT_PUBLIC_GA_MEASUREMENT_ID` and (optionally)
+  `SITEMAP_LAST_MODIFIED` are set as **build-time** variables in that
+  same dashboard, not just runtime secrets.
+- Open the preview URL for this branch/PR
+  (`https://<branch>-cominorsa-web.<subdomain>.workers.dev`) and smoke
+  test manually before merging to `main` — Workers Builds deploys
+  automatically on push, including to `main`, so merging is
+  effectively a production deploy decision.
+- After merge, verify the live site (`https://cominorsa.com`) still
+  serves the full page set, the security headers, and the 2 API routes
+  correctly, and that GA4 fires (or doesn't, if consent is denied) as
+  expected.

@@ -31,10 +31,8 @@ function fileNameFor(slug: string): string {
 }
 
 async function withTempOutDir<T>(fn: (outDir: string) => Promise<T>): Promise<T> {
-  // Under the repo, not /tmp: the CSS entry (`app/globals.css`) imports
-  // the bare specifier "tailwindcss", which only resolves against this
-  // project's node_modules — the output dir itself can still be
-  // anywhere, but keeping it here too avoids surprises.
+  // Under the repo, not /tmp, for consistency with this project's other
+  // fixture directories.
   const outDir = await mkdtemp(join(process.cwd(), ".build-fixture-"));
   try {
     return await fn(outDir);
@@ -260,5 +258,38 @@ describe("runStaticBuild", () => {
           if (isModule) expect(body).toBe("");
         }
       }
+    }));
+
+  // T8: sitemap.xml/robots.txt/manifest.webmanifest, generated from the
+  // same PAGE_ROUTES table + site-config.ts constants exercised in
+  // sitemap.test.ts/robots.test.ts/webmanifest.test.ts directly — this
+  // just proves runStaticBuild actually wires them into the output dir.
+  test("writes sitemap.xml, robots.txt, and manifest.webmanifest to the output root", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+
+      const sitemap = await Bun.file(join(outDir, "sitemap.xml")).text();
+      expect(sitemap).toContain("<loc>https://cominorsa.com/</loc>");
+      expect(sitemap).toContain("<loc>https://cominorsa.com/seguridad-minera</loc>");
+      expect(sitemap).not.toContain("404");
+
+      const robots = await Bun.file(join(outDir, "robots.txt")).text();
+      expect(robots).toContain("Sitemap: https://cominorsa.com/sitemap.xml");
+
+      const manifest = await Bun.file(join(outDir, "manifest.webmanifest")).text();
+      expect(JSON.parse(manifest).name).toBe("COMINORSA | Consultoría minera y ambiental");
+    }));
+
+  // T10: dist-static/_headers, generated from security-policy.ts — see
+  // headers.test.ts for the unit-level policy assertions; this proves
+  // it actually lands in the build output.
+  test("writes dist-static/_headers with the security policy and asset caching rules", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const headers = await Bun.file(join(outDir, "_headers")).text();
+      expect(headers).toContain("Content-Security-Policy:");
+      expect(headers).not.toContain("nonce-");
+      expect(headers).toContain("/assets/*");
+      expect(headers).toContain("/fonts/*");
     }));
 });

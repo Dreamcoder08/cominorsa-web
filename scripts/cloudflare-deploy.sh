@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # cloudflare-deploy.sh — Build local + deploy a Cloudflare Workers vía wrangler
 #
-# vinext emite un Worker SSR (dist/server/index.js + wrangler.json), no HTML
-# estático — por eso el target es "wrangler deploy" contra dist/server/, no
-# "wrangler pages deploy".
+# T11: el sitio ahora es estático (Cloudflare Workers Static Assets desde
+# dist-static/) más un Worker chico para las 2 rutas /api/*. El config
+# canónico es el wrangler.jsonc de la raíz del repo (ya NO
+# dist/server/wrangler.json, que era generado por vinext/@cloudflare/vite-plugin
+# — ese pipeline se retiró en este cutover).
 #
 # USO:
 #   ./scripts/cloudflare-deploy.sh                    # deploy a production
@@ -26,7 +28,7 @@ while [[ $# -gt 0 ]]; do
     -h | --help)
         echo "Uso: $0"
         echo ""
-        echo "  Build + wrangler deploy contra dist/server/wrangler.json"
+        echo "  Build + wrangler deploy contra el wrangler.jsonc de la raíz"
         exit 0
         ;;
     *)
@@ -44,18 +46,24 @@ else
     echo "▶ Build salteado (SKIP_BUILD=1)"
 fi
 
-WRANGLER_CONFIG="$PROJECT_ROOT/dist/server/wrangler.json"
+WRANGLER_CONFIG="$PROJECT_ROOT/wrangler.jsonc"
 
 if [[ ! -f "$WRANGLER_CONFIG" ]]; then
-    echo "✗ No existe $WRANGLER_CONFIG — corré el build primero" >&2
+    echo "✗ No existe $WRANGLER_CONFIG" >&2
     exit 1
 fi
 
-# Must run from the project root with an explicit --config: invoking wrangler
-# from inside dist/server makes it also discover the stale
-# .wrangler/deploy/config.json left by the vite build, which triggers
-# "Found both a user configuration file... and a deploy configuration file"
-# even though both resolve to the same file.
+if [[ ! -d "$PROJECT_ROOT/dist-static" ]]; then
+    echo "✗ No existe dist-static/ — corré el build primero" >&2
+    exit 1
+fi
+
+# A stale .wrangler/deploy/config.json (left over from an old `vinext
+# build`/`wrangler deploy --dry-run`, before this cutover) can silently
+# pin wrangler to a retired config even with the real wrangler.jsonc
+# present at the root — bit this exact migration during T11 (see
+# odd/tasks/bun-vanilla-migration.md). If a deploy ever behaves like it's
+# reading the wrong config, `rm -rf .wrangler` (gitignored, safe) first.
 echo ""
 echo "▶ Deploying a Cloudflare Workers..."
 cd "$PROJECT_ROOT"

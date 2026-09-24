@@ -27,11 +27,27 @@ Project-specific skills for AI coding agents working on this repo. Each
 
 ## Stack notes
 
-- Next.js 16 (App Router) + Cloudflare Workers via `vinext`/`wrangler`,
-  not Vercel.
-- Styling is hand-written CSS in `app/globals.css` (Tailwind v4 is
-  imported but barely used — most of the UI predates it and isn't a
-  utility-class rewrite target without being asked).
-- `pnpm test` runs `next build` + the Node test files under `tests/qa/`.
+- Static site (zero runtime `dependencies`) built with Bun
+  (`bun run src/build/build.ts` → `dist-static/`), served by Cloudflare
+  Workers Static Assets + a small Worker for `/api/*`
+  (`src/worker/index.ts`), not Vercel. No React, no Next.js, no vinext,
+  no Tailwind — removed at the T11 cutover (`odd/tasks/bun-vanilla-migration.md`).
+  Bun is build/dev/test tooling only; it never runs in production
+  (Cloudflare Workers runs `workerd`).
+- Rendering is a hand-written `~50`-line JSX runtime (`src/html/`)
+  compiling JSX to escaped HTML strings at build time — no
+  reconciliation, no hydration. Interactivity is 4 dependency-free ES
+  modules (`src/client/`), progressive enhancement only.
+- Package manager is still **pnpm** (lockfile, `allowBuilds` allowlist,
+  pre-commit hook, CI all depend on it) — Bun is the build/test/dev
+  runtime, not a package-manager replacement.
+- Styling is hand-written CSS in `app/globals.css`, including Tailwind
+  v4's Preflight reset ported in verbatim as plain CSS (no `@import
+  "tailwindcss"` anymore — zero utility classes were ever used, verified
+  by grep before removal).
+- `pnpm test` runs the static build (`pnpm run build`) + the Node test
+  files under `tests/qa/`. `bun test src/` covers the Bun-native modules
+  separately. `pnpm test:e2e` is deterministic (Playwright's own
+  `webServer` builds + serves via `wrangler dev`, no manual server step).
 - Pre-commit hook runs `pnpm validate` (`scripts/validate-env.mjs`) —
   expect it on every `git commit`.

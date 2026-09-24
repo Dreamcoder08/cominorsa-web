@@ -25,11 +25,14 @@ import { join } from "node:path";
 import { PAGE_ROUTES } from "./routes";
 import { runStaticBuild } from "./build";
 
+/** Mirrors build.ts's writePage: slug "" (the homepage) is index.html. */
+function fileNameFor(slug: string): string {
+  return slug === "" ? "index.html" : `${slug}.html`;
+}
+
 async function withTempOutDir<T>(fn: (outDir: string) => Promise<T>): Promise<T> {
-  // Under the repo, not /tmp: the CSS entry (`app/globals.css`) imports
-  // the bare specifier "tailwindcss", which only resolves against this
-  // project's node_modules — the output dir itself can still be
-  // anywhere, but keeping it here too avoids surprises.
+  // Under the repo, not /tmp, for consistency with this project's other
+  // fixture directories.
   const outDir = await mkdtemp(join(process.cwd(), ".build-fixture-"));
   try {
     return await fn(outDir);
@@ -43,9 +46,27 @@ describe("runStaticBuild", () => {
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
       for (const route of PAGE_ROUTES) {
+        if (route.slug === "") continue; // the homepage is index.html itself
         expect(await Bun.file(join(outDir, route.slug, "index.html")).exists()).toBe(false);
         expect(await Bun.file(join(outDir, `${route.slug}.html`)).exists()).toBe(true);
       }
+      expect(await Bun.file(join(outDir, "index.html")).exists()).toBe(true);
+    }));
+
+  test("emits the homepage as index.html with its brand-first title, no canonical, and the consultation form", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const html = await Bun.file(join(outDir, "index.html")).text();
+
+      expect(html).toContain("<!doctype html>");
+      expect(html).toContain(
+        "<title>COMINORSA | Consultoría minera y ambiental</title>",
+      );
+      expect(html).not.toContain('rel="canonical"');
+      expect(html).not.toContain('property="og:url"');
+      expect(html).toContain('<span class="reveal-line">Técnica que impulsa.</span>');
+      expect(html).toContain('<form class="consultation-form" id="consultation-form">');
+      expect(html).toContain('href="/seguridad-minera"');
     }));
 
   test("emits seguridad-minera.html with the expected key content (parity with the pre-route-table build)", () =>
@@ -127,7 +148,7 @@ describe("runStaticBuild", () => {
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
       for (const route of PAGE_ROUTES) {
-        const html = await Bun.file(join(outDir, `${route.slug}.html`)).text();
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
         expect(html).not.toContain(".com.pe");
       }
     }));
@@ -151,7 +172,7 @@ describe("runStaticBuild", () => {
       // build, shared across the whole route table, not one per page.
       for (const route of PAGE_ROUTES) {
         if (route.slug === "seguridad-minera") continue;
-        const html = await Bun.file(join(outDir, `${route.slug}.html`)).text();
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
         expect(html).toContain(`<link rel="stylesheet" href="${cssHref}">`);
         expect(html).toContain(`<link rel="stylesheet" href="${fontsHref}">`);
       }
@@ -190,5 +211,85 @@ describe("runStaticBuild", () => {
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
       expect(await Bun.file(join(outDir, "logo-44.png")).exists()).toBe(true);
+    }));
+
+  // T7: every route renders SiteHeader/SiteFooter (mobile nav + the
+  // cookie-preferences button), so every route needs the mobile-nav and
+  // consent widgets; only the homepage has a #consultation-form to wire.
+  test("every page links the mobile-nav and consent module scripts, built and copied to disk", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      for (const route of PAGE_ROUTES) {
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        const srcs = [
+          ...html.matchAll(/<script type="module" src="([^"]+)" defer><\/script>/g),
+        ].map((m) => m[1]!);
+
+        const mobileNavSrc = srcs.find((src) => src.includes("mobile-nav"));
+        const consentSrc = srcs.find((src) => src.includes("consent"));
+        expect(mobileNavSrc, `${route.slug || "index"}: missing mobile-nav script`).toBeDefined();
+        expect(consentSrc, `${route.slug || "index"}: missing consent script`).toBeDefined();
+        expect(mobileNavSrc).toMatch(/^\/assets\/mobile-nav-entry-[a-z0-9]+\.js$/);
+        expect(consentSrc).toMatch(/^\/assets\/consent-entry-[a-z0-9]+\.js$/);
+        expect(await Bun.file(join(outDir, mobileNavSrc!.replace(/^\//, ""))).exists()).toBe(true);
+        expect(await Bun.file(join(outDir, consentSrc!.replace(/^\//, ""))).exists()).toBe(true);
+      }
+    }));
+
+  test("only the homepage links the consultation-form module script", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const home = await Bun.file(join(outDir, "index.html")).text();
+      expect(home).toMatch(/<script type="module" src="\/assets\/consultation-form-entry-[a-z0-9]+\.js" defer><\/script>/);
+
+      const seguridad = await Bun.file(join(outDir, "seguridad-minera.html")).text();
+      expect(seguridad).not.toContain("consultation-form-entry");
+    }));
+
+  test("emits no inline <script> body anywhere (only src-based module scripts and the JSON-LD data block)", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      for (const route of PAGE_ROUTES) {
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        for (const [tag, body] of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)) {
+          const isJsonLd = tag.includes('type="application/ld+json"');
+          const isModule = tag.includes('type="module"') && tag.includes(" src=");
+          expect(isJsonLd || isModule, `unexpected inline script tag: ${tag}`).toBe(true);
+          if (isModule) expect(body).toBe("");
+        }
+      }
+    }));
+
+  // T8: sitemap.xml/robots.txt/manifest.webmanifest, generated from the
+  // same PAGE_ROUTES table + site-config.ts constants exercised in
+  // sitemap.test.ts/robots.test.ts/webmanifest.test.ts directly — this
+  // just proves runStaticBuild actually wires them into the output dir.
+  test("writes sitemap.xml, robots.txt, and manifest.webmanifest to the output root", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+
+      const sitemap = await Bun.file(join(outDir, "sitemap.xml")).text();
+      expect(sitemap).toContain("<loc>https://cominorsa.com/</loc>");
+      expect(sitemap).toContain("<loc>https://cominorsa.com/seguridad-minera</loc>");
+      expect(sitemap).not.toContain("404");
+
+      const robots = await Bun.file(join(outDir, "robots.txt")).text();
+      expect(robots).toContain("Sitemap: https://cominorsa.com/sitemap.xml");
+
+      const manifest = await Bun.file(join(outDir, "manifest.webmanifest")).text();
+      expect(JSON.parse(manifest).name).toBe("COMINORSA | Consultoría minera y ambiental");
+    }));
+
+  // T10: dist-static/_headers, generated from security-policy.ts — see
+  // headers.test.ts for the unit-level policy assertions; this proves
+  // it actually lands in the build output.
+  test("writes dist-static/_headers with the security policy and asset caching rules", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const headers = await Bun.file(join(outDir, "_headers")).text();
+      expect(headers).toContain("Content-Security-Policy:");
+      expect(headers).not.toContain("nonce-");
+      expect(headers).toContain("/assets/*");
+      expect(headers).toContain("/fonts/*");
     }));
 });

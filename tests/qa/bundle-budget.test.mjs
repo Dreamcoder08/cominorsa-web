@@ -1,80 +1,73 @@
 /**
  * Bundle budget regression test.
  *
- * Walks dist/client/_next/static/ and asserts JS and CSS totals stay
- * within budgets. The thresholds are deliberately loose (matching the
- * performance suite) so a single dependency bump doesn't immediately
- * fail — the goal is to catch gross regressions, not micro-optimise.
+ * T11 cutover: walks dist-static/assets/ (the static build's hashed CSS
+ * and the 3 tiny progressive-enhancement JS bundles, T7) instead of
+ * dist/client/_next/static/ (Next's chunked framework bundle, gone).
+ * The JS budget is tightened from the old 600 KB (a full React+Next
+ * framework bundle) to a gzip-based budget that actually matches this
+ * site's real output — 3 dependency-free ES modules totaling ~4.9 KB raw
+ * / ~2.6 KB gzip (see odd/tasks/bun-vanilla-migration.md's T7 entry) — a
+ * meaningful regression alarm now, not a number so loose it could never
+ * fire. Runs after `pnpm run build` (the test suite script chains build
+ * before tests), so this is always fresh.
  *
- * Budgets (raw, uncompressed):
- *   - JS total: < 600 KB
- *   - CSS total: < 50 KB
- *   - JS framework chunk (largest single): < 250 KB
- *
- * Runs after `pnpm run build`. The test suite script chains build
- * before tests, so this is always fresh.
+ * Budgets:
+ *   - JS total (gzip): <= 20 KB — roughly 8x this site's real total,
+ *     enough headroom for a genuine new widget without being the old
+ *     600 KB budget that could never catch a real regression.
+ *   - CSS total (raw): < 50 KB — unchanged threshold; real output
+ *     (~32 KB, Tailwind's Preflight reset plus this site's own CSS) has
+ *     comfortable headroom.
  */
 import assert from "node:assert/strict";
-import { readdir, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
+import { gzipSync } from "node:zlib";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
-const STATIC = join(ROOT, "dist/client/_next/static");
+const ASSETS_DIR = join(ROOT, "dist-static", "assets");
 
-async function walkJsCss(dir) {
-  const out = [];
+async function filesWithExt(ext) {
   let entries;
   try {
-    entries = await readdir(dir, { withFileTypes: true });
+    entries = await readdir(ASSETS_DIR, { withFileTypes: true });
   } catch {
-    return out;
+    return [];
   }
-  for (const e of entries) {
-    const p = join(dir, e.name);
-    if (e.isDirectory()) out.push(...(await walkJsCss(p)));
-    else if (e.isFile() && (p.endsWith(".js") || p.endsWith(".css"))) {
-      out.push(p);
-    }
-  }
-  return out;
+  return entries
+    .filter((e) => e.isFile() && e.name.endsWith(ext))
+    .map((e) => join(ASSETS_DIR, e.name));
 }
 
-test("JS bundle total is under 600 KB", async () => {
-  const files = await walkJsCss(STATIC);
-  const js = files.filter((f) => f.endsWith(".js"));
-  assert.ok(js.length > 0, "no JS chunks found — did you run `pnpm build`?");
+test("JS bundle total (gzip) is under 20 KB", async () => {
+  const files = await filesWithExt(".js");
+  assert.ok(files.length > 0, "no JS bundles found — did you run `pnpm build`?");
   let total = 0;
-  for (const f of js) total += (await stat(f)).size;
+  for (const f of files) {
+    const raw = await readFile(f);
+    total += gzipSync(raw, { level: 9 }).length;
+  }
   const kb = total / 1024;
-  assert.ok(kb < 600, `JS total ${kb.toFixed(1)} KB exceeds 600 KB budget`);
+  assert.ok(kb < 20, `JS total (gzip) ${kb.toFixed(2)} KB exceeds the 20 KB budget`);
 });
 
-test("CSS bundle total is under 50 KB", async () => {
-  const files = await walkJsCss(STATIC);
-  const css = files.filter((f) => f.endsWith(".css"));
+test("CSS bundle total (raw) is under 50 KB", async () => {
+  const files = await filesWithExt(".css");
+  assert.ok(files.length > 0, "no CSS bundles found — did you run `pnpm build`?");
   let total = 0;
-  for (const f of css) total += (await stat(f)).size;
+  for (const f of files) total += (await stat(f)).size;
   const kb = total / 1024;
   assert.ok(kb < 50, `CSS total ${kb.toFixed(1)} KB exceeds 50 KB budget`);
 });
 
-test("largest JS chunk (framework) is under 250 KB", async () => {
-  const files = await walkJsCss(STATIC);
-  const js = files.filter((f) => f.endsWith(".js"));
-  let largest = 0;
-  let largestName = "";
-  for (const f of js) {
+test("no single JS bundle exceeds 10 KB raw (each widget stays independently tiny)", async () => {
+  const files = await filesWithExt(".js");
+  for (const f of files) {
     const s = await stat(f);
-    if (s.size > largest) {
-      largest = s.size;
-      largestName = f.replace(`${ROOT}/`, "");
-    }
+    const kb = s.size / 1024;
+    assert.ok(kb < 10, `${f} is ${kb.toFixed(1)} KB, exceeds the 10 KB per-bundle budget`);
   }
-  const kb = largest / 1024;
-  assert.ok(
-    kb < 250,
-    `largest chunk ${largestName} is ${kb.toFixed(1)} KB, exceeds 250 KB budget`,
-  );
 });

@@ -4,15 +4,16 @@ import { expect, test, type Page } from "./guarded-test";
  * Stubs `window.open` and records its arguments instead of tracking a real
  * popup via `context.waitForEvent("page")`. Not just a style preference:
  * while tracking down why that (and `page.waitForRequest`) hung for 30s
- * against this exact form, the actual cause turned out to be the
- * pre-hydration native-submission race documented on
- * `gotoAndWaitForHydration` below — with no submit handler attached yet,
- * neither `window.open` nor `fetch` ever ran, so there was nothing for
- * either waiter to catch. That race is now closed at the source
- * (ConsultationForm.tsx disables its submit button until mounted), but
- * stubbing `window.open` remains the right approach on its own merits: it
- * needs no browser-level popup/tab machinery and can't flake on tab-timing
- * regardless.
+ * against this exact form (back when it was React's app/ConsultationForm.tsx,
+ * pre-T11), the actual cause turned out to be a pre-enhancement
+ * native-submission race documented on `gotoAndWaitForEnhancement` below —
+ * with no submit listener attached yet, neither `window.open` nor `fetch`
+ * ever ran, so there was nothing for either waiter to catch. That race is
+ * now closed at the source (the static markup's submit button starts
+ * `disabled`; src/client/dom/consultation-form.ts enables it once its
+ * listener is actually attached), but stubbing `window.open` remains the
+ * right approach on its own merits: it needs no browser-level popup/tab
+ * machinery and can't flake on tab-timing regardless.
  */
 async function stubWindowOpen(page: Page) {
   await page.addInitScript(() => {
@@ -32,37 +33,33 @@ async function getOpenedUrls(page: Page): Promise<string[]> {
   );
 }
 
-// A known, expected React/CSP interaction, not a bug: browsers hide a
-// script's `nonce` attribute from JS (React's hydration check included)
-// once the CSP nonce has been validated, as a defense against nonce
-// exfiltration — so app/layout.tsx's real per-request nonce always reads
-// back as "" on the client even though it did its job server-side. See
-// app/layout.tsx's suppressHydrationWarning comment on the JSON-LD
-// <script> tag. Asserting "zero console errors" would otherwise make
-// every run fail on this expected warning instead of whatever this suite
-// is meant to catch.
+// Historical filter, kept harmless: pre-T11 (React SSR with a per-request
+// CSP nonce) browsers would hide a script's `nonce` attribute from JS once
+// validated, which could surface as a benign hydration-mismatch console
+// warning. The static build (T11) has no SSR, no hydration, and no nonce
+// at all, so this should never actually fire anymore — left in place only
+// as a defensive no-op in case a future change reintroduces something
+// nonce-shaped.
 const KNOWN_UNRELATED_ERROR_SUBSTRINGS = ["hydration-mismatch"];
 
 function isKnownUnrelatedError(text: string) {
   return KNOWN_UNRELATED_ERROR_SUBSTRINGS.some((s) => text.includes(s));
 }
 
-/** ConsultationForm's submit button starts `disabled` until the component
- * mounts client-side (see the `mounted` comment in ConsultationForm.tsx) —
- * specifically so a click can never land before React has hydrated and
- * attached the real onSubmit handler. Waiting for that instead of a fixed
- * delay is what makes this deterministic rather than "probably enough
- * time" flakiness. */
-async function gotoAndWaitForHydration(page: Page, path = "/") {
+/** The static markup's submit button starts `disabled` (src/build/consultation-form.tsx) —
+ * specifically so a click can never land before
+ * src/client/dom/consultation-form.ts has actually attached its submit
+ * listener. Waiting for that instead of a fixed delay is what makes this
+ * deterministic rather than "probably enough time" flakiness. */
+async function gotoAndWaitForEnhancement(page: Page, path = "/") {
   await page.goto(path);
   // Playwright's default 5s expect-timeout assumes normal load; running
   // this whole suite's browsers in parallel against one shared dev server
-  // (itself an unbundled Vite process, slower to interactive than a
-  // production build) can genuinely push real hydration past that under
-  // CPU contention — this is a generous ceiling for a legitimately slow
+  // can genuinely push real script-execution past that under CPU
+  // contention — this is a generous ceiling for a legitimately slow
   // environment, not a race being paved over (the button becomes enabled
-  // deterministically once mounted; there's no scenario where waiting
-  // longer changes the outcome).
+  // deterministically once the listener attaches; there's no scenario
+  // where waiting longer changes the outcome).
   await expect(
     page.locator('.consultation-form button[type="submit"]'),
   ).toBeEnabled({ timeout: 15000 });
@@ -114,7 +111,7 @@ test.describe("consultation form — the real client-facing lead flow", () => {
     crmLeadPayloads,
   }) => {
     await stubWindowOpen(page);
-    await gotoAndWaitForHydration(page);
+    await gotoAndWaitForEnhancement(page);
     await page.locator("#consulta").scrollIntoViewIfNeeded();
 
     const nameInput = page.getByLabel("Nombre completo");
@@ -163,7 +160,7 @@ test.describe("consultation form — the real client-facing lead flow", () => {
     crmLeadPayloads,
   }) => {
     await stubWindowOpen(page);
-    await gotoAndWaitForHydration(page);
+    await gotoAndWaitForEnhancement(page);
     await page.locator("#consulta").scrollIntoViewIfNeeded();
 
     await page.fill('input[name="name"]', SAMPLE_LEAD.name);
@@ -189,7 +186,7 @@ test.describe("consultation form — the real client-facing lead flow", () => {
     crmLeadPayloads,
   }) => {
     await stubWindowOpen(page);
-    await gotoAndWaitForHydration(page);
+    await gotoAndWaitForEnhancement(page);
     await page.locator("#consulta").scrollIntoViewIfNeeded();
 
     // Submit with every field left empty — native HTML5 required validation

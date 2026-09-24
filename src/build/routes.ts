@@ -1,14 +1,14 @@
 // src/build/routes.ts
 //
-// T6a: one explicit route table drives the static build for every page
-// except the homepage (T6b, tracked separately in
-// odd/tasks/bun-vanilla-migration.md). `build.ts` loops over
-// `PAGE_ROUTES` to emit `<slug>.html` for each; T8's sitemap generator
-// is meant to reuse this exact list instead of hand-listing routes a
-// second time.
+// One explicit route table drives the static build for every page,
+// including the homepage (T6b). `build.ts` loops over `PAGE_ROUTES` to
+// emit `<slug>.html` for each (the homepage's `slug: ""` maps to
+// `index.html`); T8's sitemap generator is meant to reuse this exact
+// list instead of hand-listing routes a second time.
 
 import type { Child } from "../html/jsx-runtime";
 import { FaqPage } from "./faq-page";
+import { HomePage } from "./home-page";
 import { NotFoundPage } from "./not-found-page";
 import { PrivacyPage } from "./privacy-page";
 import { ServicePage } from "./service-page";
@@ -23,12 +23,21 @@ const ROOT_DESCRIPTION =
   "Formalización minera, instrumentos ambientales, ingeniería y asistencia técnica desde Piura, Perú.";
 
 export type PageRoute = {
-  /** URL slug, no leading/trailing slash. "404" emits `404.html` (see build.ts). */
+  /** URL slug, no leading/trailing slash. "" emits `index.html` (the homepage); "404" emits `404.html` (see build.ts). */
   slug: string;
-  /** Page-specific portion of `<title>`; callers append " | COMINORSA" uniformly. */
+  /** Page-specific portion of `<title>`; callers append " | COMINORSA" uniformly. Ignored when `fullTitle` is set. */
   title: string;
   description: string;
-  /** Absolute path with no trailing slash, e.g. "/privacidad". Omit for the 404 page (no single canonical URL). */
+  /**
+   * Overrides `title` with a verbatim `<title>` value, skipping the
+   * " | COMINORSA" suffix every other route gets. Only the homepage
+   * needs this: production's real title is brand-first
+   * ("COMINORSA | Consultoría minera y ambiental"), from the root
+   * layout's own `generateMetadata` — not the "<page> | COMINORSA"
+   * pattern `generateServiceMetadata` uses for every other page.
+   */
+  fullTitle?: string;
+  /** Absolute path with no trailing slash, e.g. "/privacidad". Omit for the homepage and the 404 page (neither has a canonical URL in production — verified against the live site). */
   canonicalPath?: string;
   /** e.g. "noindex, follow" — only the 404 route sets this today. */
   robots?: string;
@@ -36,6 +45,13 @@ export type PageRoute = {
 };
 
 export const PAGE_ROUTES: PageRoute[] = [
+  {
+    slug: "",
+    title: "Inicio",
+    fullTitle: "COMINORSA | Consultoría minera y ambiental",
+    description: ROOT_DESCRIPTION,
+    render: () => HomePage({ serviceGroups }),
+  },
   ...serviceGroups.map(
     (service): PageRoute => ({
       slug: service.slug,

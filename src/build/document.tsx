@@ -1,4 +1,3 @@
-/** @jsxImportSource ../html */
 // src/build/document.tsx
 //
 // Full `<head>` document shell for the static build (T4), replacing
@@ -119,6 +118,19 @@ export type DocumentProps = {
   cssHref: string;
   /** Absolute path to the built, hashed fonts stylesheet (src/build/fonts.css). */
   fontsCssHref: string;
+  /**
+   * Absolute paths to built, hashed, minified ES modules (T7,
+   * `src/build/js.ts`), rendered as `<script type="module" src="...">`
+   * right before `</body>`, in the given order. No inline `<script>` is
+   * ever emitted here — T10's CSP is `script-src 'self'` plus whatever
+   * GA4 needs, which a `src`-based module script satisfies with zero
+   * nonce/hash bookkeeping. Module scripts are deferred by the HTML spec
+   * on their own, so placement doesn't need `defer`/`async`. Omit for a
+   * page with no widgets to enhance (none today — every route renders
+   * `SiteHeader`/`SiteFooter`, so every route gets at least the
+   * mobile-nav and consent scripts; see `src/build/routes.ts`).
+   */
+  scriptSrcs?: string[];
   children: Child;
 };
 
@@ -129,6 +141,7 @@ function Document({
   robots,
   cssHref,
   fontsCssHref,
+  scriptSrcs,
   children,
 }: DocumentProps) {
   const canonicalUrl = canonicalPath !== undefined ? `${SITE_URL}${canonicalPath}` : undefined;
@@ -175,7 +188,16 @@ function Document({
 
         <script type="application/ld+json">{jsonLdScript(JSON_LD)}</script>
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {(scriptSrcs ?? []).map((src) => (
+          // `defer` is redundant on a `type="module"` script (the HTML
+          // spec already defers module scripts) but keeps
+          // `@next/next/no-sync-scripts` — which doesn't special-case
+          // `type="module"` — from flagging it as a blocking script.
+          <script type="module" src={src} defer={true} />
+        ))}
+      </body>
     </html>
   );
 }

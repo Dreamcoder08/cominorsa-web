@@ -178,7 +178,18 @@ in Engram topic `odd/landing-polish/audit`.
   "impulsa.Responsabilidad"), P1-1 (`www.cominorsa.com` → 200, no
   redirect).
 
+## Delivery log
+
+- Slice 1 (P1–P3): PR #10 → tracker #9 → `main` (`b0cb63a`), deployed by
+  Workers Builds 2026-09-23. Rollback point before it:
+  `da7ecedd-ecb0-41ba-8803-2fd29f1178df`. Live checks: home canonical,
+  no cookie button, privacy no longer claims "ningún servidor", routes
+  200/404, CRM API 200. Chrome: skip link is first Tab stop and becomes
+  visible after its 180 ms transition.
+- CI gap: `ci.yml` only triggers on PRs to `main` and
+  `feat/bun-vanilla-migration**`; slice PRs into `feat/landing-polish`
+  get no CI — fix in P10 (trigger on `feat/**`).
+
 ## Next step
 
-P4 (harden `/api/crm-lead`) — after the P1–P3 slice is reviewed/merged
-into `feat/landing-polish`.
+Slice 2: P4 (crm-lead hardening), P6 (images/cache), P8 (copy).

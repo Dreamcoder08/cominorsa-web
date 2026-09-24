@@ -262,7 +262,10 @@ describe("runStaticBuild", () => {
   test("copies public assets alongside the built pages", () =>
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
-      expect(await Bun.file(join(outDir, "logo-44.png")).exists()).toBe(true);
+      expect(await Bun.file(join(outDir, "logo-44.webp")).exists()).toBe(true);
+      // P11: the PNG logo is referenced nowhere (manifest and JSON-LD use
+      // apple-touch-icon.png), so it no longer ships.
+      expect(await Bun.file(join(outDir, "logo-44.png")).exists()).toBe(false);
     }));
 
   // T7: every route renders SiteHeader/SiteFooter (mobile nav + the

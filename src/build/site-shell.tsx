@@ -84,8 +84,10 @@ export function SiteHeader({ basePath = "" }: { basePath?: string }) {
     <header className="site-header">
       <div className="site-header-inner container">
         <a className="brand" href={`${basePath}#inicio`} aria-label="COMINORSA, inicio">
+          {/* P11: WebP (2.1 KB, q90, from the fully opaque 88×85 PNG,
+              13.3 KB) — Lighthouse modern-image-formats. */}
           <span className="brand-mark brand-logo-wrap" aria-hidden="true">
-            <img src="/logo-44.png" alt="" width="44" height="44" />
+            <img src="/logo-44.webp" alt="" width="44" height="44" />
           </span>
           <span className="brand-copy">
             <strong translate="no">COMINORSA</strong>
@@ -134,7 +136,7 @@ export function SiteFooter({ basePath = "", analyticsEnabled = false }: SiteFoot
     <footer>
       <a className="brand footer-brand" href={`${basePath}#inicio`}>
         <span className="brand-mark brand-logo-wrap" aria-hidden="true">
-          <img src="/logo-44.png" alt="" width="44" height="44" loading="lazy" />
+          <img src="/logo-44.webp" alt="" width="44" height="44" loading="lazy" />
         </span>
         <span className="brand-copy">
           <strong translate="no">COMINORSA</strong>

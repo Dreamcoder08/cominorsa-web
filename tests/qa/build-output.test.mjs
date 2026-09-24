@@ -71,7 +71,7 @@ test("wrangler.jsonc keeps dashboard-managed vars on deploy", async () => {
 });
 
 test("public/ has copied favicons and images into dist-static (public assets are copied verbatim)", async () => {
-  for (const f of ["favicon.ico", "apple-touch-icon.png", "og.jpg", "logo-44.png"]) {
+  for (const f of ["favicon.ico", "apple-touch-icon.png", "og.jpg", "logo-44.webp"]) {
     assert.ok(await exists(join(DIST_STATIC, f)), `${f} missing from dist-static/`);
   }
 });
@@ -152,6 +152,29 @@ test("public/og.jpg weighs at most 200 KB", async () => {
   assert.ok(s.size <= 200 * 1024, `og.jpg too heavy: ${s.size} bytes`);
 });
 
+// P11 (Lighthouse modern-image-formats): the header/footer logo is a
+// lossy WebP at the PNG's own 88×85 (2× of its 44 px box).
+test("public/logo-44.webp is a real 88×85 WebP, lighter than 6 KB, and the PNG is gone", async () => {
+  const bytes = await readFile(join(PUBLIC, "logo-44.webp"));
+  assert.equal(bytes.subarray(0, 4).toString("ascii"), "RIFF");
+  assert.equal(bytes.subarray(8, 12).toString("ascii"), "WEBP");
+  assert.ok(bytes.length < 6 * 1024, `logo-44.webp too heavy: ${bytes.length} bytes`);
+  const chunk = bytes.subarray(12, 16).toString("ascii");
+  let width;
+  let height;
+  if (chunk === "VP8X") {
+    width = 1 + bytes.readUIntLE(24, 3);
+    height = 1 + bytes.readUIntLE(27, 3);
+  } else if (chunk === "VP8 ") {
+    width = bytes.readUInt16LE(26) & 0x3fff;
+    height = bytes.readUInt16LE(28) & 0x3fff;
+  } else {
+    assert.fail(`unexpected WebP chunk ${chunk} (expected lossy)`);
+  }
+  assert.deepEqual([width, height], [88, 85]);
+  assert.equal(await exists(join(PUBLIC, "logo-44.png")), false);
+});
+
 test("no stale og.png ships alongside og.jpg", async () => {
   assert.equal(await exists(join(PUBLIC, "og.png")), false);
 });
@@ -169,7 +192,7 @@ test("dist-static/ root holds only pages, generated files, and referenced assets
     "favicon-32x32.png",
     "apple-touch-icon.png",
     "og.jpg",
-    "logo-44.png",
+    "logo-44.webp",
     "assets",
     "fonts",
   ]);

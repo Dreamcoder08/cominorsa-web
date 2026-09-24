@@ -106,7 +106,7 @@ cominorsa-web/
 │   ├── constants.ts          # WhatsApp numbers, GA env var, etc.
 │   ├── globals.css           # CSS plano hecho a mano (tokens en :root)
 │   └── api/                  # crm-lead, next-business-day (route handlers library-free)
-├── public/                   # og.jpg, logo-44.png, favicons, fonts/
+├── public/                   # og.jpg, logo-44.webp, favicons, fonts/
 ├── docker/twenty/             # Stack local/producción de Twenty CRM
 ├── tests/
 │   ├── rendered-html.test.mjs

@@ -39,7 +39,7 @@ export const organizationJsonLd = {
   description:
     "Consultoría minera y ambiental: formalización minera (IGAFOM, REINFO), instrumentos ambientales, ingeniería y asistencia técnica desde Piura, Perú.",
   url: SITE_URL,
-  // The logo mark (180×180; the header's logo-44.png is only 88×85).
+  // The logo mark (180×180; the header's logo-44.webp is only 88×85).
   logo: `${SITE_URL}/apple-touch-icon.png`,
   image: `${SITE_URL}/og.jpg`,
   telephone: `+${PRIMARY_WHATSAPP_NUMBER}`,

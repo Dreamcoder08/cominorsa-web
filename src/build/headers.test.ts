@@ -37,7 +37,7 @@ describe("buildHeadersFile", () => {
   test("P6: caches the non-hashed images (OG, logo, favicons) for a day, not immutably", () => {
     for (const path of [
       "/og.jpg",
-      "/logo-44.png",
+      "/logo-44.webp",
       "/favicon.ico",
       "/favicon-16x16.png",
       "/favicon-32x32.png",
@@ -46,6 +46,10 @@ describe("buildHeadersFile", () => {
       const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       expect(file).toMatch(new RegExp(`\\n${escaped}\\n\\s*Cache-Control: public, max-age=86400\\n`));
     }
+  });
+
+  test("P11: no cache rule for the retired PNG logo", () => {
+    expect(file).not.toContain("/logo-44.png");
   });
 
   test("never sets Cache-Control on the /* (HTML) rule — HTML must not be cached immutably", () => {

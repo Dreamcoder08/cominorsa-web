@@ -30,7 +30,7 @@ const IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
 const IMAGE_CACHE = "public, max-age=86400";
 export const CACHED_IMAGE_PATHS: readonly string[] = [
   "/og.jpg",
-  "/logo-44.png",
+  "/logo-44.webp",
   "/favicon.ico",
   "/favicon-16x16.png",
   "/favicon-32x32.png",

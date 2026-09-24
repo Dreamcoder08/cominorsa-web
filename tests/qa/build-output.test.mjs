@@ -193,6 +193,8 @@ test("dist-static/ root holds only pages, generated files, and referenced assets
     "apple-touch-icon.png",
     "og.jpg",
     "logo-44.webp",
+    // landing-craft T4: contour mask, referenced from the inlined CSS.
+    "piura-contours.svg",
     "assets",
     "fonts",
   ]);
@@ -200,6 +202,8 @@ test("dist-static/ root holds only pages, generated files, and referenced assets
     (entry) => !entry.endsWith(".html") && !expected.has(entry),
   );
   assert.deepEqual(unexpected, []);
+  const home = await readFile(join(DIST_STATIC, "index.html"), "utf8");
+  assert.match(home, /url\(\/piura-contours\.svg\)/, "contour SVG shipped but not referenced");
   const fonts = await readdir(join(DIST_STATIC, "fonts"));
   assert.ok(fonts.every((f) => f.endsWith(".woff2")), `non-font file in fonts/: ${fonts}`);
 });

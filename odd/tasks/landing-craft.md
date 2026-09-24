@@ -1,0 +1,195 @@
+# Landing Craft — Award-Level UI/UX
+
+## Objective
+
+Raise the home page from "professional" to award-level craft without
+hurting clarity, speed or conversion: say each thing once, turn the
+method into the real formalization route, and make the terrain concept
+(real Piura topography + geological strata) the visual thread of the
+whole site.
+
+## Problem
+
+Code review (2026-09-24) found: the WhatsApp CTA repeated ~5×, both
+phones 3×, "formal, segura y sostenible" ~4×; the `impact` section
+restates `nosotros`; the hero card competes with the primary CTA; the
+method is 4 generic steps; the contour idea is a decorative
+`repeating-radial-gradient` limited to the hero.
+
+## Why
+
+Audience: small/artisanal miners in Piura, mobile-first, possibly poor
+connectivity, WhatsApp-centric. "Best in the world" here means clarity,
+trust, speed and one obvious action — not WebGL or scroll-jacking.
+
+## Constraints
+
+- Zero runtime dependencies; build-time generation only. Tokens only in
+  `app/globals.css` (`cominorsa-design-tokens`, radius 0).
+- Copy in neutral Peruvian Spanish (tú). Code/tests/commits in English.
+- Never invent business facts. Regulatory route content (T3) comes from
+  official sources (MINEM, El Peruano, gob.pe), cited here, and is
+  flagged for client review before production.
+- Motion: CSS-only, progressive enhancement, `prefers-reduced-motion`
+  respected; LCP (hero h1) never hidden.
+- Every push to `main` deploys production. Work stays on
+  `feat/landing-craft`; push/PR/merge are the user's decisions.
+- Out of scope: point 1 (real photos, figures, cases, team) — needs
+  client content.
+
+## Resolved configuration
+
+- **TDD**: Strict TDD ON (project convention). Runners: `bun test src/`,
+  `pnpm test`, `pnpm test:e2e`.
+- **Visual verification**: `cominorsa-run` skill (screenshots 1440/390).
+- **Topography source**: AWS Terrain Tiles (Terrarium PNG, SRTM-derived),
+  `s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png`,
+  reachable 2026-09-24. Output committed as a static SVG asset.
+
+## Tasks
+
+- [x] **T1 — Say it once**: one primary CTA in the hero; remove the
+      duplicate hero-card phones; merge `impact` into `nosotros`; one
+      contact block holding phones + address. Update home tests.
+      - Commit `9286671`. Done inline (workers OOM-killed). The hero card
+        is now "¿Qué necesitas?" with one link per `serviceGroups` slug;
+        `.hero-footer` strip and `section.impact` removed with their CSS.
+        Deviation: `impact` was removed rather than merged, because its
+        copy repeated the `nosotros` title almost word for word.
+      - Evidence: RED 3 fail → GREEN; `bun test src/` 306/306,
+        `pnpm test` 195/195; DOM check at 1440/390: 0 px horizontal
+        overflow, 6 links in the card. `pnpm test:e2e` deferred to T7.
+- [x] **T2 — Research the official formalization route** (REINFO →
+      IGAFOM → …): steps, required documents, sources with publisher/date.
+      Output `odd/research/formalization-route.md`.
+      - Delegated explorer had no web tools; parent researched inline.
+        Primary sources read: gob.pe/101185 (requirements, updated
+        14 Oct 2025) and the MINEM news on Ley Nº 32537 (extends until
+        31 Dec 2026 or Ley MAPE). The authority per stage is secondary
+        and uncertain after the archive transfer to MINEM, so the site
+        does not name DREM. 6-step copy drafted, REVIEW: client,
+        4 open questions.
+- [x] **T3 — Method → formalization route**: replace the 4 generic steps
+      with the researched route, presented as a path on the map; copy
+      flagged `REVIEW: client` in the task doc.
+      - Commit `7e87308`. Route: inline (1 TSX + its test + CSS, already
+        understood). Six stops from `odd/research/formalization-route.md`
+        as an `<ol class="steps route">`; kicker "Ruta de formalización",
+        title "Tu ruta hacia la formalización."; source line linking
+        gob.pe/101185. Layout: 3 × 2 path with a per-stop segment
+        (scroll-drawn under `@supports`/no-preference), hollow marker
+        on the destination; 2 columns ≤820 px; vertical rail with nodes
+        ≤560 px.
+      - **REVIEW: client** — all six step texts, the intro paragraph, and
+        the 4 open questions in the research doc.
+      - Evidence: RED 3 fail → GREEN; `bun test src/` 308/308,
+        `pnpm test` 195/195; section screenshots 1440/900/700/390:
+        0 px overflow, 0 console errors. Color pairs reused
+        (`--muted`/`--copper-ink` on `--cream`), no new pair.
+        RDD: off (clone-local), assess `medium`/`under_budget`.
+- [x] **T4 — Real Piura contours**: build-time script (no deps) that
+      decodes Terrarium tiles and runs marching squares to emit an SVG of
+      real Piura contour lines; replace the hero gradient and reuse it as
+      the site-wide thread.
+      - Commit `aa87774`. Route: inline (writers OOM-killed earlier;
+        module is self-contained). Pure `src/build/contours.ts` (PNG
+        decode with all 5 filters, Terrarium, marching squares with
+        saddle resolution, segment joining, RDP, SVG) +
+        `scripts/generate-contours.ts` (manual, network) →
+        committed `public/piura-contours.svg`: z11 tiles x568–570
+        y1050–1051 (Paimas/Ayabaca), 149–3493 m, 200 m interval,
+        1000 m index lines, 75 KB raw / 32 KB gzip.
+      - Deviation: SVG used as CSS `mask-image` over a token
+        `background-color` (an SVG loaded by CSS cannot inherit
+        `currentColor`), so colors stay tokens. Marked external in the
+        CSS bundle (not inlined as data: into every page's `<style>`),
+        1-day cache like the other fixed-name images. Thread: hero
+        (copper-light 0.16, faded behind the headline) + contact
+        (forest 0.08, faded upward) — replaces both radial-gradient
+        stand-ins.
+      - Evidence: RED (missing module; then 4 wiring fails) → GREEN;
+        `bun test src/` 323/323, `pnpm test` 195/195, typecheck ok;
+        screenshots hero/contact 1440/390: 0 px overflow, 0 console
+        errors, text legible over the lines.
+- [x] **T5 — Geological strata**: section transitions as layered strata
+      in the forest → sand → cream palette.
+      - Commit `bea336b`. Route: inline. `src/build/strata.tsx`: inline
+        SVG (4 folded bands, `preserveAspectRatio="none"`, ~400 B),
+        colors only via CSS classes/custom properties. Five dividers on
+        the home page (`to` paper/ink/cream/deep/sand); each overlaps
+        the previous section's bottom padding (negative margin =
+        `--strata-h`, clamp 40–88 px) and ends in the next section's
+        surface token. Toward light: forest → copper vein → sand/cream;
+        toward dark: sand → vein → forest. `.consultation` gained a
+        solid `--ink-deep` top fade so its diagonal gradient meets the
+        strata without a seam.
+      - Evidence: RED (missing module + 3 fails) → GREEN; `bun test
+        src/` 328/328, `pnpm test` 195/195, typecheck ok; seam contact
+        sheets at 1440/390: no visible seam, no content overlap.
+      - Gotcha: `bun test src/` (build.test) recreates `dist-static/`
+        and leaves a running `wrangler dev` answering 500 — restart it.
+- [x] **T6 — CSS-only motion**: scroll-driven reveals
+      (`animation-timeline: view()`) and cross-document
+      `@view-transition`, all under `prefers-reduced-motion:
+      no-preference` and `@supports`.
+      - Commit `863a2b0`. Route: inline (CSS + its test). `rise-in`
+        reveal (opacity + `--space-5` rise) on section kickers/titles,
+        intros, about copy, principles, service cards, route stops,
+        consultation intro and contact blocks — never the hero, so the
+        LCP h1 is untouched; reveal classes exist only on the home page.
+        Range `entry 0% entry 200px` (fixed length: a percentage left
+        tall mobile cards half-transparent while read).
+        `@view-transition { navigation: auto }` + root cross-fade at
+        `--dur-slow`, header held still via
+        `view-transition-name: site-header`; all inside
+        `prefers-reduced-motion: no-preference` (reveals also inside
+        `@supports (animation-timeline: view())`).
+      - Evidence: RED 4 fail → GREEN; `bun test src/` 332/332,
+        `pnpm test` 195/195, typecheck ok; the minified CSS keeps
+        `@view-transition`; frames at 1440 show the mid-entry fade and
+        full opacity at rest; at 390 every service card (393–574 px
+        tall) is opacity 1.00 with its top at 60 % of the viewport.
+- [x] **T7 — Visual QA & full checks**: screenshots 1440/390 of every
+      changed page, contrast check of new pairs, `pnpm test`,
+      `bun test src/`, `pnpm test:e2e`.
+      - Commit `d7d9558` (fix found by QA). `pnpm shots` full-page
+        captures showed every section below the hero blank: capture
+        never scrolls, so the T6 reveals stayed pre-entry. Real
+        scrolling was already verified in T6. The tool now uses
+        `reducedMotion: "reduce"` (test added; skill note added).
+      - Contrast (text over the new contour lines, WCAG calculator
+        logic): contact `--copper-ink` 6.28, `--ink` 10.30 on the
+        worst line pixel; hero lead `white/0.72` measured on the real
+        render with the text hidden: 6.13 (1440) / 5.51 (390). No new
+        text/background token pair was introduced.
+      - Full-page shots home + `/seguridad-minera` at 1440/390: the
+        whole page reads hero → strata → about → services → route →
+        consultation → contact → footer; service page unaffected.
+      - Final: `bun test src/` 332/332, `pnpm test` 196/196,
+        `pnpm test:e2e` 58/58, typecheck ok, lint ok.
+
+## Delivery
+
+Strategy `ask-on-risk` → user chose **chained PRs**, chain strategy
+**feature-branch-chain** (2026-09-24): nothing reaches `main` (which
+deploys) until the tracker merges, so the T3 copy can wait for client
+sign-off. Slices follow the existing commit boundaries (no rewrite):
+
+| PR | Branch | Commits | Authored lines |
+|---|---|---|---|
+| Tracker (draft, no-merge) → `main` | `feat/landing-craft` | `17af1f5` plan + research | 168 |
+| 01 → tracker | `feat/landing-craft-01-say-once` | `9286671`, `e22f8f1` (T1) | 240 |
+| 02 → 01 | `feat/landing-craft-02-route` | `7e87308`, `d88adab` (T3) | 188 |
+| 03 → 02 | `feat/landing-craft-03-contours` | `aa87774`, `a507704` (T4) | 736 — `size:exception` |
+| 04 → 03 | `feat/landing-craft-04-strata` | `bea336b`, `fc2f094` (T5) | 188 |
+| 05 → 04 | `feat/landing-craft-05-motion-qa` | `863a2b0` … this doc (T6, T7) | ~200 |
+
+T4 exception: the contour engine (329) and its tests (195) are one
+cohesive unit; separating code from tests is not allowed and nothing
+else splits it under 400. The generated SVG is excluded from the count.
+
+## Next step
+
+Client review of the T3 route copy + 4 open questions
+(`odd/research/formalization-route.md`) before the tracker merges.
+Review and merge children in order, then the tracker — user's decision.

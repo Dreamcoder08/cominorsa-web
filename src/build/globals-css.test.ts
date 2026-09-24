@@ -74,15 +74,14 @@ describe("colour tokens (P9, audit P2-15)", () => {
   const RAW_COLOUR = /#[0-9a-f]{3,8}\b|rgba?\(\s*\d[^)]*\)/gi;
 
   // Remaining literals, each a documented token gap (not palette hues):
-  // Preflight's transparent, the hero gradient's greens, the impact
-  // section's copper-orange glow and contour line, the hero card shadow,
+  // Preflight's transparent, the hero gradient's greens, the hero card's
+  // copper-orange glow and contour line, the hero card shadow,
   // and the form's neutral drop shadow.
   const ALLOWED = new Map<string, number>([
     ["#0000", 3],
     ["rgba(0,23,19,0.99)", 1],
     ["rgba(0,50,35,0.98)", 1],
     ["rgba(0,77,48,0.96)", 1],
-    ["rgba(244,239,228,0.24)", 1],
     ["rgba(16,39,33,0.25)", 1],
     ["rgba(198,106,61,0.16)", 1],
     ["rgba(0,0,0,0.2)", 1],
@@ -114,5 +113,79 @@ describe("colour tokens (P9, audit P2-15)", () => {
       const hex = root.match(new RegExp(`--${name}:\\s*#([0-9a-f]{6});`, "i"))![1]!;
       expect([r, g, b].map(Number)).toEqual([0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16)));
     }
+  });
+});
+
+describe("real Piura contours as the site-wide thread (landing-craft T4)", () => {
+  const MASK = "url(/piura-contours.svg)";
+
+  test("the hero draws the generated contour SVG, not the radial-gradient stand-in", () => {
+    const body = ruleBody(".hero-contours");
+    expect(body).toContain(`mask-image: ${MASK}`);
+    expect(body).toContain("background-color: var(--copper-light);");
+    expect(body).not.toContain("repeating-radial-gradient");
+  });
+
+  test("the contact section reuses the same contours instead of its own rings", () => {
+    expect(ruleBody(".contact")).not.toContain("repeating-radial-gradient");
+    expect(ruleBody(".contact::before")).toContain(`mask-image: ${MASK}`);
+  });
+});
+
+describe("geological strata (landing-craft T5)", () => {
+  test("each destination surface paints its last band with that section's token", () => {
+    for (const [variant, token] of [
+      ["paper", "--paper"],
+      ["ink", "--ink"],
+      ["cream", "--cream"],
+      ["deep", "--ink-deep"],
+      ["sand", "--sand"],
+    ]) {
+      expect(ruleBody(`.strata--to-${variant}`)).toContain(`--strata-to: var(${token});`);
+    }
+  });
+
+  test("the divider overlaps the previous section instead of adding height", () => {
+    const body = ruleBody(".strata");
+    expect(body).toContain("margin-top: calc(-1 * var(--strata-h));");
+    expect(body).toContain("pointer-events: none;");
+  });
+});
+
+describe("CSS-only motion (landing-craft T6)", () => {
+  /** Body of the first block opened by `prelude` (balanced braces). */
+  function blockBody(prelude: string): string {
+    const start = CSS.indexOf(prelude);
+    if (start < 0) throw new Error(`block not found: ${prelude}`);
+    let depth = 0;
+    const open = CSS.indexOf("{", start);
+    for (let i = open; i < CSS.length; i++) {
+      if (CSS[i] === "{") depth++;
+      else if (CSS[i] === "}" && --depth === 0) return CSS.slice(open + 1, i);
+    }
+    throw new Error(`unbalanced block: ${prelude}`);
+  }
+
+  test("cross-document view transitions are opt-in for motion-tolerant users only", () => {
+    const block = blockBody("@media (prefers-reduced-motion: no-preference) {\n  @view-transition");
+    expect(block).toMatch(/@view-transition\s*\{\s*navigation:\s*auto;\s*\}/);
+    expect(CSS.match(/@view-transition/g)?.length).toBe(1);
+  });
+
+  test("the header keeps its place across page navigations", () => {
+    expect(ruleBody(".site-header")).toContain("view-transition-name: site-header;");
+  });
+
+  test("scroll-driven reveals live behind @supports and no-preference", () => {
+    const supports = blockBody("@supports (animation-timeline: view()) {\n  @media (prefers-reduced-motion: no-preference) {\n    .section-kicker");
+    expect(supports).toContain("animation-name: rise-in;");
+    expect(supports).toContain("animation-timeline: view();");
+  });
+
+  test("the reveal never targets the hero, so the LCP headline is never hidden", () => {
+    const supports = blockBody("@supports (animation-timeline: view()) {\n  @media (prefers-reduced-motion: no-preference) {\n    .section-kicker");
+    expect(supports).not.toContain(".hero");
+    expect(supports).not.toContain("h1");
+    expect(supports).not.toContain("reveal-line");
   });
 });

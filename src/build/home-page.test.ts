@@ -40,16 +40,98 @@ describe("HomePage", () => {
     }
   });
 
-  test("renders the 4-step method section", () => {
-    expect(html).toContain("<h3>Entendemos el caso</h3>");
-    expect(html).toContain("<h3>Evaluamos</h3>");
-    expect(html).toContain("<h3>Preparamos</h3>");
-    expect(html).toContain("<h3>Acompañamos</h3>");
+  test("separates every section with geological strata toward the next surface (landing-craft T5)", () => {
+    const order = [...html.matchAll(/strata strata--to-([a-z]+)"|<section class="([^"]+)"/g)].map(
+      (m) => (m[1] ? `strata:${m[1]}` : m[2]),
+    );
+    expect(order).toEqual([
+      "hero",
+      "strata:paper",
+      "section about",
+      "strata:ink",
+      "section services",
+      "strata:cream",
+      "section method",
+      "strata:deep",
+      "section consultation",
+      "strata:sand",
+      "contact",
+    ]);
+  });
+
+  describe("formalization route (landing-craft T3)", () => {
+    const method = html.slice(
+      html.indexOf('id="metodo"'),
+      html.indexOf('id="consulta"'),
+    );
+    const routeTitles = [
+      "Revisamos tu situación en el REINFO",
+      "Acreditamos la concesión",
+      "Aseguramos el terreno superficial",
+      "Preparamos el IGAFOM",
+      "Armamos el expediente técnico",
+      "Solicitamos el inicio de actividades",
+    ];
+
+    test("renders the six researched steps as an ordered route, in order", () => {
+      expect(method).toContain('<ol class="steps route"');
+      const positions = routeTitles.map((title) =>
+        method.indexOf(`<h3>${title}</h3>`),
+      );
+      for (const position of positions) expect(position).toBeGreaterThan(-1);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+      expect(method.split('<li class="step">').length - 1).toBe(6);
+    });
+
+    test("drops the generic 4-step copy", () => {
+      expect(method).not.toContain("Entendemos el caso");
+      expect(method).not.toContain("<h3>Evaluamos</h3>");
+    });
+
+    test("cites the official MINEM source", () => {
+      expect(method).toContain(
+        'href="https://www.gob.pe/101185-proceso-de-formalizacion-minera"',
+      );
+    });
   });
 
   test("embeds the consultation form inside the consulta section", () => {
     expect(html).toContain('id="consulta"');
     expect(html).toContain('<form class="consultation-form" id="consultation-form" method="post">');
+  });
+
+  describe("says each thing once (landing-craft T1)", () => {
+    const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
+    const count = (haystack: string, needle: string) =>
+      haystack.split(needle).length - 1;
+
+    test("each phone tel: link appears exactly once inside <main>", () => {
+      expect(count(main, 'href="tel:+51910728575"')).toBe(1);
+      expect(count(main, 'href="tel:+51987817100"')).toBe(1);
+    });
+
+    test("both phones live in the #contacto block", () => {
+      const contact = main.slice(main.indexOf('id="contacto"'));
+      expect(contact).toContain('href="tel:+51910728575"');
+      expect(contact).toContain('href="tel:+51987817100"');
+    });
+
+    test("has no impact section and no hero-footer strip", () => {
+      expect(html).not.toContain('class="section impact"');
+      expect(html).not.toContain("impact-panel");
+      expect(html).not.toContain("hero-footer");
+    });
+
+    test("the hero card routes to every service page", () => {
+      const start = html.indexOf('<aside class="hero-card"');
+      const card = html.slice(start, html.indexOf("</aside>", start));
+      expect(start).toBeGreaterThan(-1);
+      expect(card).toContain("¿Qué necesitas?");
+      for (const service of serviceGroups) {
+        expect(card).toContain(`href="/${service.slug}"`);
+      }
+      expect(card).not.toContain("tel:");
+    });
   });
 
   test("renders the contact address and map link", () => {

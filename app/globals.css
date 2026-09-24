@@ -450,6 +450,9 @@ blockquote {
   position: sticky;
   top: 0;
   z-index: 10;
+  /* landing-craft T6: the header is its own view-transition group, so a
+     cross-document navigation cross-fades the page under a still header. */
+  view-transition-name: site-header;
   width: 100%;
   min-height: var(--header-height);
   border-bottom: 1px solid var(--line);
@@ -672,19 +675,20 @@ blockquote {
   filter: blur(5px);
 }
 
+/* landing-craft T4: real contour lines of the Piura highlands (Paimas /
+   Ayabaca), generated from SRTM tiles by scripts/generate-contours.ts.
+   The SVG is a mask, so the color stays a token; the second mask layer
+   fades the lines out behind the headline. */
 .hero-contours {
   position: absolute;
   inset: 0;
-  /* was 0.22 — the pattern was competing with hero text instead of sitting behind it. */
-  opacity: 0.13;
-  background:
-    repeating-radial-gradient(
-      ellipse at 88% 42%,
-      transparent 0 34px,
-      rgba(244, 239, 228, 0.24) 35px 36px,
-      transparent 37px 64px
-    );
-  transform: rotate(-8deg) scale(1.2);
+  opacity: 0.16;
+  background-color: var(--copper-light);
+  mask-image: url(/piura-contours.svg), linear-gradient(100deg, transparent 15%, black 65%);
+  mask-size: cover, 100% 100%;
+  mask-position: 70% 40%, 0 0;
+  mask-repeat: no-repeat;
+  mask-composite: intersect;
 }
 
 .hero-grid {
@@ -877,53 +881,106 @@ blockquote {
   line-height: 1.55;
 }
 
-.hero-card-numbers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.5rem;
-  margin-top: 1.5rem;
-  padding-top: 1.25rem;
+/* landing-craft T1: one link per service, replacing the duplicated phones. */
+.hero-card-routes {
+  margin-top: 1.25rem;
+  list-style: none;
   border-top: 1px solid rgb(var(--white-rgb) / 0.16);
 }
 
-.hero-card-numbers .inline-phone {
-  font-size: 1.05rem;
+.hero-card-routes a {
+  display: flex;
+  align-items: baseline;
+  gap: 0.9rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid rgb(var(--white-rgb) / 0.16);
+  color: var(--white);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+  transition: color var(--dur-fast) ease, padding-left var(--dur-fast) ease;
 }
 
-.hero-footer {
-  position: relative;
-  z-index: 3;
-  width: min(100% - 2 * var(--container-margin), var(--container-max));
-  min-height: 80px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: auto repeat(4, 1fr);
-  align-items: center;
-  gap: 0 0.5rem;
-  border-top: 1px solid rgb(var(--white-rgb) / 0.2);
-  /* Was 0.56 — measured ~4.67:1 against the gradient here, barely above the
-     4.5:1 AA floor for text this small (11px). 0.68 gives real margin. */
-  color: rgb(var(--white-rgb) / 0.68);
+.hero-card-routes a span {
+  color: var(--copper-light);
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
-.hero-footer span {
-  padding-left: 1.25rem;
-  border-left: 1px solid rgb(var(--white-rgb) / 0.2);
-}
-
-.hero-footer .hero-footer-label {
-  padding-left: 0;
-  border-left: 0;
+.hero-card-routes a:hover,
+.hero-card-routes a:focus-visible {
+  padding-left: 0.4rem;
   color: var(--copper-light);
 }
 
 .section {
   padding: var(--section-y) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
   scroll-margin-top: var(--header-height);
+}
+
+/* landing-craft T5: geological strata between home sections
+   (src/build/strata.tsx). The divider overlaps the bottom padding of the
+   previous section; its last band is the next section's surface, so the
+   seam disappears. Going toward a light surface the bands read
+   forest → copper vein → sand; toward a dark one, sand → vein → forest. */
+.strata {
+  --strata-h: clamp(40px, 6vw, 88px);
+  --strata-1: var(--forest);
+  --strata-2: var(--copper);
+  --strata-3: var(--sand);
+  position: relative;
+  z-index: 1;
+  height: var(--strata-h);
+  margin-top: calc(-1 * var(--strata-h));
+  pointer-events: none;
+}
+
+.strata svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.strata .s1 {
+  fill: var(--strata-1);
+}
+
+.strata .s2 {
+  fill: var(--strata-2);
+}
+
+.strata .s3 {
+  fill: var(--strata-3);
+}
+
+.strata .s4 {
+  fill: var(--strata-to);
+}
+
+.strata--to-paper {
+  --strata-to: var(--paper);
+}
+
+.strata--to-cream {
+  --strata-to: var(--cream);
+}
+
+.strata--to-sand {
+  --strata-to: var(--sand);
+  --strata-3: var(--cream);
+}
+
+.strata--to-ink {
+  --strata-to: var(--ink);
+  --strata-1: var(--sand);
+  --strata-3: var(--forest);
+}
+
+.strata--to-deep {
+  --strata-to: var(--ink-deep);
+  --strata-1: var(--sand);
+  --strata-3: var(--forest);
 }
 
 .section-kicker {
@@ -1149,14 +1206,19 @@ blockquote {
   line-height: 1.7;
 }
 
+/* Formalization route (landing-craft T3): six stops laid out as a
+   3 x 2 path. Each stop owns its own segment of the path (.step::before)
+   so the line survives the row wrap; the first stop of every row starts
+   the segment at its node. */
 .steps {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+  row-gap: var(--space-7);
   margin-top: 7rem;
 }
 
-.steps::before {
+.step::before {
   content: "";
   position: absolute;
   top: 0;
@@ -1167,18 +1229,18 @@ blockquote {
   transform-origin: left center;
 }
 
-/* Progressive line draw as the section scrolls into view — native
+/* Progressive path draw as each stop scrolls into view — native
    scroll-driven animation, no JS/library. Base state (no transform) is the
    fallback for browsers without view() support and for reduced-motion. */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
-    .steps::before {
+    .step::before {
       transform: scaleX(0);
       animation-name: draw-line;
       animation-timing-function: var(--ease-out);
       animation-fill-mode: forwards;
       animation-timeline: view();
-      animation-range: entry 10% cover 55%;
+      animation-range: entry 10% cover 45%;
     }
   }
 }
@@ -1189,15 +1251,64 @@ blockquote {
   }
 }
 
-.step {
-  position: relative;
-  min-height: 250px;
-  padding: 2.2rem clamp(1.2rem, 2.5vw, 2.5rem) 0 0;
+/* landing-craft T6: CSS-only motion, progressive enhancement.
+   - Scroll-driven reveals: content rises in as it enters the viewport.
+     Unsupported browsers and reduced-motion users get the static page.
+     The hero is never a target, so the LCP headline is never hidden.
+   - Cross-document view transitions between pages (same origin), with
+     the header held still (view-transition-name above). */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .section-kicker,
+    .section-title,
+    .method-intro > p,
+    .about-copy,
+    .principles > *,
+    .detailed-service-card,
+    .step,
+    .consultation-intro,
+    .contact-top,
+    .contact-grid > * {
+      animation-name: rise-in;
+      animation-timing-function: var(--ease-out);
+      animation-fill-mode: both;
+      animation-timeline: view();
+      /* A fixed length, not a percentage: a card taller than the phone
+         screen would otherwise stay half-transparent while being read. */
+      animation-range: entry 0% entry 200px;
+    }
+  }
 }
 
-.step + .step {
-  padding-left: clamp(1.2rem, 2.5vw, 2.5rem);
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-5));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: var(--dur-slow);
+    animation-timing-function: var(--ease-out);
+  }
+}
+
+.step {
+  position: relative;
+  min-height: 230px;
+  padding: 2.2rem clamp(1.2rem, 2.5vw, 2.5rem) 0;
   border-left: 1px solid var(--line);
+}
+
+.step:nth-child(3n + 1) {
+  padding-left: 0;
+  border-left: 0;
 }
 
 .step > span {
@@ -1217,73 +1328,67 @@ blockquote {
   box-shadow: 0 0 0 6px var(--cream);
 }
 
-.step:first-child .step-node {
+.step:nth-child(3n + 1) .step-node {
   left: 0;
 }
 
+/* The last stop is the destination: a hollow marker, like the end pin
+   of a route on a map. */
+.step:last-child .step-node {
+  background: var(--cream);
+  outline: 2px solid var(--copper);
+  outline-offset: -2px;
+}
+
 .step h3 {
-  margin-top: 3.6rem;
+  margin-top: 3rem;
   font-size: clamp(1.2rem, 2vw, 1.65rem);
   font-weight: 600;
   letter-spacing: -0.035em;
 }
 
 .step p {
-  max-width: 260px;
+  max-width: 280px;
   margin-top: 1rem;
   color: var(--muted);
   font-size: 0.88rem;
   line-height: 1.65;
 }
 
-.impact {
-  padding-top: 0;
-  padding-bottom: 0;
-  background: var(--cream);
+.method-source {
+  margin-top: var(--space-7);
+  color: var(--muted);
+  font-size: var(--text-xs);
 }
 
-.impact-panel {
-  min-height: 485px;
-  display: grid;
-  grid-template-columns: 1.5fr 0.7fr;
-  align-items: center;
-  gap: clamp(4rem, 10vw, 11rem);
-  padding: clamp(3rem, 6vw, 6.5rem);
-  background:
-    radial-gradient(circle at 85% 20%, rgb(var(--copper-rgb) / 0.28), transparent 25%),
-    linear-gradient(120deg, var(--forest), var(--ink-deep));
-  color: var(--white);
-}
-
-.impact-eyebrow {
-  margin-bottom: 2rem;
-  color: rgb(var(--white-rgb) / 0.62);
-}
-
-.impact h2 {
-  max-width: 800px;
-  font-size: clamp(2.4rem, 4.8vw, 5rem);
-  line-height: 0.98;
-  letter-spacing: -0.06em;
-  font-weight: 530;
-}
-
-.impact blockquote {
-  padding-left: 1.5rem;
-  border-left: 1px solid var(--copper-light);
-  color: rgb(var(--white-rgb) / 0.68);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1rem, 1.6vw, 1.3rem);
-  font-style: italic;
-  line-height: 1.7;
+.method-source a {
+  color: var(--copper-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .contact {
+  position: relative;
+  isolation: isolate;
   padding: var(--section-y) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
   scroll-margin-top: var(--header-height);
-  background:
-    repeating-radial-gradient(circle at 100% 100%, transparent 0 45px, rgb(var(--line-rgb) / 0.08) 46px 47px),
-    var(--sand);
+  background: var(--sand);
+}
+
+/* Same Piura contours as the hero (T4), so the terrain threads the page
+   from the first screen to the last. */
+.contact::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.08;
+  background-color: var(--forest);
+  mask-image: url(/piura-contours.svg), linear-gradient(to top, black, transparent 70%);
+  mask-size: cover, 100% 100%;
+  mask-position: 20% 80%, 0 0;
+  mask-repeat: no-repeat;
+  mask-composite: intersect;
 }
 
 .contact-eyebrow {
@@ -1644,12 +1749,6 @@ footer > .brand {
   box-shadow: 0 0 0 4px rgb(var(--white-rgb) / 0.75);
 }
 
-.inline-phone {
-  color: var(--copper-light);
-  font-weight: 800;
-  white-space: nowrap;
-}
-
 .detailed-services-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1735,8 +1834,11 @@ footer > .brand {
   grid-template-columns: minmax(0, 0.78fr) minmax(420px, 1.15fr);
   align-items: start;
   gap: clamp(4rem, 9vw, 9rem);
+  /* The vertical --ink-deep fade gives the section a solid top edge, so
+     the strata above it (T5) meet it without a seam. */
   background:
     repeating-radial-gradient(circle at 0 100%, transparent 0 48px, rgb(var(--copper-light-rgb) / 0.11) 49px 50px),
+    linear-gradient(var(--ink-deep), transparent 240px),
     linear-gradient(125deg, var(--ink-deep), var(--forest));
   color: var(--white);
 }
@@ -2018,10 +2120,6 @@ footer > .brand {
     grid-template-columns: 3rem 1fr 0.7fr 3rem;
   }
 
-  .impact-panel {
-    gap: 4rem;
-  }
-
   footer {
     grid-template-columns: 1fr auto;
   }
@@ -2071,22 +2169,6 @@ footer > .brand {
   }
 
 
-  .hero-footer {
-    width: calc(100% - 2rem);
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem 1rem;
-    padding: 1.25rem 0;
-  }
-
-  .hero-footer span {
-    padding-left: 0.8rem;
-  }
-
-  .hero-footer .hero-footer-label {
-    grid-column: 1 / -1;
-    padding-left: 0;
-  }
-
   .about {
     background: var(--paper);
   }
@@ -2094,7 +2176,6 @@ footer > .brand {
   .about-grid,
   .section-heading,
   .method-intro,
-  .impact-panel,
   .contact-grid,
   .consultation {
     grid-template-columns: 1fr;
@@ -2134,14 +2215,19 @@ footer > .brand {
 
   .steps {
     grid-template-columns: 1fr 1fr;
+    row-gap: 0;
     border-top: 0;
   }
 
   .step,
-  .step + .step {
+  .step:nth-child(3n + 1) {
     padding: 2rem;
     border-top: 1px solid var(--line);
     border-left: 0;
+  }
+
+  .step::before {
+    display: none;
   }
 
   .step:nth-child(even) {
@@ -2167,10 +2253,6 @@ footer > .brand {
   .contact-note {
     grid-template-columns: 1fr;
     gap: 1rem;
-  }
-
-  .impact-panel {
-    padding: 3rem 2rem;
   }
 }
 
@@ -2238,12 +2320,27 @@ footer > .brand {
     width: 100%;
   }
 
+  /* One column: the route becomes a vertical rail with a node per stop,
+     so the path metaphor survives on the phone. */
   .steps {
     grid-template-columns: 1fr;
+    margin-left: var(--space-1);
+    border-left: 1px solid var(--line);
   }
 
+  .step,
+  .step:nth-child(3n + 1),
   .step:nth-child(even) {
+    padding: var(--space-5) 0 var(--space-5) var(--space-5);
+    border-top: 0;
     border-left: 0;
+  }
+
+  .step-node,
+  .step:nth-child(3n + 1) .step-node {
+    display: block;
+    top: calc(var(--space-5) + 0.1rem);
+    left: -0.4rem;
   }
 
   .contact {

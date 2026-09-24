@@ -19,29 +19,48 @@ import {
 import type { ServiceGroup } from "../data/services-data";
 import { ConsultationForm } from "./consultation-form";
 import { SiteLayout } from "./site-shell";
+import { Strata } from "./strata";
 
+// Formalization route (landing-craft T3). Sourced from MINEM's
+// "Proceso de Formalización Minera" (gob.pe/101185) — see
+// `odd/research/formalization-route.md`. The order is a presentation
+// choice; the official page lists the requirements unordered.
+// REVIEW: client — COMINORSA must validate this copy before production.
 const steps = [
   {
     number: "01",
-    title: "Entendemos el caso",
-    text: "Revisamos tu necesidad, ubicación, etapa y documentación disponible.",
+    title: "Revisamos tu situación en el REINFO",
+    text: "Verificamos tu inscripción y lo que te falta para avanzar en la formalización.",
   },
   {
     number: "02",
-    title: "Evaluamos",
-    text: "Identificamos requisitos, riesgos y la ruta técnica más conveniente.",
+    title: "Acreditamos la concesión",
+    text: "Reunimos la titularidad o el contrato que te permite trabajar la concesión minera.",
   },
   {
     number: "03",
-    title: "Preparamos",
-    text: "Desarrollamos el instrumento, expediente o gestión requerida.",
+    title: "Aseguramos el terreno superficial",
+    text: "Gestionamos la autorización de uso del terreno donde operas.",
   },
   {
     number: "04",
-    title: "Acompañamos",
-    text: "Damos seguimiento y comunicamos cada avance con claridad.",
+    title: "Preparamos el IGAFOM",
+    text: "Elaboramos tu instrumento de gestión ambiental y lo acompañamos hasta su aprobación.",
+  },
+  {
+    number: "05",
+    title: "Armamos el expediente técnico",
+    text: "Integramos el expediente y la declaración jurada de inexistencia de restos arqueológicos.",
+  },
+  {
+    number: "06",
+    title: "Solicitamos el inicio de actividades",
+    text: "Presentamos tu solicitud de inicio o reinicio por la Ventanilla Única del MINEM.",
   },
 ];
+
+const FORMALIZATION_SOURCE_URL =
+  "https://www.gob.pe/101185-proceso-de-formalizacion-minera";
 
 export function HomePage({
   serviceGroups,
@@ -85,44 +104,31 @@ export function HomePage({
             </div>
           </div>
 
-          <aside className="hero-card" aria-label="Enfoque de COMINORSA">
+          {/* landing-craft T1: the card routes to a service instead of
+              repeating the phones (they live once, in #contacto). It also
+              replaces the old "Especialidades" strip. */}
+          <aside className="hero-card" aria-label="Servicios de COMINORSA">
             <div className="hero-card-top">
-              <span>Atención directa</span>
+              <span>Por dónde empezar</span>
             </div>
             <div className="hero-card-copy">
-              <h2>Escríbenos por WhatsApp.</h2>
-              <p>
-                Resolvemos dudas sobre formalización minera, gestión ambiental
-                y asistencia técnica.
-              </p>
-              <div className="hero-card-numbers">
-                <a
-                  href={telLink(PRIMARY_WHATSAPP_NUMBER)}
-                  className="inline-phone"
-                  aria-label={`Llamar al ${PRIMARY_WHATSAPP_DISPLAY}`}
-                >
-                  {PRIMARY_WHATSAPP_DISPLAY}
-                </a>
-                <a
-                  href={telLink(SECONDARY_WHATSAPP_NUMBER)}
-                  className="inline-phone"
-                  aria-label={`Llamar al ${SECONDARY_WHATSAPP_DISPLAY}`}
-                >
-                  {SECONDARY_WHATSAPP_DISPLAY}
-                </a>
-              </div>
+              <h2>¿Qué necesitas?</h2>
+              <ul className="hero-card-routes">
+                {serviceGroups.map((service) => (
+                  <li>
+                    <a href={`/${service.slug}`}>
+                      <span aria-hidden="true">{service.number}</span>
+                      {service.pageTitle}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
           </aside>
         </div>
-
-        <div className="hero-footer">
-          <span className="hero-footer-label">Especialidades</span>
-          <span>IGAFOM</span>
-          <span>REINFO</span>
-          <span>Gestión ambiental</span>
-          <span>Asistencia técnica</span>
-        </div>
       </section>
+
+      <Strata to="paper" />
 
       <section className="section about" id="nosotros">
         <div className="section-kicker">
@@ -168,6 +174,8 @@ export function HomePage({
         </div>
       </section>
 
+      <Strata to="ink" />
+
       <section className="section services" id="servicios">
         <div className="section-heading">
           <div className="section-kicker light">
@@ -202,30 +210,42 @@ export function HomePage({
         </div>
       </section>
 
+      <Strata to="cream" />
+
       <section className="section method" id="metodo">
         <div className="method-intro">
           <div className="section-kicker">
             <span>03</span>
-            <p>Cómo trabajamos</p>
+            <p>Ruta de formalización</p>
           </div>
-          <h2 className="section-title">Del caso a una ruta clara.</h2>
+          <h2 className="section-title">Tu ruta hacia la formalización.</h2>
           <p>
-            Cada servicio comienza escuchando tu situación y revisando la
-            información necesaria.
+            Te acompañamos en cada requisito del proceso de formalización
+            minera, desde el REINFO hasta el inicio de actividades.
           </p>
         </div>
 
-        <div className="steps">
+        <ol className="steps route" aria-label="Ruta de formalización minera">
           {steps.map((step) => (
-            <article className="step">
+            <li className="step">
               <span>{step.number}</span>
               <div className="step-node" aria-hidden="true" />
               <h3>{step.title}</h3>
               <p>{step.text}</p>
-            </article>
+            </li>
           ))}
-        </div>
+        </ol>
+
+        <p className="method-source">
+          Requisitos según el{" "}
+          <a href={FORMALIZATION_SOURCE_URL} rel="noopener">
+            proceso de formalización minera del MINEM
+          </a>
+          .
+        </p>
       </section>
+
+      <Strata to="deep" />
 
       <section className="section consultation" id="consulta">
         <div className="consultation-intro">
@@ -246,24 +266,7 @@ export function HomePage({
         <ConsultationForm />
       </section>
 
-      <section className="section impact">
-        <div className="impact-panel">
-          <div>
-            <p className="eyebrow impact-eyebrow">
-              <span />
-              Nuestro compromiso
-            </p>
-            <h2>
-              Formalización, seguridad y cuidado del ambiente en una misma
-              dirección.
-            </h2>
-          </div>
-          <blockquote>
-            “Soluciones técnicas para una minería formal, segura y
-            sostenible.”
-          </blockquote>
-        </div>
-      </section>
+      <Strata to="sand" />
 
       <section className="contact" id="contacto">
         <div className="contact-top">

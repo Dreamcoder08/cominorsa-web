@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { parseArgs, shotFileName, SHOT_WIDTHS } from "../../scripts/screenshots.mjs";
+import { pageOptions, parseArgs, shotFileName, SHOT_WIDTHS } from "../../scripts/screenshots.mjs";
 
 const ROOT = join(import.meta.dirname, "..", "..");
 
@@ -35,4 +35,11 @@ test("parses <baseUrl> <outDir> <paths…> and rejects missing arguments", () =>
 
 test("refuses an output directory under test-results/ (e2e wipes it)", () => {
   assert.throws(() => parseArgs(["http://x", "test-results/shots", "/"]), /test-results/);
+});
+
+// landing-craft T6/T7: full-page capture never scrolls, so scroll-driven
+// reveals would stay in their pre-entry (hidden) state and whole sections
+// would look blank. Shots use the static, reduced-motion rendering.
+test("captures with reduced motion so scroll-driven reveals render as static content", () => {
+  assert.deepEqual(pageOptions(390), { viewport: { width: 390, height: 900 }, reducedMotion: "reduce" });
 });

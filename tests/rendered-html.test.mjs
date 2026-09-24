@@ -1,36 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { render } from "./qa/helpers.mjs";
 
 /**
- * Tests para COMINORSA-web: validan que el worker de Vinext renderiza la
- * página de inicio correctamente con el contenido real del proyecto
- * (consultoría minera y ambiental, IGAFOM, REINFO, etc.).
+ * Tests para COMINORSA-web: validan que la página de inicio construida
+ * (dist-static/index.html, T11 cutover) contiene el contenido real del
+ * proyecto (consultoría minera y ambiental, IGAFOM, REINFO, etc.).
  *
  * El template original de Codex contenía assertions para un starter
  * "loading skeleton" que este proyecto no implementa, por lo que se
  * reescribieron para reflejar el contenido real de la landing page.
+ * Renderizaba antes vía el worker de Next/Vinext; ahora lee el archivo
+ * estático real (ver tests/qa/helpers.mjs).
  */
-
-async function render() {
- const workerUrl = new URL("../dist/server/index.js", import.meta.url);
- workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
- const { default: worker } = await import(workerUrl.href);
-
- return worker.fetch(
-  new Request("http://localhost/", {
-   headers: { accept: "text/html" },
-  }),
-  {
-   ASSETS: {
-    fetch: async () => new Response("Not found", { status: 404 }),
-   },
-  },
-  {
-   waitUntil() {},
-   passThroughOnException() {},
-  },
- );
-}
 
 test("worker returns 200 with HTML for the landing page", async () => {
  const response = await render();

@@ -10,9 +10,15 @@
 
 # Build outputs
 /dist/
+/dist-static/
 /.next/
 /.vinext/
 /.wrangler/
+
+# Bun test fixtures (src/build/*.test.ts clean up their own, but guard
+# against a leftover if a run is killed mid-test)
+.css-fixture-*
+.build-fixture-*
 /out/
 /outputs/
 /work/

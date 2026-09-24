@@ -58,6 +58,7 @@ const PROP_NAME_MAP: Record<string, string> = {
 // Whitespace, `/ > = " '`, and control chars would all let a crafted
 // prop name break out of an attribute and inject new markup — this is
 // the injection boundary, so reject rather than try to escape a name.
+// eslint-disable-next-line no-control-regex -- intentional: \u0000-\u001f is part of the injection boundary being rejected, not an accidental control char.
 const INVALID_ATTR_NAME = /[\s/>="'\u0000-\u001f\u007f]/;
 
 export function raw(html: string): Html {

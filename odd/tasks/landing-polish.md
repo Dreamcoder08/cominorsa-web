@@ -48,18 +48,59 @@ Legal accuracy (Ley 29733), search visibility and trust drive leads.
 
 ## Tasks
 
-- [ ] **P1 — Privacy & consent truthfulness** (audit P0-1, P0-2): no
+- [x] **P1 — Privacy & consent truthfulness** (audit P0-1, P0-2): no
       banner / no "Preferencias de cookies" button when no GA ID is
       configured; privacy policy describes CRM storage (Twenty), email
       notification (Resend) and WhatsApp handoff accurately; consent
       notice at the form. Retention period and data-rights contact
-      flagged for client review. Route: delegated writer.
-- [ ] **P2 — SEO head completeness** (P1-1, P1-2, P2-14): home canonical
+      flagged for client review. Route: delegated writer (writer
+      trigger: 2+ non-trivial files). Commit `638868c`.
+      - Design: `runStaticBuild(outDir, { gaMeasurementId })` (default
+        `NEXT_PUBLIC_GA_MEASUREMENT_ID`) is the single source — baked into
+        the consent bundle and passed as `RenderContext.analyticsEnabled`
+        to every page (footer button, privacy GA paragraphs).
+      - RED `consent-storage.test.ts`: `SyntaxError: Export named
+        'clearConsent' not found` → GREEN 6 pass (try/catch
+        `readConsent`/`writeConsent`/`clearConsent`).
+      - RED `cookie-consent.test.ts`: 4 fail (banner created with empty
+        ID; `SecurityError` thrown from init) → GREEN 5 pass.
+      - RED `site-shell.test.ts` "renders no cookie-preferences button by
+        default", `consultation-form.test.ts` consent notice, `build.test.ts`
+        "without a GA ID, no page renders the cookie-preferences button" →
+        GREEN. `privacy-page.test.ts` RED on missing
+        `PRIVACY_LAST_UPDATED_LABEL` export → GREEN 12 pass; CLDR es-PE
+        formats the date as "23 de setiembre de 2026" (same in Bun and
+        Node), test pinned to that.
+      - Visual: no cookie banner on any page (before: banner shown with no
+        GA ID); footer has no "Preferencias de cookies"; form shows the
+        consent notice with an underlined privacy link (`--copper-ink` on
+        `--paper`, 8.94:1, approved pair).
+- [x] **P2 — SEO head completeness** (P1-1, P1-2, P2-14): home canonical
       + `og:url`; per-page OG/Twitter title/description; descriptions
-      ≤160 chars. `www` → apex 301 is a Cloudflare setting (documented,
-      applied if the API token allows). Route: delegated writer.
-- [ ] **P3 — Landmarks, skip link, heading text, nav trap** (P1-4, P1-5,
-      P1-6, P2-5). Route: delegated writer.
+      ≤160 chars. `www` → apex 301 is a Cloudflare setting (documented in
+      `DEPLOY.md` → "Redirección www → dominio raíz"; not applied — no
+      API calls from this task). Route: delegated writer. Commit
+      `9468c45`.
+      - RED `document.test.ts` (2 OG/Twitter), `routes.test.ts` (home
+        canonical, ≤160: gestion-ambiental-minera 171), `build.test.ts`
+        (home canonical, site-wide head invariants) — 6 fail → GREEN.
+      - Descriptions shortened: gestion-ambiental-minera 171→156 chars,
+        seguridad-minera 158→150 (live was 163 bytes); all ≤160 in chars
+        and bytes.
+- [x] **P3 — Landmarks, skip link, heading text, nav trap** (P1-4, P1-5,
+      P1-6, P2-5). Route: delegated writer. Commit `6361642`.
+      - `SiteLayout`: skip link → `<header>` → `<main id="contenido">` →
+        `<footer>` on every page; 404 gets `SkipLink` + `main#contenido`.
+      - RED `build.test.ts` landmarks (skip link not first/absent outside
+        home) and heading text (`index: "Técnica que
+        impulsa.Responsabilidad que permanece."`); `focus-trap.test.ts`
+        `SyntaxError: Export named 'buildFocusCycle' not found` → GREEN
+        244 pass. E2E (`static-landmarks.spec.ts`, extended
+        `static-mobile-nav.spec.ts`) written with the fix, run GREEN only
+        (not run RED against the old build).
+      - Visual: hero/section headings unchanged (lines are block-level);
+        first Tab focuses "Ir al contenido" on `/`, `/seguridad-minera`,
+        `/privacidad`.
 - [ ] **P4 — Harden `/api/crm-lead`** (P1-7): Origin/`Sec-Fetch-Site`
       check, honeypot; rate limiting documented as a Cloudflare rule.
       Decide on unused `/api/next-business-day` (it was built for a
@@ -83,6 +124,19 @@ Legal accuracy (Ley 29733), search visibility and trust drive leads.
       client.
 
 ## Needs the client
+
+Client-review items raised by P1 (also for the PR description):
+
+- Privacy policy retention wording is a neutral commitment ("solo el
+  tiempo necesario…"); confirm a concrete retention period.
+- ARCO requests currently point to the two WhatsApp lines and the
+  registered address; confirm the preferred data-rights channel (an
+  email would need to be provided — none was invented).
+- The Resend notification lands in a Gmail inbox
+  (`app/api/crm-lead/route.ts`); confirm whether the policy should name
+  the inbox provider too.
+- "Setiembre" (CLDR es-PE) vs. "septiembre" in the update date: both
+  valid; confirm preference.
 
 - GA4 measurement ID (`G-…`) → Workers Builds build variable
   `NEXT_PUBLIC_GA_MEASUREMENT_ID`.
@@ -108,6 +162,16 @@ in Engram topic `odd/landing-polish/audit`.
 
 ## Progress
 
+- 2026-09-23: P1–P3 done on `feat/landing-polish-p1` (commits `638868c`,
+  `9468c45`, `6361642`). `git diff --shortstat feat/landing-polish...HEAD`
+  → 30 files changed, 1081 insertions(+), 378 deletions(-) at `6361642`
+  (code, tests, DEPLOY.md; this document's update adds one more file). Checks: `pnpm validate` OK
+  (1 known `.env` warning), `pnpm lint` 0, `pnpm typecheck` 0, `bun test
+  src/` 244 pass / 0 fail, `pnpm build` 11 pages, `pnpm test` 176 pass /
+  0 fail, `pnpm test:e2e` 54 passed. Screenshots (before/after, 1440/390)
+  in the session scratchpad `polish-p1/`. Engram mirror update left to
+  the orchestrator.
+
 - 2026-09-23: audit done; parent verified P0-1 (privacy text
   `src/build/privacy-page.tsx:38-45` claims no server submission — false,
   form POSTs to `/api/crm-lead` → Twenty + Resend), P1-6 (built h1 text
@@ -116,4 +180,5 @@ in Engram topic `odd/landing-polish/audit`.
 
 ## Next step
 
-P1 (privacy & consent) on `feat/landing-polish-p1`.
+P4 (harden `/api/crm-lead`) — after the P1–P3 slice is reviewed/merged
+into `feat/landing-polish`.

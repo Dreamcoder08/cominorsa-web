@@ -2,9 +2,12 @@
 /**
  * Bundle size report.
  *
- * Walks dist/client/_next/static/ and prints a sorted table of every JS
- * and CSS asset, with size and gzipped size. Useful for spotting
- * regressions during code review.
+ * T11: walks dist-static/assets/ (the static build's hashed CSS and the
+ * 3 tiny progressive-enhancement JS bundles) instead of the retired
+ * dist/client/_next/static/. Prints a sorted table of every JS and CSS
+ * asset, with size and gzipped size. Useful for spotting regressions
+ * during code review — see tests/qa/bundle-budget.test.mjs for the
+ * automated version of this same check.
  *
  * Output is plain text (one row per file, columns aligned). Designed to
  * be readable in a terminal and to diff cleanly in PRs.
@@ -18,7 +21,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const STATIC = join(ROOT, "dist/client/_next/static");
+const STATIC = join(ROOT, "dist-static/assets");
 
 async function walk(dir) {
   const out = [];
@@ -55,7 +58,7 @@ if (targets.length === 0) {
 
 const rows = await Promise.all(
   targets.map(async (p) => {
-    const rel = p.replace(`${ROOT}/dist/client/`, "");
+    const rel = p.replace(`${ROOT}/dist-static/`, "");
     const s = await stat(p);
     const raw = await readFile(p);
     const gz = gzipSync(raw, { level: 9 });

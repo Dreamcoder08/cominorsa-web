@@ -56,7 +56,9 @@ letter-spacing without checking the others stay consistent.
 
 ## Fonts
 
-Loaded via `next/font/google` in `app/layout.tsx`:
+Self-hosted (`public/fonts/*.woff2` + hand-written `@font-face` rules in
+`src/build/fonts.css`, built by `src/build/build.ts`) since the T11
+cutover — was `next/font/google` in the removed `app/layout.tsx` before:
 
 - **Archivo** (`--font-display`) — body + all headings, weights 400–800.
 - **Newsreader** italic (`--font-editorial`) — the one editorial accent

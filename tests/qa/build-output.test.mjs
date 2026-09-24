@@ -59,6 +59,16 @@ test("wrangler.jsonc is the canonical config: name cominorsa-web, serving dist-s
   assert.deepEqual(cfg.assets?.run_worker_first, ["/api/*"]);
 });
 
+test("wrangler.jsonc keeps dashboard-managed vars on deploy", async () => {
+  // The CRM route reads TWENTY_API_URL (plain var) next to its secrets.
+  // Without keep_vars, `wrangler deploy` replaces the Worker's plain-text
+  // vars with the (empty) set declared here and silently turns lead
+  // forwarding into a no-op. Secrets survive either way; vars do not.
+  const raw = await readFile(join(ROOT, "wrangler.jsonc"), "utf8");
+  const cfg = JSON.parse(raw.replace(/^\s*\/\/.*$/gm, ""));
+  assert.equal(cfg.keep_vars, true);
+});
+
 test("public/ has copied favicons and images into dist-static (public assets are copied verbatim)", async () => {
   for (const f of ["favicon.ico", "apple-touch-icon.png", "og.png", "logo-44.png"]) {
     assert.ok(await exists(join(DIST_STATIC, f)), `${f} missing from dist-static/`);

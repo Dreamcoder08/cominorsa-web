@@ -18,6 +18,11 @@
   // a deliberate compatibility-flag upgrade, not as part of routine work.
   "compatibility_date": "2026-08-31",
   "compatibility_flags": ["nodejs_compat"],
+  // Plain-text vars (e.g. TWENTY_API_URL) are managed in the Cloudflare
+  // dashboard, not here. Without this, every deploy would replace them
+  // with the empty set declared in this file and silently disable CRM
+  // lead forwarding. Secrets are preserved regardless.
+  "keep_vars": true,
   "assets": {
     "directory": "dist-static",
     // Serves e.g. "seguridad-minera.html" directly at "/seguridad-minera"

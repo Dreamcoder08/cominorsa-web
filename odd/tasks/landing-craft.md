@@ -48,9 +48,17 @@ trust, speed and one obvious action — not WebGL or scroll-jacking.
 
 ## Tasks
 
-- [ ] **T1 — Say it once**: one primary CTA in the hero; remove the
+- [x] **T1 — Say it once**: one primary CTA in the hero; remove the
       duplicate hero-card phones; merge `impact` into `nosotros`; one
       contact block holding phones + address. Update home tests.
+      - Commit `9286671`. Done inline (workers OOM-killed). The hero card
+        is now "¿Qué necesitas?" with one link per `serviceGroups` slug;
+        `.hero-footer` strip and `section.impact` removed with their CSS.
+        Deviation: `impact` was removed rather than merged, because its
+        copy repeated the `nosotros` title almost word for word.
+      - Evidence: RED 3 fail → GREEN; `bun test src/` 306/306,
+        `pnpm test` 195/195; DOM check at 1440/390: 0 px horizontal
+        overflow, 6 links in the card. `pnpm test:e2e` deferred to T7.
 - [x] **T2 — Research the official formalization route** (REINFO →
       IGAFOM → …): steps, required documents, sources with publisher/date.
       Output `odd/research/formalization-route.md`.

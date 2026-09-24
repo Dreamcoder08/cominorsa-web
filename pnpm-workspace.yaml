@@ -3,17 +3,18 @@
 # NO con `onlyBuiltDependencies` en .npmrc.
 # Solo los paquetes listados como `true` corren install scripts.
 allowBuilds:
-  sharp: true # binario nativo libvips, requerido
-  esbuild: true # bundler runtime
-  unrs-resolver: true # dep de vite/vinext
+  sharp: true # binario nativo libvips — dep transitiva de wrangler>miniflare
+  esbuild: true # bundler runtime — dep transitiva de wrangler
   workerd: true # runtime de Cloudflare Workers (wrangler)
   # Todo lo demás queda BLOQUEADO por seguridad.
   koffi: false
   protobufjs: false
   "@google/genai": false
 
+# T11: `unrs-resolver` (dep de vite/vinext) removido de allowBuilds — ya
+# no aparece en el lockfile una vez retirado el pipeline vinext/Vite.
+
 minimumReleaseAgeExclude:
-  - vinext@1.0.0-beta.9
   - '@playwright/test@1.63.0'
   - playwright-core@1.63.0
   - playwright@1.63.0

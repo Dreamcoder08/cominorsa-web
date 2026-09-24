@@ -1,4 +1,3 @@
-/** @jsxImportSource ../html */
 // src/build/document.tsx
 //
 // Full `<head>` document shell for the static build (T4), replacing
@@ -99,12 +98,39 @@ export type DocumentProps = {
    * production's real URL shape exactly (verified against the live
    * site) and the no-redirect routing `build.ts` emits under
    * Cloudflare's default `html_handling: "auto-trailing-slash"`.
+   *
+   * Omit for a page with no single canonical URL to advertise (the 404
+   * page, T6a) — no `<link rel="canonical">` or `og:url` meta is
+   * emitted in that case, matching the live site (confirmed:
+   * `curl -sL https://cominorsa.com/<broken-path>` returns 404 with no
+   * canonical link and no `og:url` meta at all).
    */
-  canonicalPath: string;
+  canonicalPath?: string;
+  /**
+   * e.g. "noindex, follow" — only the 404 page sets this today
+   * (`app/not-found.tsx`'s `robots: { index: false, follow: true }`,
+   * which Next serializes to exactly that string; verified against the
+   * live 404 response). Omitted entirely (no `<meta name="robots">`
+   * tag) on every other page, matching current production behavior.
+   */
+  robots?: string;
   /** Absolute path to the built, hashed stylesheet, e.g. "/assets/globals-abc123.css". */
   cssHref: string;
   /** Absolute path to the built, hashed fonts stylesheet (src/build/fonts.css). */
   fontsCssHref: string;
+  /**
+   * Absolute paths to built, hashed, minified ES modules (T7,
+   * `src/build/js.ts`), rendered as `<script type="module" src="...">`
+   * right before `</body>`, in the given order. No inline `<script>` is
+   * ever emitted here — T10's CSP is `script-src 'self'` plus whatever
+   * GA4 needs, which a `src`-based module script satisfies with zero
+   * nonce/hash bookkeeping. Module scripts are deferred by the HTML spec
+   * on their own, so placement doesn't need `defer`/`async`. Omit for a
+   * page with no widgets to enhance (none today — every route renders
+   * `SiteHeader`/`SiteFooter`, so every route gets at least the
+   * mobile-nav and consent scripts; see `src/build/routes.ts`).
+   */
+  scriptSrcs?: string[];
   children: Child;
 };
 
@@ -112,11 +138,13 @@ function Document({
   title,
   description,
   canonicalPath,
+  robots,
   cssHref,
   fontsCssHref,
+  scriptSrcs,
   children,
 }: DocumentProps) {
-  const canonicalUrl = `${SITE_URL}${canonicalPath}`;
+  const canonicalUrl = canonicalPath !== undefined ? `${SITE_URL}${canonicalPath}` : undefined;
 
   return (
     <html lang="es">
@@ -126,12 +154,13 @@ function Document({
         <title>{title}</title>
         <meta name="description" content={description} />
         <meta name="application-name" content={SITE_NAME} />
-        <link rel="canonical" href={canonicalUrl} />
+        {robots ? <meta name="robots" content={robots} /> : null}
+        {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
 
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="es_PE" />
         <meta property="og:site_name" content={SITE_NAME} />
-        <meta property="og:url" content={canonicalUrl} />
+        {canonicalUrl ? <meta property="og:url" content={canonicalUrl} /> : null}
         <meta property="og:title" content={OG_TITLE} />
         <meta property="og:description" content={OG_DESCRIPTION} />
         <meta property="og:image" content={SOCIAL_IMAGE} />
@@ -159,7 +188,16 @@ function Document({
 
         <script type="application/ld+json">{jsonLdScript(JSON_LD)}</script>
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {(scriptSrcs ?? []).map((src) => (
+          // `defer` is redundant on a `type="module"` script (the HTML
+          // spec already defers module scripts) but keeps
+          // `@next/next/no-sync-scripts` — which doesn't special-case
+          // `type="module"` — from flagging it as a blocking script.
+          <script type="module" src={src} defer={true} />
+        ))}
+      </body>
     </html>
   );
 }

@@ -56,7 +56,9 @@ describe("SiteFooter", () => {
     expect(html).toContain('href="tel:+51987817100"');
   });
 
-  test("cookie-preferences button renders static markup (T7 leftover)", () => {
-    expect(html).toContain("Preferencias de cookies");
+  test("cookie-preferences button carries the #cookie-preferences-button hook for T7's enhancement script", () => {
+    expect(html).toContain(
+      '<button type="button" id="cookie-preferences-button">Preferencias de cookies</button>',
+    );
   });
 });

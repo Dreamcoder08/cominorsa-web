@@ -1,0 +1,70 @@
+// src/build/consultation-form.test.ts
+//
+// T6b: ported from `app/ConsultationForm.tsx`. This is the no-JS
+// baseline markup — same fields, `name`s, `required`, and aria
+// attributes as the real component's SSR output before hydration.
+// Building the wa.me URL, the fire-and-forget POST to /api/crm-lead,
+// and analytics events are T7's job (see this module's own header
+// comment for the exact hooks left for that script).
+
+import { describe, expect, test } from "bun:test";
+import { render } from "../html/jsx-runtime";
+import { consultationServiceOptions } from "../data/consultation-services";
+import { ConsultationForm } from "./consultation-form";
+
+const html = render(ConsultationForm());
+
+describe("ConsultationForm", () => {
+  test("renders a real <form> with the T7 hook id, no inline script and no onSubmit wiring", () => {
+    expect(html).toContain('<form class="consultation-form" id="consultation-form">');
+    expect(html).not.toContain("<script");
+  });
+
+  test("renders the name field", () => {
+    expect(html).toContain(
+      '<input type="text" name="name" autocomplete="name" maxlength="120" placeholder="Escribe tu nombre" required>',
+    );
+  });
+
+  test("renders the city field", () => {
+    expect(html).toContain(
+      '<input type="text" name="city" autocomplete="address-level1" maxlength="120" placeholder="Ej. Piura" required>',
+    );
+  });
+
+  test("renders every service option from the shared data module, with a disabled placeholder first", () => {
+    expect(html).toContain('<option value="" disabled selected>');
+    for (const option of consultationServiceOptions) {
+      expect(html).toContain(`<option value="${option}">${option}</option>`);
+    }
+  });
+
+  test("renders the WhatsApp line select with the primary number selected by default", () => {
+    expect(html).toContain('<select name="whatsapp" required>');
+    expect(html).toContain('<option value="51910728575" selected>910 728 575</option>');
+    expect(html).toContain('<option value="51987817100">987 817 100</option>');
+  });
+
+  test("renders the question textarea", () => {
+    expect(html).toContain(
+      '<textarea name="question" rows="5" minlength="10" maxlength="2000" placeholder="Cuéntanos brevemente qué necesitas resolver" required></textarea>',
+    );
+  });
+
+  test("submit button starts disabled (pre-hydration baseline) with the T7 hook id", () => {
+    expect(html).toContain('<button type="submit" id="consultation-form-submit" disabled>');
+    expect(html).toContain("Enviar por WhatsApp");
+  });
+
+  test("renders the disclaimer copy verbatim", () => {
+    expect(html).toContain(
+      "Al continuar se abrirá WhatsApp. El pago y el horario de atención se",
+    );
+  });
+
+  test("status paragraph starts empty with the T7 hook id and aria-live", () => {
+    expect(html).toContain(
+      '<p class="form-status" id="consultation-form-status" aria-live="polite"></p>',
+    );
+  });
+});

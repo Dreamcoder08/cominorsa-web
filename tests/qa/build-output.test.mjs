@@ -1,3 +1,10 @@
+// T11 cutover: this suite used to assert on dist/ (Next/vinext's
+// client+server split build, dist/server/wrangler.json, RSC build ids,
+// _next/static chunk naming). The static build has none of that — one
+// flat dist-static/ directory of prerendered HTML plus a hashed
+// assets/ folder — and the canonical wrangler config moved to the repo
+// root (wrangler.jsonc). Favicon/OG asset-integrity checks are unrelated
+// to the framework and are kept unchanged.
 import assert from "node:assert/strict";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { resolve, join } from "node:path";
@@ -5,10 +12,8 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
-const DIST = join(ROOT, "dist");
-const SERVER = join(DIST, "server");
-const CLIENT = join(DIST, "client");
-const STATIC = join(CLIENT, "_next", "static");
+const DIST_STATIC = join(ROOT, "dist-static");
+const ASSETS = join(DIST_STATIC, "assets");
 
 async function exists(p) {
   try {
@@ -19,88 +24,59 @@ async function exists(p) {
   }
 }
 
-test("dist/ has both client and server output", async () => {
-  assert.ok(await exists(CLIENT), "client/ missing");
-  assert.ok(await exists(SERVER), "server/ missing");
+test("dist-static/ has the expected pages, including the homepage and 404", async () => {
+  for (const f of ["index.html", "404.html", "seguridad-minera.html", "preguntas-frecuentes.html"]) {
+    assert.ok(await exists(join(DIST_STATIC, f)), `${f} missing from dist-static/`);
+  }
 });
 
-test("dist/server has the worker entry point (index.js)", async () => {
-  const p = join(SERVER, "index.js");
-  assert.ok(await exists(p), "server/index.js missing");
-  const s = await stat(p);
-  assert.ok(
-    s.size > 1000,
-    `server/index.js suspiciously small: ${s.size} bytes`,
-  );
+test("dist-static/assets has hashed CSS and JS bundles", async () => {
+  const entries = await readdir(ASSETS);
+  assert.ok(entries.some((f) => /^globals-.+\.css$/.test(f)), "globals-*.css missing");
+  assert.ok(entries.some((f) => /^fonts-.+\.css$/.test(f)), "fonts-*.css missing");
+  assert.ok(entries.some((f) => /^mobile-nav-entry-.+\.js$/.test(f)), "mobile-nav-entry-*.js missing");
+  assert.ok(entries.some((f) => /^consent-entry-.+\.js$/.test(f)), "consent-entry-*.js missing");
+  assert.ok(entries.some((f) => /^consultation-form-entry-.+\.js$/.test(f)), "consultation-form-entry-*.js missing");
 });
 
-test("dist/server has wrangler.json generated for Cloudflare", async () => {
-  const p = join(SERVER, "wrangler.json");
-  assert.ok(await exists(p), "wrangler.json missing");
-  const cfg = JSON.parse(await readFile(p, "utf8"));
-  assert.equal(cfg.name, "cominorsa-web");
-  assert.ok(cfg.compatibility_flags?.includes("nodejs_compat"));
-  assert.equal(cfg.main, "index.js");
-  assert.equal(cfg.assets?.directory, "../client");
-});
-
-test("dist/client has the static assets bundle", async () => {
-  assert.ok(await exists(join(CLIENT, "og.png")), "og.png missing");
-  assert.ok(await exists(join(CLIENT, "logo.png")), "logo.png missing");
-  const staticEntries = await readdir(STATIC);
-  assert.ok(
-    staticEntries.includes("chunks"),
-    "chunks/ missing under _next/static",
-  );
-  assert.ok(staticEntries.includes("css"), "css/ missing under _next/static");
-});
-
-test("_next/static/chunks has JS bundles", async () => {
-  const chunksDir = join(STATIC, "chunks");
-  const files = await readdir(chunksDir);
-  const jsFiles = files.filter((f) => f.endsWith(".js"));
-  assert.ok(
-    jsFiles.length >= 3,
-    `expected >= 3 JS chunks, got ${jsFiles.length}`,
-  );
-  assert.ok(
-    files.some((f) => f.startsWith("framework-")),
-    "framework chunk missing",
-  );
-  assert.ok(
-    files.some((f) => f.startsWith("vinext-")),
-    "vinext chunk missing",
-  );
-  assert.ok(
-    files.some((f) => f.startsWith("index-")),
-    "index chunk missing",
-  );
-});
-
-test("_headers config sets immutable caching for static assets", async () => {
-  const raw = await readFile(join(CLIENT, "_headers"), "utf8");
-  assert.match(raw, /\/_next\/static\/\*/);
+test("dist-static/_headers declares immutable caching for hashed assets", async () => {
+  const raw = await readFile(join(DIST_STATIC, "_headers"), "utf8");
+  assert.match(raw, /\/assets\/\*/);
+  assert.match(raw, /\/fonts\/\*/);
   assert.match(raw, /immutable/i);
   assert.match(raw, /max-age=\d+/i);
 });
 
-test("server manifest files exist (vinext internals)", async () => {
-  const required = [
-    "vinext-externals.json",
-    "vinext-server.json",
-    "vinext-client-assets.js",
-  ];
-  for (const f of required) {
-    assert.ok(await exists(join(SERVER, f)), `${f} missing from server/`);
+test("wrangler.jsonc is the canonical config: name cominorsa-web, serving dist-static/", async () => {
+  const raw = await readFile(join(ROOT, "wrangler.jsonc"), "utf8");
+  // wrangler.jsonc allows // comments — strip them before JSON.parse.
+  const json = raw.replace(/^\s*\/\/.*$/gm, "");
+  const cfg = JSON.parse(json);
+  assert.equal(cfg.name, "cominorsa-web");
+  assert.ok(cfg.compatibility_flags?.includes("nodejs_compat"));
+  assert.equal(cfg.main, "src/worker/index.ts");
+  assert.equal(cfg.assets?.directory, "dist-static");
+  assert.deepEqual(cfg.assets?.run_worker_first, ["/api/*"]);
+});
+
+test("wrangler.jsonc keeps dashboard-managed vars on deploy", async () => {
+  // The CRM route reads TWENTY_API_URL (plain var) next to its secrets.
+  // Without keep_vars, `wrangler deploy` replaces the Worker's plain-text
+  // vars with the (empty) set declared here and silently turns lead
+  // forwarding into a no-op. Secrets survive either way; vars do not.
+  const raw = await readFile(join(ROOT, "wrangler.jsonc"), "utf8");
+  const cfg = JSON.parse(raw.replace(/^\s*\/\/.*$/gm, ""));
+  assert.equal(cfg.keep_vars, true);
+});
+
+test("public/ has copied favicons and images into dist-static (public assets are copied verbatim)", async () => {
+  for (const f of ["favicon.ico", "apple-touch-icon.png", "og.png", "logo-44.png"]) {
+    assert.ok(await exists(join(DIST_STATIC, f)), `${f} missing from dist-static/`);
   }
 });
 
-test("RSC build id is set", async () => {
-  assert.ok(await exists(join(SERVER, "RSC_BUILD_ID")));
-  assert.ok(await exists(join(SERVER, "BUILD_ID")));
-});
-
-// --- Asset integrity (favicon, OG, apple-touch-icon) ---
+// --- Asset integrity (favicon, OG, apple-touch-icon) — unrelated to the
+// build framework, unchanged from before the cutover. ---
 
 const PUBLIC = join(ROOT, "public");
 
@@ -155,9 +131,8 @@ test("public/og.png size is under 1 MB", async () => {
   assert.ok(s.size < 1024 * 1024, `og.png too heavy: ${s.size} bytes`);
 });
 
-test("metadata declares the new favicon set", async () => {
-  const layoutPath = join(ROOT, "app", "layout.tsx");
-  const raw = await readFile(layoutPath, "utf8");
+test("the built homepage declares the full favicon set", async () => {
+  const raw = await readFile(join(DIST_STATIC, "index.html"), "utf8");
   assert.match(raw, /favicon\.ico/);
   assert.match(raw, /apple-touch-icon\.png/);
   assert.match(raw, /favicon-32x32\.png/);

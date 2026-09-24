@@ -1,10 +1,11 @@
 // tests/qa/ci-workflow.test.mjs
 //
-// Pins the shape of `.github/workflows/ci.yml` so the Bun vanilla-migration
-// chain (`feat/bun-vanilla-migration*` branches) actually gets CI: without
-// this, every child PR of the migration chain targets a non-`main` branch
-// and silently gets zero CI, and `bun test src/` / `bun run build:static`
-// never run anywhere before the T11 cutover.
+// Pins the shape of `.github/workflows/ci.yml`. T11 cutover: CI now runs
+// the full static-build pipeline end to end — lint, typecheck, the Bun
+// unit suite, the Node QA suite (which builds via `pnpm test`), and the
+// deterministic `e2e:static` Playwright run (see playwright.config.ts's
+// `webServer`) — instead of the old Next build + a separate throwaway
+// `bun run build:static` smoke step.
 //
 // Plain string/regex assertions (no YAML parser available without adding a
 // dependency — zero new deps is a hard constraint for this migration).
@@ -44,21 +45,32 @@ test("the Bun-native test suite runs in CI", () => {
   assert.match(ciYaml, /run:\s*bun test src\//);
 });
 
-test("the static build runs in CI", () => {
-  assert.match(ciYaml, /run:\s*bun run build:static/);
+test("lint and typecheck both run in CI", () => {
+  assert.match(ciYaml, /run:\s*pnpm run lint/);
+  assert.match(ciYaml, /run:\s*pnpm run typecheck/);
 });
 
-test("existing pnpm/Node steps are preserved", () => {
+test("the deterministic static e2e suite runs in CI, with Playwright browsers cached", () => {
+  assert.match(ciYaml, /run:\s*pnpm run e2e:static/);
+  assert.match(ciYaml, /playwright install/);
+  assert.match(ciYaml, /actions\/cache@v\d+/);
+  assert.match(ciYaml, /ms-playwright/);
+});
+
+test("existing pnpm/Node steps and checks are preserved", () => {
   for (const needle of [
     "pnpm/action-setup@v4",
     "actions/setup-node@v4",
     "pnpm install --frozen-lockfile",
     "pnpm run validate",
     "pnpm audit --audit-level=high",
-    "pnpm run build",
-    "node --test tests/rendered-html.test.mjs 'tests/qa/*.test.mjs'",
-    "pnpm run lint",
+    "pnpm test",
   ]) {
     assert.ok(ciYaml.includes(needle), `expected CI to still run: ${needle}`);
   }
+});
+
+test("CI never invokes the retired Next/vinext build", () => {
+  assert.doesNotMatch(ciYaml, /vinext/);
+  assert.doesNotMatch(ciYaml, /\bnext build\b/);
 });

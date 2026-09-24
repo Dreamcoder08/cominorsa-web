@@ -154,6 +154,10 @@ describe("renderDocument", () => {
     expect(parsed.address.addressRegion).toBe("Piura");
   });
 
+  test("does not emit a robots meta tag when none is requested", () => {
+    expect(html).not.toContain('name="robots"');
+  });
+
   test("escapes an unsafe title instead of injecting markup", () => {
     const unsafe = renderDocument({
       title: '</title><script>alert(1)</script>',
@@ -167,6 +171,99 @@ describe("renderDocument", () => {
     expect(unsafe).toContain(
       "&lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;",
     );
+  });
+});
+
+// T6a: the 404 page has no canonical URL (there's no single "real" page
+// it represents) and must be noindex — `canonicalPath` is optional, and
+// an explicit `robots` prop renders a `<meta name="robots">` tag.
+// Verified against the live site: `curl -sL
+// https://cominorsa.com/<random-broken-path>` returns 404 with `<meta
+// name="robots" content="noindex, follow">` and no `<link rel="canonical">`
+// at all (matching `app/not-found.tsx`'s own `robots: { index: false,
+// follow: true }` metadata, which Next serializes as "noindex, follow").
+describe("renderDocument without canonicalPath (404 page)", () => {
+  const notFoundHtml = renderDocument({
+    title: "Página no encontrada",
+    description: "Formalización minera, instrumentos ambientales, ingeniería y asistencia técnica desde Piura, Perú.",
+    robots: "noindex, follow",
+    cssHref: "/assets/globals-abc123.css",
+    fontsCssHref: "/assets/fonts-def456.css",
+    children: raw("<main><p>404</p></main>"),
+  });
+
+  test("emits no canonical link", () => {
+    expect(notFoundHtml).not.toContain('rel="canonical"');
+  });
+
+  test("emits no og:url meta (there is no canonical URL to advertise)", () => {
+    expect(notFoundHtml).not.toContain('property="og:url"');
+  });
+
+  test("emits the requested robots meta tag", () => {
+    expect(notFoundHtml).toContain('<meta name="robots" content="noindex, follow">');
+  });
+
+  test("still emits the rest of the head (title, description, OG defaults)", () => {
+    expect(notFoundHtml).toContain("<title>Página no encontrada</title>");
+    expect(notFoundHtml).toContain('<meta property="og:site_name" content="COMINORSA">');
+  });
+});
+
+// T7: the site's 4 progressive-enhancement widgets load as
+// `<script type="module" src="...">` — no inline `<script>` at all (T10's
+// CSP will be `script-src 'self'` plus whatever GA4 needs), and no bare
+// specifiers or nonce/defer/async attributes to manage: module scripts
+// are deferred by the HTML spec on their own.
+describe("renderDocument scriptSrcs (T7)", () => {
+  test("emits no <script type=module> tags when scriptSrcs is omitted", () => {
+    expect(html).not.toContain('<script type="module"');
+  });
+
+  test("emits one <script type=module src=...> per entry, before </body>, in order", () => {
+    const withScripts = renderDocument({
+      title: "Seguridad minera y consultoría mensual | COMINORSA",
+      description: "Planes de Seguridad y Salud Ocupacional.",
+      canonicalPath: "/seguridad-minera",
+      cssHref: "/assets/globals-abc123.css",
+      fontsCssHref: "/assets/fonts-def456.css",
+      scriptSrcs: ["/assets/mobile-nav-aaa111.js", "/assets/consent-bbb222.js"],
+      children: raw("<main><p>body</p></main>"),
+    });
+
+    expect(withScripts).toContain(
+      '<script type="module" src="/assets/mobile-nav-aaa111.js" defer></script>',
+    );
+    expect(withScripts).toContain(
+      '<script type="module" src="/assets/consent-bbb222.js" defer></script>',
+    );
+    const firstIndex = withScripts.indexOf("mobile-nav-aaa111.js");
+    const secondIndex = withScripts.indexOf("consent-bbb222.js");
+    expect(firstIndex).toBeGreaterThan(-1);
+    expect(secondIndex).toBeGreaterThan(firstIndex);
+    expect(withScripts.indexOf("</body>")).toBeGreaterThan(secondIndex);
+  });
+
+  test("never emits an inline <script> body (only src-based module scripts, plus the JSON-LD data block)", () => {
+    const withScripts = renderDocument({
+      title: "x",
+      description: "y",
+      cssHref: "/a.css",
+      fontsCssHref: "/b.css",
+      scriptSrcs: ["/assets/consent-bbb222.js"],
+      children: raw("<main></main>"),
+    });
+
+    // Every <script> tag must either be the JSON-LD data block or a
+    // src-based module script — never carry an inline JS body.
+    const scriptTags = [...withScripts.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
+    expect(scriptTags.length).toBeGreaterThan(0);
+    for (const [tag, body] of scriptTags) {
+      const isJsonLd = tag.includes('type="application/ld+json"');
+      const isModule = tag.includes('type="module"') && tag.includes("src=");
+      expect(isJsonLd || isModule).toBe(true);
+      if (isModule) expect(body).toBe("");
+    }
   });
 });
 

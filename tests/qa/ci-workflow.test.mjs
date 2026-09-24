@@ -24,12 +24,14 @@ test("CI still triggers on pushes and PRs to main", () => {
   assert.match(ciYaml, /pull_request:\s*\n(?:.*\n)*?\s*branches:\s*\n?\s*-?\s*.*main/);
 });
 
-test("CI also triggers on PRs targeting the migration branch chain", () => {
+// P10: slice PRs target feature tracker branches (e.g. feat/landing-polish),
+// not only main — every feat/** base must run CI.
+test("CI also triggers on PRs targeting any feat/** branch", () => {
   const pullRequestBlock = ciYaml.match(/pull_request:\n([\s\S]*?)\n\n/)?.[1] ?? "";
   assert.match(
     pullRequestBlock,
-    /feat\/bun-vanilla-migration\*\*/,
-    `expected pull_request.branches to include the migration chain glob, got:\n${pullRequestBlock}`,
+    /- "feat\/\*\*"/,
+    `expected pull_request.branches to include "feat/**", got:\n${pullRequestBlock}`,
   );
 });
 

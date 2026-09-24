@@ -146,8 +146,10 @@ async function buildSiteCss(fontHrefs: Map<string, string>): Promise<string> {
     await Bun.write(entry, `@import ${JSON.stringify(fontsEntry)};\n@import ${JSON.stringify(CSS_ENTRY)};\n`);
     // The woff2 URLs are root-relative public paths, not local files —
     // Bun's bundler must pass them through, not resolve/inline them.
+    // Same for the contour mask (landing-craft T4): inlining a 75 KB SVG
+    // as a data: URI would bloat the <style> copied into every page.
     const { path } = await buildCss(entry, join(tempDir, "out"), {
-      external: [`/${FONTS_DIR_NAME}/*`],
+      external: [`/${FONTS_DIR_NAME}/*`, "/piura-contours.svg"],
     });
     return assertInlinableCss(await Bun.file(path).text());
   } finally {

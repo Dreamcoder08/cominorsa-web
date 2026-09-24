@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -61,6 +62,16 @@ test("CSP allows the GA4 hosts this site actually needs (script-src, connect-src
 test("CSP allows the Cloudflare Web Analytics beacon script host", () => {
   assert.match(rawHeadersFile, /script-src[^;\n]*https:\/\/static\.cloudflareinsights\.com/);
   assert.match(rawHeadersFile, /connect-src 'self'/);
+});
+
+// P11: CSS is inlined as one <style>; style-src allows exactly its hash.
+test("CSP style-src allows the inlined stylesheet by its sha256 — no 'unsafe-inline'", async () => {
+  const styleSrc = rawHeadersFile.match(/style-src ([^;\n]*)/)?.[1] ?? "";
+  assert.doesNotMatch(styleSrc, /'unsafe-inline'/);
+  const html = await readFile(resolve(HEADERS_FILE, "..", "index.html"), "utf8");
+  const css = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? "";
+  const digest = createHash("sha256").update(css, "utf8").digest("base64");
+  assert.equal(styleSrc, `'self' 'sha256-${digest}'`);
 });
 
 test("CSP forbids framing (clickjacking protection)", () => {

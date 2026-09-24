@@ -15,7 +15,7 @@
 // `SECURITY_HEADERS`/`buildCsp()` policy directly to those responses so
 // they keep the same header parity `proxy.ts` gives every route today
 // (its matcher already includes `/api/*`).
-import { buildCsp, SECURITY_HEADERS } from "./security-policy";
+import { buildCsp, type CspOptions, SECURITY_HEADERS } from "./security-policy";
 
 const IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
 
@@ -37,9 +37,10 @@ export const CACHED_IMAGE_PATHS: readonly string[] = [
   "/apple-touch-icon.png",
 ];
 
-export function buildHeadersFile(): string {
+/** P11: `cspOptions.styleHashes` carries the inlined stylesheet's hash. */
+export function buildHeadersFile(cspOptions: CspOptions = {}): string {
   const securityLines = [
-    `Content-Security-Policy: ${buildCsp()}`,
+    `Content-Security-Policy: ${buildCsp(cspOptions)}`,
     ...Object.entries(SECURITY_HEADERS).map(([name, value]) => `${name}: ${value}`),
   ];
 

@@ -294,11 +294,16 @@ Probable mismatch de compatibilidad. Verificá en `wrangler.jsonc`:
 Si Cloudflare actualizó la versión default, bumpear `compatibility_date`
 a mano (deliberadamente, no en cada deploy rutinario).
 
-### El sitio carga pero sin estilos (CSS 404)
+### El sitio carga pero sin estilos
 
-Verificar que `dist-static/assets/globals-*.css` existe (`pnpm run
-build` lo genera) y que `wrangler.jsonc`'s `assets.directory` apunta a
-`"dist-static"`.
+El CSS va inline en un `<style>` de cada página y la CSP lo permite por
+su hash (`style-src 'self' 'sha256-…'` en `dist-static/_headers`, ambos
+generados por el mismo `pnpm run build`). Si la consola muestra una
+violación de `style-src`, el HTML y el `_headers` desplegados vienen de
+builds distintos, o algo (p. ej. una optimización de HTML en el panel
+de Cloudflare) reescribió el `<style>`: volver a desplegar un build
+limpio y desactivar esa reescritura. Verificar también que
+`wrangler.jsonc`'s `assets.directory` apunta a `"dist-static"`.
 
 ### Cambios en código no se reflejan
 

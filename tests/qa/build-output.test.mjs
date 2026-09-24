@@ -30,11 +30,11 @@ test("dist-static/ has the expected pages, including the homepage and 404", asyn
   }
 });
 
-test("dist-static/assets has hashed CSS and JS bundles", async () => {
+test("dist-static/assets has the hashed JS bundles and no CSS file", async () => {
   const entries = await readdir(ASSETS);
-  assert.ok(entries.some((f) => /^globals-.+\.css$/.test(f)), "globals-*.css missing");
-  // P9: @font-face rules are bundled into globals-*.css (one stylesheet).
-  assert.ok(!entries.some((f) => /^fonts-.+\.css$/.test(f)), "stray fonts-*.css (should be bundled)");
+  // P11: the one stylesheet (P9: @font-face bundled in) is inlined into
+  // every page, so no CSS file ships.
+  assert.ok(!entries.some((f) => f.endsWith(".css")), `stray CSS file (should be inlined): ${entries}`);
   assert.ok(entries.some((f) => /^mobile-nav-entry-.+\.js$/.test(f)), "mobile-nav-entry-*.js missing");
   assert.ok(entries.some((f) => /^consent-entry-.+\.js$/.test(f)), "consent-entry-*.js missing");
   assert.ok(entries.some((f) => /^consultation-form-entry-.+\.js$/.test(f)), "consultation-form-entry-*.js missing");
@@ -193,23 +193,22 @@ test("every same-site URL referenced by the built HTML and CSS resolves to a shi
   };
 
   const pages = (await readdir(DIST_STATIC)).filter((f) => f.endsWith(".html"));
-  const cssFiles = (await readdir(ASSETS)).filter((f) => f.endsWith(".css"));
   const missing = [];
 
   for (const page of pages) {
     const html = await readFile(join(DIST_STATIC, page), "utf8");
+    // P11: CSS is inlined — check its url()s (fonts) per page.
+    for (const [, css] of html.matchAll(/<style>([\s\S]*?)<\/style>/g)) {
+      for (const [, url] of css.matchAll(/url\(["']?(\/[^"')]+)["']?\)/g)) {
+        if (!(await resolvesTo(url))) missing.push(`${page} <style>: ${url}`);
+      }
+    }
     for (const [, url] of html.matchAll(/(?:href|src|content)="([^"]+)"/g)) {
       let pathname;
       if (url.startsWith("https://cominorsa.com/")) pathname = new URL(url).pathname;
       else if (url.startsWith("/") && !url.startsWith("//")) pathname = url.split(/[?#]/)[0];
       else continue;
       if (pathname === "" || !(await resolvesTo(pathname))) missing.push(`${page}: ${url}`);
-    }
-  }
-  for (const css of cssFiles) {
-    const text = await readFile(join(ASSETS, css), "utf8");
-    for (const [, url] of text.matchAll(/url\(["']?(\/[^"')]+)["']?\)/g)) {
-      if (!(await resolvesTo(url))) missing.push(`${css}: ${url}`);
     }
   }
   assert.deepEqual(missing, []);

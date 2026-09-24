@@ -5,7 +5,7 @@
 // that file's own header comment); this file keeps the checks that are
 // still meaningful against a real static page: overall HTML weight, that
 // the built module scripts are actually referenced, and that the built
-// stylesheet is linked.
+// stylesheet is inlined (P11).
 //
 // Dropped, not translated (superseded elsewhere, listed here so the
 // removal is traceable):
@@ -48,10 +48,11 @@ test("only the homepage additionally references the consultation-form module scr
   assert.doesNotMatch(service.html, /\/assets\/consultation-form-entry-/);
 });
 
-test("CSS stylesheet is linked", async () => {
+// P11: the stylesheet is inlined (no render-blocking CSS request).
+test("CSS is inlined as one <style> and no stylesheet is linked", async () => {
   const { html } = await fetchHtml();
-  assert.match(
-    html,
-    /<link[^>]*\brel=["']stylesheet["'][^>]*\/assets\/globals-[^"']+\.css/,
-  );
+  const styles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)];
+  assert.equal(styles.length, 1);
+  assert.match(styles[0][1], /@font-face/);
+  assert.doesNotMatch(html, /rel=["']stylesheet["']/);
 });

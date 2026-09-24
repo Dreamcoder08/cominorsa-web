@@ -43,10 +43,13 @@
 // also carries an SRI `integrity` hash.
 //
 // `'unsafe-inline'` in `script-src` is never used, nor was it before.
-// P9 (audit P2-11): `style-src` is `'self'` only. The static build emits
-// no `style=""` attribute and no `<style>` block (build.test.ts guards
-// it); the one runtime style write (mobile-nav's `body.style.*`) goes
-// through the CSSOM, which CSP does not restrict.
+// P9 (audit P2-11): `style-src` is `'self'` plus, since P11, the
+// `'sha256-…'` of the one inlined `<style>` (build.ts computes it from
+// the exact bytes it emits and passes it via `buildHeadersFile`). A hash
+// allows that element only — never a `style=""` attribute (build.test.ts
+// guards there is none) — so `'unsafe-inline'` stays out. The one
+// runtime style write (mobile-nav's `body.style.*`) goes through the
+// CSSOM, which CSP does not restrict.
 export const CSP_DIRECTIVES: readonly string[] = [
   "default-src 'self'",
   "img-src 'self' data: https://wa.me https://*.whatsapp.net https://*.fbcdn.net https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com",
@@ -59,8 +62,16 @@ export const CSP_DIRECTIVES: readonly string[] = [
   "form-action 'self' https://wa.me",
 ];
 
-export function buildCsp(): string {
-  return CSP_DIRECTIVES.join("; ");
+export type CspOptions = {
+  /** CSP hash sources for inline `<style>` elements, e.g. "sha256-<base64>". */
+  styleHashes?: readonly string[];
+};
+
+export function buildCsp({ styleHashes = [] }: CspOptions = {}): string {
+  const hashSources = styleHashes.map((hash) => ` '${hash}'`).join("");
+  return CSP_DIRECTIVES.map((directive) =>
+    directive.startsWith("style-src ") ? `${directive}${hashSources}` : directive,
+  ).join("; ");
 }
 
 // Verbatim from `proxy.ts`, minus the CSP (built separately above) and

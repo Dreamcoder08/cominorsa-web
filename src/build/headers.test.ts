@@ -57,6 +57,12 @@ describe("buildHeadersFile", () => {
     expect(file).not.toContain("/_next/");
   });
 
+  test("P11: puts the inlined stylesheet's hash into the CSP's style-src", () => {
+    const withHash = buildHeadersFile({ styleHashes: ["sha256-AbC="] });
+    expect(withHash).toContain(`Content-Security-Policy: ${buildCsp({ styleHashes: ["sha256-AbC="] })}`);
+    expect(withHash).toContain("style-src 'self' 'sha256-AbC='");
+  });
+
   test("is deterministic across calls", () => {
     expect(buildHeadersFile()).toBe(buildHeadersFile());
   });

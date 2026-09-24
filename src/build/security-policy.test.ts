@@ -82,6 +82,17 @@ describe("buildCsp", () => {
     expect(csp).not.toContain("'unsafe-inline'");
   });
 
+  // P11: the built stylesheet is inlined as one <style> element; the
+  // build passes its sha256 so style-src allows exactly those bytes.
+  test("P11: style-src adds exactly the given style hashes, still without 'unsafe-inline'", () => {
+    const hashed = buildCsp({ styleHashes: ["sha256-AbC+/12=", "sha256-XyZ="] });
+    const styleSrc = hashed.match(/style-src([^;]*)/)?.[1]?.trim();
+    expect(styleSrc).toBe("'self' 'sha256-AbC+/12=' 'sha256-XyZ='");
+    expect(hashed).not.toContain("'unsafe-inline'");
+    // Every other directive is unchanged.
+    expect(hashed.replace(/style-src[^;]*/, "")).toBe(csp.replace(/style-src[^;]*/, ""));
+  });
+
   test("no wildcard default-src, no unsafe-eval anywhere", () => {
     expect(csp).not.toMatch(/default-src\s+\*/);
     expect(csp).not.toContain("unsafe-eval");

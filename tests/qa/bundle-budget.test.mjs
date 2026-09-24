@@ -16,7 +16,7 @@
  *   - JS total (gzip): <= 20 KB — roughly 8x this site's real total,
  *     enough headroom for a genuine new widget without being the old
  *     600 KB budget that could never catch a real regression.
- *   - CSS total (raw): < 50 KB — unchanged threshold; real output
+ *   - Inlined CSS (P11): < 50 KB raw, < 10 KB gzip — unchanged threshold; real output
  *     (~32 KB, Tailwind's Preflight reset plus this site's own CSS) has
  *     comfortable headroom.
  */
@@ -54,13 +54,17 @@ test("JS bundle total (gzip) is under 20 KB", async () => {
   assert.ok(kb < 20, `JS total (gzip) ${kb.toFixed(2)} KB exceeds the 20 KB budget`);
 });
 
-test("CSS bundle total (raw) is under 50 KB", async () => {
-  const files = await filesWithExt(".css");
-  assert.ok(files.length > 0, "no CSS bundles found — did you run `pnpm build`?");
-  let total = 0;
-  for (const f of files) total += (await stat(f)).size;
-  const kb = total / 1024;
-  assert.ok(kb < 50, `CSS total ${kb.toFixed(1)} KB exceeds 50 KB budget`);
+// P11: the CSS is inlined into every page's <style>, so its budget is
+// measured there (raw, as before; plus gzip, since it now travels inside
+// every HTML response instead of being cached once).
+test("inlined CSS is under 50 KB raw and 10 KB gzip", async () => {
+  const html = await readFile(join(ROOT, "dist-static", "index.html"), "utf8");
+  const css = html.match(/<style>([\s\S]*?)<\/style>/)?.[1];
+  assert.ok(css, "no inlined <style> found — did you run `pnpm build`?");
+  const kb = Buffer.byteLength(css) / 1024;
+  const gzKb = gzipSync(css, { level: 9 }).length / 1024;
+  assert.ok(kb < 50, `CSS ${kb.toFixed(1)} KB exceeds 50 KB budget`);
+  assert.ok(gzKb < 10, `CSS gzip ${gzKb.toFixed(1)} KB exceeds 10 KB budget`);
 });
 
 test("no single JS bundle exceeds 10 KB raw (each widget stays independently tiny)", async () => {

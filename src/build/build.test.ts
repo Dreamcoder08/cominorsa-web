@@ -260,6 +260,34 @@ describe("runStaticBuild", () => {
       }
     }));
 
+  // P1 (audit P0-2): one source of truth for "does this build have
+  // analytics": the GA measurement ID passed to runStaticBuild (defaults
+  // to NEXT_PUBLIC_GA_MEASUREMENT_ID). It both bakes into the consent
+  // bundle and decides whether pages render the preferences button and
+  // the GA paragraph of the privacy policy.
+  test("without a GA ID, no page renders the cookie-preferences button or GA copy", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir, { gaMeasurementId: "" });
+      for (const route of PAGE_ROUTES) {
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        expect(html, route.slug || "index").not.toContain("cookie-preferences-button");
+      }
+      const privacy = await Bun.file(join(outDir, "privacidad.html")).text();
+      expect(privacy).not.toContain("Google Analytics");
+    }));
+
+  test("with a GA ID, every page with a footer renders the preferences button and the policy describes GA4", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir, { gaMeasurementId: "G-TEST123" });
+      for (const route of PAGE_ROUTES) {
+        if (route.slug === "404") continue; // standalone page, no SiteFooter
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        expect(html, route.slug || "index").toContain('id="cookie-preferences-button"');
+      }
+      const privacy = await Bun.file(join(outDir, "privacidad.html")).text();
+      expect(privacy).toContain("Google Analytics 4");
+    }));
+
   // T8: sitemap.xml/robots.txt/manifest.webmanifest, generated from the
   // same PAGE_ROUTES table + site-config.ts constants exercised in
   // sitemap.test.ts/robots.test.ts/webmanifest.test.ts directly — this

@@ -68,3 +68,18 @@ describe("ConsultationForm", () => {
     );
   });
 });
+
+// P1 (audit P0-1): the form POSTs to /api/crm-lead (CRM + email
+// notification), so the visitor is told before submitting and pointed
+// at the privacy policy that describes it.
+describe("ConsultationForm consent notice", () => {
+  test("states the data use and links to /privacidad, after the submit button", () => {
+    const notice = html.match(/<p class="form-disclaimer form-consent">[\s\S]*?<\/p>/);
+    expect(notice).not.toBeNull();
+    expect(notice![0]).toContain(
+      "Al enviar, aceptas que COMINORSA use estos datos para responder tu consulta.",
+    );
+    expect(notice![0]).toContain('<a href="/privacidad">Ver Política de Privacidad</a>');
+    expect(html.indexOf("form-consent")).toBeGreaterThan(html.indexOf("consultation-form-submit"));
+  });
+});

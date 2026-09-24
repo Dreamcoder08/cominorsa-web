@@ -4,7 +4,7 @@
 
 import { SiteFooter, SiteHeader } from "./site-shell";
 
-export function TermsPage() {
+export function TermsPage({ analyticsEnabled = false }: { analyticsEnabled?: boolean } = {}) {
   return (
     <main>
       <SiteHeader basePath="/" />
@@ -95,7 +95,7 @@ export function TermsPage() {
         </p>
       </section>
 
-      <SiteFooter basePath="/" />
+      <SiteFooter basePath="/" analyticsEnabled={analyticsEnabled} />
     </main>
   );
 }

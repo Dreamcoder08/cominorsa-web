@@ -6,7 +6,13 @@ import { buildWhatsAppLink } from "../../app/constants";
 import type { ServiceGroup } from "../data/services-data";
 import { SiteFooter, SiteHeader } from "./site-shell";
 
-export function ServicePage({ service }: { service: ServiceGroup }) {
+export function ServicePage({
+  service,
+  analyticsEnabled = false,
+}: {
+  service: ServiceGroup;
+  analyticsEnabled?: boolean;
+}) {
   const whatsappHref = buildWhatsAppLink(service.whatsappMessage);
 
   return (
@@ -55,7 +61,7 @@ export function ServicePage({ service }: { service: ServiceGroup }) {
         </p>
       </section>
 
-      <SiteFooter basePath="/" />
+      <SiteFooter basePath="/" analyticsEnabled={analyticsEnabled} />
     </main>
   );
 }

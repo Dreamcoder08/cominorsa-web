@@ -116,7 +116,19 @@ export function SiteHeader({ basePath = "" }: { basePath?: string }) {
   );
 }
 
-export function SiteFooter({ basePath = "" }: { basePath?: string }) {
+export type SiteFooterProps = {
+  basePath?: string;
+  /**
+   * P1 (audit P0-2): true only when the build has a GA measurement ID
+   * (`runStaticBuild`'s `gaMeasurementId`). Without one no tracker can
+   * load, so there is no consent choice to reopen and the button is not
+   * rendered. Defaults to false: a missing flag hides the control rather
+   * than advertising a choice that does not exist.
+   */
+  analyticsEnabled?: boolean;
+};
+
+export function SiteFooter({ basePath = "", analyticsEnabled = false }: SiteFooterProps) {
   return (
     <footer>
       <a className="brand footer-brand" href={`${basePath}#inicio`}>
@@ -141,7 +153,7 @@ export function SiteFooter({ basePath = "" }: { basePath?: string }) {
         <a href="/preguntas-frecuentes">FAQ</a>
         <a href="/privacidad">Privacidad</a>
         <a href="/terminos">Términos</a>
-        <CookiePreferencesButtonStatic />
+        {analyticsEnabled ? <CookiePreferencesButtonStatic /> : null}
       </div>
 
       <a className="back-to-top" href={`${basePath}#inicio`} aria-label="Volver al inicio">

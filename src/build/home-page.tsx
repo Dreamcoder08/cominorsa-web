@@ -45,8 +45,10 @@ const steps = [
 
 export function HomePage({
   serviceGroups,
+  analyticsEnabled = false,
 }: {
   serviceGroups: readonly ServiceGroup[];
+  analyticsEnabled?: boolean;
 }) {
   return (
     <main>
@@ -338,7 +340,7 @@ export function HomePage({
         </section>
       </div>
 
-      <SiteFooter />
+      <SiteFooter analyticsEnabled={analyticsEnabled} />
     </main>
   );
 }

@@ -8,7 +8,13 @@ import { buildWhatsAppLink } from "../../app/constants";
 import type { FaqEntry } from "../data/faq";
 import { SiteFooter, SiteHeader } from "./site-shell";
 
-export function FaqPage({ faqs }: { faqs: readonly FaqEntry[] }) {
+export function FaqPage({
+  faqs,
+  analyticsEnabled = false,
+}: {
+  faqs: readonly FaqEntry[];
+  analyticsEnabled?: boolean;
+}) {
   const whatsappHref = buildWhatsAppLink(
     "Hola COMINORSA, tengo una consulta que no encontré en las preguntas frecuentes.",
   );
@@ -57,7 +63,7 @@ export function FaqPage({ faqs }: { faqs: readonly FaqEntry[] }) {
         </p>
       </section>
 
-      <SiteFooter basePath="/" />
+      <SiteFooter basePath="/" analyticsEnabled={analyticsEnabled} />
     </main>
   );
 }

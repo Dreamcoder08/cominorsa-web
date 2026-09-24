@@ -30,7 +30,7 @@
 // load can't be meaningfully "unloaded" without one).
 
 import { COOKIE_CONSENT_STORAGE_KEY, GA_MEASUREMENT_ID } from "../../../app/constants";
-import { parseConsent, type Consent } from "../lib/consent-storage";
+import { clearConsent, readConsent, writeConsent, type Consent } from "../lib/consent-storage";
 import { loadGa4 } from "./ga4";
 
 const BANNER_CLASS = "cookie-consent";
@@ -89,30 +89,42 @@ function createBanner(
   return banner;
 }
 
-function applyGrantedConsent(doc: Document): void {
-  if (GA_MEASUREMENT_ID) loadGa4(GA_MEASUREMENT_ID, doc);
-}
+export function initCookieConsent(
+  doc: Document = document,
+  win: Window = window,
+  measurementId: string = GA_MEASUREMENT_ID ?? "",
+): void {
+  const preferencesButton = doc.getElementById(PREFERENCES_BUTTON_ID);
 
-export function initCookieConsent(doc: Document = document, win: Window = window): void {
-  const storage = win.localStorage;
-  const consent: Consent = parseConsent(storage.getItem(COOKIE_CONSENT_STORAGE_KEY));
+  // P1 (audit P0-2): no GA ID baked into this build means no tracker can
+  // ever load, so there is nothing to consent to — no banner, and no
+  // "Preferencias de cookies" control. The build already omits that
+  // button when it has no ID (`SiteFooter`'s `analyticsEnabled`, fed by
+  // the same env var); removing a stray one here is only a safety net.
+  if (!measurementId) {
+    preferencesButton?.remove();
+    return;
+  }
+
+  const applyGrantedConsent = () => loadGa4(measurementId, doc);
+  const consent: Consent = readConsent(win, COOKIE_CONSENT_STORAGE_KEY);
 
   if (consent === "granted") {
-    applyGrantedConsent(doc);
+    applyGrantedConsent();
   } else if (consent === null) {
     doc.body.classList.add(BODY_BANNER_CLASS);
     const banner = createBanner(doc, (value) => {
-      storage.setItem(COOKIE_CONSENT_STORAGE_KEY, value);
+      writeConsent(win, COOKIE_CONSENT_STORAGE_KEY, value);
       banner.remove();
       doc.body.classList.remove(BODY_BANNER_CLASS);
-      if (value === "granted") applyGrantedConsent(doc);
+      if (value === "granted") applyGrantedConsent();
     });
     doc.body.appendChild(banner);
   }
   // consent === "denied": nothing further to render or load.
 
-  doc.getElementById(PREFERENCES_BUTTON_ID)?.addEventListener("click", () => {
-    storage.removeItem(COOKIE_CONSENT_STORAGE_KEY);
+  preferencesButton?.addEventListener("click", () => {
+    clearConsent(win, COOKIE_CONSENT_STORAGE_KEY);
     win.location.reload();
   });
 }

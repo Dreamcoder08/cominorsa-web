@@ -128,10 +128,68 @@ trust, speed and one obvious action — not WebGL or scroll-jacking.
         sheets at 1440/390: no visible seam, no content overlap.
       - Gotcha: `bun test src/` (build.test) recreates `dist-static/`
         and leaves a running `wrangler dev` answering 500 — restart it.
-- [ ] **T6 — CSS-only motion**: scroll-driven reveals
+- [x] **T6 — CSS-only motion**: scroll-driven reveals
       (`animation-timeline: view()`) and cross-document
       `@view-transition`, all under `prefers-reduced-motion:
       no-preference` and `@supports`.
-- [ ] **T7 — Visual QA & full checks**: screenshots 1440/390 of every
+      - Commit `863a2b0`. Route: inline (CSS + its test). `rise-in`
+        reveal (opacity + `--space-5` rise) on section kickers/titles,
+        intros, about copy, principles, service cards, route stops,
+        consultation intro and contact blocks — never the hero, so the
+        LCP h1 is untouched; reveal classes exist only on the home page.
+        Range `entry 0% entry 200px` (fixed length: a percentage left
+        tall mobile cards half-transparent while read).
+        `@view-transition { navigation: auto }` + root cross-fade at
+        `--dur-slow`, header held still via
+        `view-transition-name: site-header`; all inside
+        `prefers-reduced-motion: no-preference` (reveals also inside
+        `@supports (animation-timeline: view())`).
+      - Evidence: RED 4 fail → GREEN; `bun test src/` 332/332,
+        `pnpm test` 195/195, typecheck ok; the minified CSS keeps
+        `@view-transition`; frames at 1440 show the mid-entry fade and
+        full opacity at rest; at 390 every service card (393–574 px
+        tall) is opacity 1.00 with its top at 60 % of the viewport.
+- [x] **T7 — Visual QA & full checks**: screenshots 1440/390 of every
       changed page, contrast check of new pairs, `pnpm test`,
       `bun test src/`, `pnpm test:e2e`.
+      - Commit `d7d9558` (fix found by QA). `pnpm shots` full-page
+        captures showed every section below the hero blank: capture
+        never scrolls, so the T6 reveals stayed pre-entry. Real
+        scrolling was already verified in T6. The tool now uses
+        `reducedMotion: "reduce"` (test added; skill note added).
+      - Contrast (text over the new contour lines, WCAG calculator
+        logic): contact `--copper-ink` 6.28, `--ink` 10.30 on the
+        worst line pixel; hero lead `white/0.72` measured on the real
+        render with the text hidden: 6.13 (1440) / 5.51 (390). No new
+        text/background token pair was introduced.
+      - Full-page shots home + `/seguridad-minera` at 1440/390: the
+        whole page reads hero → strata → about → services → route →
+        consultation → contact → footer; service page unaffected.
+      - Final: `bun test src/` 332/332, `pnpm test` 196/196,
+        `pnpm test:e2e` 58/58, typecheck ok, lint ok.
+
+## Delivery
+
+Strategy `ask-on-risk` → user chose **chained PRs**, chain strategy
+**feature-branch-chain** (2026-09-24): nothing reaches `main` (which
+deploys) until the tracker merges, so the T3 copy can wait for client
+sign-off. Slices follow the existing commit boundaries (no rewrite):
+
+| PR | Branch | Commits | Authored lines |
+|---|---|---|---|
+| Tracker (draft, no-merge) → `main` | `feat/landing-craft` | `17af1f5` plan + research | 168 |
+| 01 → tracker | `feat/landing-craft-01-say-once` | `9286671`, `e22f8f1` (T1) | 240 |
+| 02 → 01 | `feat/landing-craft-02-route` | `7e87308`, `d88adab` (T3) | 188 |
+| 03 → 02 | `feat/landing-craft-03-contours` | `aa87774`, `a507704` (T4) | 736 — `size:exception` |
+| 04 → 03 | `feat/landing-craft-04-strata` | `bea336b`, `fc2f094` (T5) | 188 |
+| 05 → 04 | `feat/landing-craft-05-motion-qa` | `863a2b0` … this doc (T6, T7) | ~200 |
+
+T4 exception: the contour engine (329) and its tests (195) are one
+cohesive unit; separating code from tests is not allowed and nothing
+else splits it under 400. The generated SVG is excluded from the count.
+
+## Next step
+
+Client review of the T3 route copy + 4 open questions
+(`odd/research/formalization-route.md`) before the tracker merges.
+Review and merge children in order, then the tracker — user's decision.

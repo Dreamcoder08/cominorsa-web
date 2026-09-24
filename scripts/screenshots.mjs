@@ -16,6 +16,16 @@ import { pathToFileURL } from "node:url";
 export const SHOT_WIDTHS = [1440, 390];
 const VIEWPORT_HEIGHT = 900;
 
+/**
+ * landing-craft T7: full-page capture never scrolls, so scroll-driven
+ * reveals (animation-timeline: view()) would stay in their pre-entry,
+ * hidden state and whole sections would look blank. Reduced motion
+ * renders the static page those reveals enhance.
+ */
+export function pageOptions(width) {
+  return { viewport: { width, height: VIEWPORT_HEIGHT }, reducedMotion: "reduce" };
+}
+
 export function shotFileName(path, width) {
   const name = path.replace(/^\/+|\/+$/g, "").replace(/\//g, "_") || "home";
   return `${name}-${width}.png`;
@@ -39,7 +49,7 @@ async function main() {
   const browser = await chromium.launch();
   try {
     for (const width of SHOT_WIDTHS) {
-      const page = await browser.newPage({ viewport: { width, height: VIEWPORT_HEIGHT } });
+      const page = await browser.newPage(pageOptions(width));
       for (const path of paths) {
         const response = await page.goto(baseUrl + path, { waitUntil: "networkidle" });
         const file = join(outDir, shotFileName(path, width));

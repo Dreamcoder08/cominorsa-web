@@ -450,6 +450,9 @@ blockquote {
   position: sticky;
   top: 0;
   z-index: 10;
+  /* landing-craft T6: the header is its own view-transition group, so a
+     cross-document navigation cross-fades the page under a still header. */
+  view-transition-name: site-header;
   width: 100%;
   min-height: var(--header-height);
   border-bottom: 1px solid var(--line);
@@ -1245,6 +1248,54 @@ blockquote {
 @keyframes draw-line {
   to {
     transform: scaleX(1);
+  }
+}
+
+/* landing-craft T6: CSS-only motion, progressive enhancement.
+   - Scroll-driven reveals: content rises in as it enters the viewport.
+     Unsupported browsers and reduced-motion users get the static page.
+     The hero is never a target, so the LCP headline is never hidden.
+   - Cross-document view transitions between pages (same origin), with
+     the header held still (view-transition-name above). */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .section-kicker,
+    .section-title,
+    .method-intro > p,
+    .about-copy,
+    .principles > *,
+    .detailed-service-card,
+    .step,
+    .consultation-intro,
+    .contact-top,
+    .contact-grid > * {
+      animation-name: rise-in;
+      animation-timing-function: var(--ease-out);
+      animation-fill-mode: both;
+      animation-timeline: view();
+      /* A fixed length, not a percentage: a card taller than the phone
+         screen would otherwise stay half-transparent while being read. */
+      animation-range: entry 0% entry 200px;
+    }
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-5));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: var(--dur-slow);
+    animation-timing-function: var(--ease-out);
   }
 }
 

@@ -53,7 +53,7 @@ describe("runStaticBuild", () => {
       expect(await Bun.file(join(outDir, "index.html")).exists()).toBe(true);
     }));
 
-  test("emits the homepage as index.html with its brand-first title, no canonical, and the consultation form", () =>
+  test("emits the homepage as index.html with its brand-first title, root canonical, and the consultation form", () =>
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
       const html = await Bun.file(join(outDir, "index.html")).text();
@@ -62,8 +62,8 @@ describe("runStaticBuild", () => {
       expect(html).toContain(
         "<title>COMINORSA | Consultoría minera y ambiental</title>",
       );
-      expect(html).not.toContain('rel="canonical"');
-      expect(html).not.toContain('property="og:url"');
+      expect(html).toContain('<link rel="canonical" href="https://cominorsa.com/">');
+      expect(html).toContain('<meta property="og:url" content="https://cominorsa.com/">');
       expect(html).toContain('<span class="reveal-line">Técnica que impulsa.</span>');
       expect(html).toContain('<form class="consultation-form" id="consultation-form">');
       expect(html).toContain('href="/seguridad-minera"');
@@ -258,6 +258,37 @@ describe("runStaticBuild", () => {
           if (isModule) expect(body).toBe("");
         }
       }
+    }));
+
+  // P2 (audit P1-1, P1-2, P2-14): head completeness across the whole
+  // emitted site, read back from the real output files.
+  test("every indexable page has one canonical, og:url equal to it, unique og:title, and a unique description of at most 160 chars", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const ogTitles: string[] = [];
+      const descriptions: string[] = [];
+      for (const route of PAGE_ROUTES) {
+        if (route.slug === "404") continue;
+        const label = route.slug || "index";
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        const canonicals = [...html.matchAll(/<link rel="canonical" href="([^"]+)">/g)].map((m) => m[1]);
+        expect(canonicals.length, `${label}: canonical count`).toBe(1);
+        const ogUrl = html.match(/<meta property="og:url" content="([^"]+)">/)?.[1];
+        expect(ogUrl, `${label}: og:url`).toBe(canonicals[0]!);
+        const ogTitle = html.match(/<meta property="og:title" content="([^"]+)">/)?.[1];
+        const title = html.match(/<title>([^<]+)<\/title>/)?.[1];
+        expect(ogTitle, `${label}: og:title`).toBe(title!);
+        ogTitles.push(ogTitle!);
+        const description = html.match(/<meta name="description" content="([^"]+)">/)?.[1];
+        expect(description, `${label}: description`).toBeDefined();
+        expect(description!.length, `${label}: description length`).toBeLessThanOrEqual(160);
+        expect(html).toContain(`<meta property="og:description" content="${description}">`);
+        expect(html).toContain(`<meta name="twitter:title" content="${title}">`);
+        expect(html).toContain(`<meta name="twitter:description" content="${description}">`);
+        descriptions.push(description!);
+      }
+      expect(new Set(ogTitles).size).toBe(ogTitles.length);
+      expect(new Set(descriptions).size).toBe(descriptions.length);
     }));
 
   // P1 (audit P0-2): one source of truth for "does this build have

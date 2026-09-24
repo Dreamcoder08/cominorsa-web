@@ -45,7 +45,7 @@ export type PageRoute = {
    * pattern `generateServiceMetadata` uses for every other page.
    */
   fullTitle?: string;
-  /** Absolute path with no trailing slash, e.g. "/privacidad". Omit for the homepage and the 404 page (neither has a canonical URL in production — verified against the live site). */
+  /** Absolute path with no trailing slash, e.g. "/privacidad", or "/" for the homepage (P2). Omit only for the 404 page, which has no canonical URL. */
   canonicalPath?: string;
   /** e.g. "noindex, follow" — only the 404 route sets this today. */
   robots?: string;
@@ -58,6 +58,7 @@ export const PAGE_ROUTES: PageRoute[] = [
     title: "Inicio",
     fullTitle: "COMINORSA | Consultoría minera y ambiental",
     description: ROOT_DESCRIPTION,
+    canonicalPath: "/",
     render: (ctx = NO_ANALYTICS) => HomePage({ serviceGroups, ...ctx }),
   },
   ...serviceGroups.map(

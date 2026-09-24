@@ -14,11 +14,10 @@
 // with, and why.
 //
 // Route selection: every route with a `canonicalPath` (every real page
-// except the homepage and 404), plus the homepage itself (identified by
-// `slug === ""`, which has no `canonicalPath` — see routes.ts). The 404
-// route has neither a `canonicalPath` nor `slug === ""`, so it is
-// excluded automatically, with no separate exclusion list to keep in
-// sync.
+// except 404) — the homepage (`slug === ""`, canonicalPath "/" since P2)
+// keeps its own block with the hreflang alternate. The 404 route has no
+// `canonicalPath`, so it is excluded automatically, with no separate
+// exclusion list to keep in sync.
 import { PAGE_ROUTES } from "./routes";
 import { SITE_URL } from "./site-config";
 

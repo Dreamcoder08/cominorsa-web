@@ -42,17 +42,26 @@ describe("PAGE_ROUTES", () => {
     expect(notFound?.robots).toBe("noindex, follow");
   });
 
-  // Verified against the live site (curl -sL https://cominorsa.com/):
-  // the root layout's generateMetadata sets no `alternates.canonical`
-  // and app/page.tsx exports no generateMetadata of its own, so
-  // production emits NO <link rel="canonical"> and NO og:url meta at
-  // all for "/" — unlike every service page, which does set one via
-  // generateServiceMetadata. Matching that exactly means omitting
-  // canonicalPath here too, the same way the 404 route already does.
-  test("the homepage route sets no canonicalPath (matches production, which emits none for '/')", () => {
+  // P2 (audit P1-1): production used to emit no canonical/og:url for
+  // "/" (a defect inherited from the Next root layout). The homepage now
+  // advertises its canonical root URL like every other indexable page.
+  test("the homepage route sets canonicalPath \"/\" and no robots", () => {
     const home = PAGE_ROUTES.find((r) => r.slug === "");
-    expect(home?.canonicalPath).toBeUndefined();
+    expect(home?.canonicalPath).toBe("/");
     expect(home?.robots).toBeUndefined();
+  });
+
+  // P2 (audit P2-14): search engines truncate longer snippets, and
+  // duplicate descriptions make pages compete with each other.
+  test("every meta description is at most 160 characters", () => {
+    for (const route of PAGE_ROUTES) {
+      expect(route.description.length, `${route.slug || "index"}: ${route.description.length}`).toBeLessThanOrEqual(160);
+    }
+  });
+
+  test("every indexable route has a unique description", () => {
+    const descriptions = PAGE_ROUTES.filter((r) => r.slug !== "404").map((r) => r.description);
+    expect(new Set(descriptions).size).toBe(descriptions.length);
   });
 
   test("the homepage route uses its exact brand-first production title via fullTitle, not the site-wide suffix pattern", () => {

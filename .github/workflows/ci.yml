@@ -17,7 +17,7 @@ jobs:
   build:
     name: Build + Test
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -44,18 +44,32 @@ jobs:
       - name: Audit
         run: pnpm audit --audit-level=high
 
-      - name: Build
-        run: pnpm run build
+      - name: Lint
+        run: pnpm run lint
 
-      - name: Test
-        run: pnpm exec node --test tests/rendered-html.test.mjs 'tests/qa/*.test.mjs'
+      - name: Typecheck
+        run: pnpm run typecheck
 
       - name: Bun test (src/)
         run: bun test src/
 
-      - name: Static build (dist-static/)
-        run: bun run build:static
+      - name: Build + Node QA suite
+        run: pnpm test
 
-      - name: Lint
-        run: pnpm run lint
-        continue-on-error: false
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright browsers (cache miss)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install Playwright OS dependencies (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+
+      - name: E2E (deterministic static build)
+        run: pnpm run e2e:static

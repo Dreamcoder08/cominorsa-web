@@ -1,0 +1,45 @@
+{
+  // T11 cutover: this is now the canonical, ONLY wrangler config for
+  // `cominorsa-web` — the file `wrangler deploy`/`wrangler versions
+  // upload`/Cloudflare Workers Builds pick up by default at the repo
+  // root. It replaces T9's `wrangler.static.jsonc` (renamed here, same
+  // config) and retires the Next.js/vinext Worker that used to be
+  // generated at `dist/server/wrangler.json`. Kept the exact same
+  // Worker name (`cominorsa-web`) production already uses, so this repo's
+  // defaults deploy correctly with no Cloudflare dashboard change (see
+  // DEPLOY.md's "Cloudflare Workers Builds settings" section).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cominorsa-web",
+  "main": "src/worker/index.ts",
+  // Same compatibility_date production's Next.js Worker was last
+  // generated with (`dist/server/wrangler.json`, also the date
+  // `worker-configuration.d.ts` was generated against) — keeps the
+  // cutover on identical workerd runtime behavior. Bump this by hand on
+  // a deliberate compatibility-flag upgrade, not as part of routine work.
+  "compatibility_date": "2026-08-31",
+  "compatibility_flags": ["nodejs_compat"],
+  // Plain-text vars (e.g. TWENTY_API_URL) are managed in the Cloudflare
+  // dashboard, not here. Without this, every deploy would replace them
+  // with the empty set declared in this file and silently disable CRM
+  // lead forwarding. Secrets are preserved regardless.
+  "keep_vars": true,
+  "assets": {
+    "directory": "dist-static",
+    // Serves e.g. "seguridad-minera.html" directly at "/seguridad-minera"
+    // (200, zero redirects) and only redirects to a trailing slash for an
+    // actual directory-style asset — matches production's real URL shape
+    // (no trailing slash), per build.ts's own module comment.
+    "html_handling": "auto-trailing-slash",
+    // dist-static/404.html (src/build/routes.ts's "404" route) is served
+    // for any unmatched path, matching today's Next not-found page.
+    "not_found_handling": "404-page",
+    // Only /api/* is routed to this Worker's fetch handler (src/worker/
+    // index.ts). Every other request — every page, sitemap.xml,
+    // robots.txt, manifest.webmanifest, hashed assets, fonts — is served
+    // directly from this assets binding with zero Worker invocation.
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": {
+    "enabled": true
+  }
+}

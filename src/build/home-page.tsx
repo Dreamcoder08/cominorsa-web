@@ -1,4 +1,3 @@
-/** @jsxImportSource ../html */
 // src/build/home-page.tsx
 //
 // Ported from `app/page.tsx` (T6b), verbatim markup and copy. Takes

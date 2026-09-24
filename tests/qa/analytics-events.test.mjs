@@ -7,11 +7,15 @@ import { fetchHtml } from "./helpers.mjs";
 // Vendor-neutral `data-event`/`data-event-context` markup convention for the
 // site's WhatsApp conversion touchpoints and the contact form's submission
 // attempt. These attributes are inert: no script reads or dispatches them
-// yet (see openspec/changes/analytics-event-tracking).
+// (see openspec/changes/analytics-event-tracking) — the two source-inspection
+// tests below now read the vanilla static-build/client sources
+// (src/client/dom/consultation-form.ts, src/build/site-shell.tsx), the T7/T11
+// replacements for the React app/ConsultationForm.tsx / app/SiteHeader.tsx
+// these tests originally pointed at (removed at the T11 cutover).
 
-function readAppSource(relativePath) {
+function readSource(relativePath) {
   return readFileSync(
-    fileURLToPath(new URL(`../../app/${relativePath}`, import.meta.url)),
+    fileURLToPath(new URL(`../../${relativePath}`, import.meta.url)),
     "utf8",
   );
 }
@@ -72,22 +76,22 @@ test("home page initial markup has no contact-submit attempt marker (submit-time
   assert.doesNotMatch(html, /data-event="contact_submit_attempt"/);
 });
 
-test("ConsultationForm handleSubmit sets dataset event attributes before window.open", () => {
-  const source = readAppSource("ConsultationForm.tsx");
+test("consultation-form.ts's submit handler sets dataset event attributes before window.open", () => {
+  const source = readSource("src/client/dom/consultation-form.ts");
 
-  const eventIndex = source.indexOf("dataset.event = CONTACT_SUBMIT_EVENT");
-  const contextIndex = source.indexOf("dataset.eventContext = service");
+  const eventIndex = source.indexOf("form.dataset.event = CONTACT_SUBMIT_EVENT");
+  const contextIndex = source.indexOf("form.dataset.eventContext = service");
   const windowOpenIndex = source.indexOf("window.open(");
 
   assert.notEqual(
     eventIndex,
     -1,
-    "handleSubmit does not set event.currentTarget.dataset.event",
+    "submit handler does not set form.dataset.event",
   );
   assert.notEqual(
     contextIndex,
     -1,
-    "handleSubmit does not set event.currentTarget.dataset.eventContext",
+    "submit handler does not set form.dataset.eventContext",
   );
   assert.notEqual(windowOpenIndex, -1, "window.open call not found");
   assert.ok(
@@ -100,12 +104,12 @@ test("ConsultationForm handleSubmit sets dataset event attributes before window.
   );
 });
 
-test("SiteHeader.tsx has no locally declared WHATSAPP_INFORMATION constant", () => {
-  const source = readAppSource("SiteHeader.tsx");
+test("site-shell.tsx has no locally declared WHATSAPP_INFORMATION constant", () => {
+  const source = readSource("src/build/site-shell.tsx");
 
   assert.doesNotMatch(source, /const WHATSAPP_INFORMATION\s*=/);
   assert.match(
     source,
-    /import\s*\{[^}]*WHATSAPP_INFORMATION[^}]*\}\s*from\s*"\.\/constants"/,
+    /import\s*\{[^}]*WHATSAPP_INFORMATION[^}]*\}\s*from\s*"\.\.\/\.\.\/app\/constants"/,
   );
 });

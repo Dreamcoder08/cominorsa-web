@@ -71,8 +71,13 @@ export type DocumentProps = {
    * tag) on every other page, matching current production behavior.
    */
   robots?: string;
-  /** Absolute path to the built, hashed stylesheet (globals.css with the @font-face rules bundled in), e.g. "/assets/globals-abc123.css". */
-  cssHref: string;
+  /**
+   * P11: the built, minified stylesheet (globals.css with the @font-face
+   * rules bundled in), inlined verbatim as the page's one `<style>` so
+   * first render needs no extra request. The CSP allows it by the
+   * sha256 of these exact bytes (build.ts), so they must not be altered.
+   */
+  inlineCss: string;
   /** Content-hashed woff2 hrefs to preload, in order, e.g. ["/fonts/archivo-latin-variable-0123abcd.woff2"]. */
   preloadFontHrefs: readonly string[];
   /**
@@ -102,7 +107,7 @@ function Document({
   description,
   canonicalPath,
   robots,
-  cssHref,
+  inlineCss,
   preloadFontHrefs,
   scriptSrcs,
   jsonLd,
@@ -150,7 +155,7 @@ function Document({
         {preloadFontHrefs.map((href) => (
           <link rel="preload" href={href} as="font" type="font/woff2" crossorigin={true} />
         ))}
-        <link rel="stylesheet" href={cssHref} />
+        <style>{raw(inlineCss)}</style>
 
         {[organizationJsonLd, ...(jsonLd ?? [])].map((data) => (
           <script type="application/ld+json">{jsonLdScript(data)}</script>

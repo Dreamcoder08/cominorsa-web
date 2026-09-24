@@ -14,7 +14,7 @@ const html = renderDocument({
   title: "Seguridad minera y consultoría mensual | COMINORSA",
   description: "Planes de Seguridad y Salud Ocupacional.",
   canonicalPath: "/seguridad-minera",
-  cssHref: "/assets/globals-abc123.css",
+  inlineCss: "body{color:red}",
   preloadFontHrefs: ["/fonts/archivo-latin-variable-0123abcd.woff2"],
   children: raw("<main><p>body</p></main>"),
 });
@@ -60,16 +60,17 @@ describe("renderDocument", () => {
     expect(html).not.toContain(".com.pe");
   });
 
-  test("links the hashed stylesheet passed in", () => {
-    expect(html).toContain(
-      '<link rel="stylesheet" href="/assets/globals-abc123.css">',
-    );
+  // P11: the stylesheet is inlined (no render-blocking request); CSP
+  // allows it by hash (build.ts computes it from these exact bytes).
+  test("inlines the CSS passed in as exactly one <style>, verbatim, after the font preloads", () => {
+    expect([...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1])).toEqual([
+      "body{color:red}",
+    ]);
+    expect(html.indexOf("<style>")).toBeGreaterThan(html.indexOf('rel="preload"'));
   });
 
-  // P9: @font-face rules ship inside the one stylesheet — one
-  // render-blocking request instead of two.
-  test("links exactly one stylesheet", () => {
-    expect([...html.matchAll(/rel="stylesheet"/g)].length).toBe(1);
+  test("links no external stylesheet", () => {
+    expect(html).not.toContain('rel="stylesheet"');
   });
 
   test("preloads only the critical font (Archivo, the body/heading font), at the hashed href passed in", () => {
@@ -102,7 +103,7 @@ describe("renderDocument", () => {
     const withTwo = renderDocument({
       title: "x",
       description: "y",
-      cssHref: "/a.css",
+      inlineCss: "",
       preloadFontHrefs: [
         "/fonts/archivo-latin-variable-0123abcd.woff2",
         "/fonts/newsreader-italic-latin-variable-4567cdef.woff2",
@@ -193,7 +194,7 @@ describe("renderDocument", () => {
       title: '</title><script>alert(1)</script>',
       description: "d",
       canonicalPath: "/x",
-      cssHref: "/assets/x.css",
+      inlineCss: "",
       preloadFontHrefs: ["/fonts/archivo-latin-variable-0123abcd.woff2"],
       children: raw("<p></p>"),
     });
@@ -217,7 +218,7 @@ describe("renderDocument for the site root", () => {
     title: "COMINORSA | Consultoría minera y ambiental",
     description: "Formalización minera.",
     canonicalPath: "/",
-    cssHref: "/assets/globals-abc123.css",
+    inlineCss: "",
     preloadFontHrefs: ["/fonts/archivo-latin-variable-0123abcd.woff2"],
     children: raw("<main></main>"),
   });
@@ -233,7 +234,7 @@ describe("renderDocument without canonicalPath (404 page)", () => {
     title: "Página no encontrada",
     description: "Formalización minera, instrumentos ambientales, ingeniería y asistencia técnica desde Piura, Perú.",
     robots: "noindex, follow",
-    cssHref: "/assets/globals-abc123.css",
+    inlineCss: "",
     preloadFontHrefs: ["/fonts/archivo-latin-variable-0123abcd.woff2"],
     children: raw("<main><p>404</p></main>"),
   });
@@ -271,7 +272,7 @@ describe("renderDocument scriptSrcs (T7)", () => {
       title: "Seguridad minera y consultoría mensual | COMINORSA",
       description: "Planes de Seguridad y Salud Ocupacional.",
       canonicalPath: "/seguridad-minera",
-      cssHref: "/assets/globals-abc123.css",
+      inlineCss: "",
       preloadFontHrefs: ["/fonts/archivo-latin-variable-0123abcd.woff2"],
       scriptSrcs: ["/assets/mobile-nav-aaa111.js", "/assets/consent-bbb222.js"],
       children: raw("<main><p>body</p></main>"),
@@ -294,7 +295,7 @@ describe("renderDocument scriptSrcs (T7)", () => {
     const withScripts = renderDocument({
       title: "x",
       description: "y",
-      cssHref: "/a.css",
+      inlineCss: "",
       preloadFontHrefs: ["/fonts/archivo-latin-variable-0123abcd.woff2"],
       scriptSrcs: ["/assets/consent-bbb222.js"],
       children: raw("<main></main>"),

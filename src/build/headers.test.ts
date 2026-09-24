@@ -37,7 +37,7 @@ describe("buildHeadersFile", () => {
   test("P6: caches the non-hashed images (OG, logo, favicons) for a day, not immutably", () => {
     for (const path of [
       "/og.jpg",
-      "/logo-44.png",
+      "/logo-44.webp",
       "/favicon.ico",
       "/favicon-16x16.png",
       "/favicon-32x32.png",
@@ -48,6 +48,10 @@ describe("buildHeadersFile", () => {
     }
   });
 
+  test("P11: no cache rule for the retired PNG logo", () => {
+    expect(file).not.toContain("/logo-44.png");
+  });
+
   test("never sets Cache-Control on the /* (HTML) rule — HTML must not be cached immutably", () => {
     const globalRuleBlock = file.split(/\n\/assets\/\*/)[0]!;
     expect(globalRuleBlock).not.toMatch(/Cache-Control/);
@@ -55,6 +59,12 @@ describe("buildHeadersFile", () => {
 
   test("does not carry the stale /_next/static/* rule (no such path in this build)", () => {
     expect(file).not.toContain("/_next/");
+  });
+
+  test("P11: puts the inlined stylesheet's hash into the CSP's style-src", () => {
+    const withHash = buildHeadersFile({ styleHashes: ["sha256-AbC="] });
+    expect(withHash).toContain(`Content-Security-Policy: ${buildCsp({ styleHashes: ["sha256-AbC="] })}`);
+    expect(withHash).toContain("style-src 'self' 'sha256-AbC='");
   });
 
   test("is deterministic across calls", () => {

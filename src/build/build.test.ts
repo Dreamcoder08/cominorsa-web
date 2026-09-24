@@ -3,7 +3,7 @@
 // End-to-end coverage for the static build pipeline: renders every
 // route in `routes.ts`'s `PAGE_ROUTES` table (T6a — all 6 service
 // pages, preguntas-frecuentes, privacidad, terminos, 404) with the T2
-// runtime, links one shared content-hashed CSS/fonts pair built from
+// runtime, inlines one shared stylesheet (P11) built from
 // `app/globals.css`/`fonts.css`, and copies `public/` assets alongside
 // them. Output goes to a throwaway temp dir so this test never touches
 // the real `dist-static/`.
@@ -157,33 +157,40 @@ describe("runStaticBuild", () => {
       }
     }));
 
-  // P9: the @font-face rules are bundled into the one stylesheet (was a
-  // second render-blocking fonts-*.css request).
-  test("every page links the same single hashed stylesheet, which carries the @font-face rules", () =>
+  // P11: the one stylesheet (P9: @font-face bundled in) is inlined into
+  // every page's <head> — no render-blocking request — and the CSP
+  // allows it by the sha256 of the exact bytes emitted, never
+  // 'unsafe-inline'.
+  test("P11: every page inlines the same single <style>, whose sha256 is the CSP's style-src hash", () =>
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
-      const seguridadHtml = await Bun.file(join(outDir, "seguridad-minera.html")).text();
-      const matches = [...seguridadHtml.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map(
-        (m) => m[1]!,
-      );
-      expect(matches.length).toBe(1);
-      const cssHref = matches[0]!;
-      expect(cssHref).toMatch(/^\/assets\/globals-[a-z0-9]+\.css$/);
-      const css = await Bun.file(join(outDir, cssHref.replace(/^\//, ""))).text();
+      const headers = await Bun.file(join(outDir, "_headers")).text();
+      const styleSrc = headers.match(/style-src ([^;\n]*)/)?.[1];
+      const hashes = [...(styleSrc ?? "").matchAll(/'sha256-([A-Za-z0-9+/=]+)'/g)].map((m) => m[1]);
+      expect(hashes).toHaveLength(1);
+      expect(styleSrc).not.toContain("unsafe-inline");
+
+      let firstCss: string | undefined;
+      for (const route of PAGE_ROUTES) {
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        const styles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1]!);
+        expect(styles).toHaveLength(1);
+        expect([...html.matchAll(/<style[\s>]/g)]).toHaveLength(1);
+        expect(html).not.toContain('rel="stylesheet"');
+        const css = styles[0]!;
+        const digest = new Bun.CryptoHasher("sha256").update(css).digest("base64");
+        expect(digest).toBe(hashes[0]!);
+        firstCss ??= css;
+        expect(css).toBe(firstCss);
+      }
+
+      const css = firstCss!;
       expect(css).toContain("@font-face");
       expect(css).toContain("--font-display:");
       // @font-face must precede the rules that use the families.
       expect(css.indexOf("@font-face")).toBeLessThan(css.indexOf("body{"));
-      expect(await Array.fromAsync(new Glob("fonts-*.css").scan({ cwd: join(outDir, "assets") }))).toEqual([]);
-
-      // Every other page links the exact same hashed file — one CSS
-      // build, shared across the whole route table, not one per page.
-      for (const route of PAGE_ROUTES) {
-        if (route.slug === "seguridad-minera") continue;
-        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
-        expect([...html.matchAll(/rel="stylesheet"/g)].length).toBe(1);
-        expect(html).toContain(`<link rel="stylesheet" href="${cssHref}">`);
-      }
+      // Nothing references a CSS file any more, so none ships.
+      expect(await Array.fromAsync(new Glob("*.css").scan({ cwd: join(outDir, "assets") }))).toEqual([]);
     }));
 
   // P9 (audit P2-8): the home h1 <em> renders in Newsreader italic above
@@ -204,22 +211,22 @@ describe("runStaticBuild", () => {
       }
     }));
 
-  // P9 (audit P2-11): what lets the CSP drop style-src 'unsafe-inline'.
-  test("P9: no page has a style attribute or a <style> element", () =>
+  // P9 (audit P2-11): what lets the CSP drop style-src 'unsafe-inline'
+  // (a hash can allow a <style> element, never a style="" attribute).
+  test("P9: no page has a style attribute", () =>
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir, { gaMeasurementId: "G-TEST123" });
       for (const route of PAGE_ROUTES) {
         const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
         expect(html).not.toMatch(/\sstyle=/i);
-        expect(html).not.toMatch(/<style[\s>]/i);
       }
     }));
 
   test("P6: fonts ship under content-hashed names, preloaded and referenced by hash", () =>
     withTempOutDir(async (outDir) => {
-      const { cssFileName } = await runStaticBuild(outDir);
+      await runStaticBuild(outDir);
       const html = await Bun.file(join(outDir, "seguridad-minera.html")).text();
-      const fontsCss = await Bun.file(join(outDir, "assets", cssFileName)).text();
+      const fontsCss = html.match(/<style>([\s\S]*?)<\/style>/)![1]!;
       const shipped = (await Array.fromAsync(new Glob("*").scan({ cwd: join(outDir, "fonts") }))).sort();
 
       const hashed = /^(archivo-latin-variable|newsreader-italic-latin-variable|geist-mono-latin)-[0-9a-f]{8}\.woff2$/;
@@ -255,7 +262,10 @@ describe("runStaticBuild", () => {
   test("copies public assets alongside the built pages", () =>
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
-      expect(await Bun.file(join(outDir, "logo-44.png")).exists()).toBe(true);
+      expect(await Bun.file(join(outDir, "logo-44.webp")).exists()).toBe(true);
+      // P11: the PNG logo is referenced nowhere (manifest and JSON-LD use
+      // apple-touch-icon.png), so it no longer ships.
+      expect(await Bun.file(join(outDir, "logo-44.png")).exists()).toBe(false);
     }));
 
   // T7: every route renders SiteHeader/SiteFooter (mobile nav + the

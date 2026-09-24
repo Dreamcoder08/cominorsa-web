@@ -95,9 +95,8 @@ hr
 if [[ -d "dist-static/assets" ]]; then
   ok "dist-static/ existe (build previo)"
   JS_SIZE=$(du -sb dist-static/assets/*.js 2>/dev/null | awk '{sum+=$1} END {print sum+0}')
-  CSS_SIZE=$(du -sb dist-static/assets/*.css 2>/dev/null | awk '{sum+=$1} END {print sum+0}')
   echo "    JS:  $((JS_SIZE / 1024)) KB"
-  echo "    CSS: $((CSS_SIZE / 1024)) KB"
+  echo "    CSS: inline en cada página (<style>, hash en _headers)"
 else
   warn "No hay dist-static/ - corre 'pnpm run build' antes de deployar"
 fi

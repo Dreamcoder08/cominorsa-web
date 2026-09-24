@@ -240,6 +240,47 @@ Legal accuracy (Ley 29733), search visibility and trust drive leads.
         <paths…>` (1440/390 full page, `home-1440.png` naming, refuses
         `test-results/`); `cominorsa-run` skill step 3 uses it. RED
         `ERR_MODULE_NOT_FOUND` → GREEN 5 pass.
+- [x] **P11 — Lighthouse follow-up** (production Lighthouse 12,
+      2026-09-24: mobile 90/100/93/100, desktop 99/100/93/100; failing
+      `errors-in-console`/`inspector-issues`, `render-blocking-resources`,
+      `modern-image-formats`). Route: delegated writer (writer trigger:
+      2+ non-trivial files). Branch `feat/landing-polish-p11`.
+      - A `db7b736` — CSP `script-src` + `https://static.cloudflareinsights.com`
+        (edge-injected Web Analytics beacon). `connect-src` unchanged:
+        Cloudflare's CSP FAQ
+        (developers.cloudflare.com/web-analytics/faq/#what-do-i-need-to-add-to-my-content-security-policy-csp)
+        says auto-injection reports to same-origin `/cdn-cgi/rum`
+        (`'self'`), only a manual snippet to cloudflareinsights.com;
+        confirmed in the live beacon (report URL is `/cdn-cgi/rum` when
+        `data-cf-beacon` has `version`, which the injected tag has).
+        Privacy policy (date → 24 de setiembre de 2026) discloses
+        Cloudflare Web Analytics as cookieless aggregated statistics,
+        wording from cloudflare.com/web-analytics ("does not use any
+        client-side state, such as cookies or localStorage"; no
+        fingerprinting) and its documented dimensions; GA4 stays
+        conditional; "no usa herramientas de analítica" and "ningún
+        script de analítica" removed. RED 2 fail (script-src list,
+        privacy disclosure) → GREEN 297 pass.
+      - B `6cae71c` — CSS inlined as one `<style>` per page; `_headers`
+        `style-src 'self' 'sha256-…'` computed at build from the exact
+        bytes (build fails on `</style` or CR); no `'unsafe-inline'`; no
+        CSS file ships. RED 6 fail unit (buildCsp/headers hash option,
+        document `<style>`, build hash match, P6 font test) + 4 fail QA
+        → GREEN. `/` gzip: before 5152 B HTML + 7843 B CSS (2 requests)
+        → after 12930 B (1 request); brotli 4240 + 6948 → 11118 B.
+        Trade-off: each further page view re-downloads ~7.8 KB gzip CSS
+        that was cached before.
+      - C `f31a46c` — `logo-44.png` (13656 B, 88×85, fully opaque) →
+        `logo-44.webp` (2146 B, `magick -quality 90`, PSNR 35 dB);
+        width/height/alt unchanged; PNG referenced nowhere else
+        (manifest/JSON-LD use apple-touch-icon) → removed with its cache
+        rule. RED 5 fail → GREEN 302 pass.
+      - Local Lighthouse (wrangler dev, 2 runs each, same machine):
+        pre-P11 mobile perf 90/93 FCP 2.8/2.6 s, desktop 97/99; P11
+        mobile 93/92 FCP 2.6/2.6 s, desktop 99/99 FCP 0.7/0.6 s; a11y,
+        best-practices, SEO 100; render-blocking and modern-image audits
+        pass. Local has no injected beacon: A is proven by the CSP tests
+        and needs a production check after deploy.
 - [ ] **BLOCKED — Trust section** (P1-9): needs real data from the
       client.
 
@@ -286,6 +327,19 @@ Progress section links each task to its IDs; the raw audit is summarized
 in Engram topic `odd/landing-polish/audit`.
 
 ## Progress
+
+- 2026-09-24: P11 done on `feat/landing-polish-p11` (commits `db7b736`,
+  `6cae71c`, `f31a46c`). `git diff --shortstat feat/landing-polish...HEAD`
+  → 22 files changed, 333 insertions(+), 130 deletions(-) before this
+  document update. Checks: `pnpm validate` OK (1 known `.env` warning),
+  `pnpm lint` 0, `pnpm typecheck` 0, `bun test src/` 302 pass / 0 fail,
+  `pnpm build` 11 pages, `pnpm test` 195 pass / 0 fail, `pnpm test:e2e`
+  58 passed. Playwright on `wrangler dev`: 11 pages, 1 `<style>`, 0
+  stylesheet links, Archivo applied, 0 CSP violations. Screenshots
+  (`/`, `/seguridad-minera`, 1440/390) vs production in the session
+  scratchpad `polish-p11/`: service pages identical except the logo
+  (6 px); home differs only in the hero reveal animation's capture
+  timing. Engram mirror update left to the orchestrator.
 
 - 2026-09-24: P5, P7, P9, P10 done on `feat/landing-polish-p5` (commits
   `c92e453`, `7a0e15b`, `31e06c1`, `42e454f`). `git diff --shortstat
@@ -346,6 +400,10 @@ in Engram topic `odd/landing-polish/audit`.
   record).
 
 ## Next step
+
+After P11 merges and deploys: re-run production Lighthouse (expect
+best-practices 100 once the beacon loads) and confirm in Cloudflare Web
+Analytics that visits are recorded.
 
 Slice 3 (P5, P7, P9, P10) ready for PR `feat/landing-polish-p5` →
 `feat/landing-polish` (CI now triggers on it). After merge to `main`,

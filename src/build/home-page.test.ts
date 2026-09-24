@@ -40,11 +40,40 @@ describe("HomePage", () => {
     }
   });
 
-  test("renders the 4-step method section", () => {
-    expect(html).toContain("<h3>Entendemos el caso</h3>");
-    expect(html).toContain("<h3>Evaluamos</h3>");
-    expect(html).toContain("<h3>Preparamos</h3>");
-    expect(html).toContain("<h3>Acompañamos</h3>");
+  describe("formalization route (landing-craft T3)", () => {
+    const method = html.slice(
+      html.indexOf('id="metodo"'),
+      html.indexOf('id="consulta"'),
+    );
+    const routeTitles = [
+      "Revisamos tu situación en el REINFO",
+      "Acreditamos la concesión",
+      "Aseguramos el terreno superficial",
+      "Preparamos el IGAFOM",
+      "Armamos el expediente técnico",
+      "Solicitamos el inicio de actividades",
+    ];
+
+    test("renders the six researched steps as an ordered route, in order", () => {
+      expect(method).toContain('<ol class="steps route"');
+      const positions = routeTitles.map((title) =>
+        method.indexOf(`<h3>${title}</h3>`),
+      );
+      for (const position of positions) expect(position).toBeGreaterThan(-1);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+      expect(method.split('<li class="step">').length - 1).toBe(6);
+    });
+
+    test("drops the generic 4-step copy", () => {
+      expect(method).not.toContain("Entendemos el caso");
+      expect(method).not.toContain("<h3>Evaluamos</h3>");
+    });
+
+    test("cites the official MINEM source", () => {
+      expect(method).toContain(
+        'href="https://www.gob.pe/101185-proceso-de-formalizacion-minera"',
+      );
+    });
   });
 
   test("embeds the consultation form inside the consulta section", () => {

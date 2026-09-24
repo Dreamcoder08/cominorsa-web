@@ -143,6 +143,9 @@ describe("runStaticBuild", () => {
       expect(html).toContain('<meta name="robots" content="noindex, follow">');
       expect(html).not.toContain('rel="canonical"');
       expect(html).toContain("Volver al inicio");
+      // P8 (audit P2-1): rendered inside the full site shell.
+      expect(html).toContain('<header class="site-header">');
+      expect(html).toContain("<footer>");
     }));
 
   test("never emits a URL on the stale, non-resolving .com.pe domain, on any page", () =>
@@ -321,7 +324,7 @@ describe("runStaticBuild", () => {
         const mainEnd = html.indexOf("</main>");
         for (const tag of ['<header class="site-header">', "<footer>"]) {
           const at = html.indexOf(tag);
-          if (at === -1) continue; // the 404 page renders no site chrome
+          expect(at, `${label}: ${tag} present`).not.toBe(-1);
           expect(at < mainStart || at > mainEnd, `${label}: ${tag} inside <main>`).toBe(true);
         }
       }
@@ -361,13 +364,35 @@ describe("runStaticBuild", () => {
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir, { gaMeasurementId: "G-TEST123" });
       for (const route of PAGE_ROUTES) {
-        if (route.slug === "404") continue; // standalone page, no SiteFooter
         const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
         expect(html, route.slug || "index").toContain('id="cookie-preferences-button"');
       }
       const privacy = await Bun.file(join(outDir, "privacidad.html")).text();
       expect(privacy).toContain("Google Analytics 4");
     }));
+
+  // P8 (audit P2-1, P2-15): visible copy is neutral Peruvian Spanish
+  // (tú, never voseo) and prose quotes are typographic (“ ” / ‘ ’).
+  // Checked on every page, with and without analytics (the GA-only
+  // privacy paragraphs render only in the second build).
+  test("P8: no page's visible text uses voseo or straight quotes", async () => {
+    const VOSEO = /(?<!\p{L})(buscás|acá|avisanos|tenés|podés|querés|sabés)(?!\p{L})/iu;
+    for (const gaMeasurementId of ["", "G-TEST123"]) {
+      await withTempOutDir(async (outDir) => {
+        await runStaticBuild(outDir, { gaMeasurementId });
+        for (const route of PAGE_ROUTES) {
+          const label = `${route.slug || "index"} (GA: ${gaMeasurementId || "none"})`;
+          const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+          const text = html
+            .replace(/<head>[\s\S]*?<\/head>/, "")
+            .replace(/<script\b[\s\S]*?<\/script>/g, "")
+            .replace(/<[^>]*>/g, " ");
+          expect(text, label).not.toMatch(VOSEO);
+          expect(text, label).not.toMatch(/"|&quot;|&#34;/);
+        }
+      });
+    }
+  });
 
   // T8: sitemap.xml/robots.txt/manifest.webmanifest, generated from the
   // same PAGE_ROUTES table + site-config.ts constants exercised in

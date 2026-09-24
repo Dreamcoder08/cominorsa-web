@@ -19,10 +19,19 @@ describe("NotFoundPage", () => {
     expect(html).toContain("<h1>Página no encontrada</h1>");
   });
 
-  test("renders the intro paragraph verbatim", () => {
+  test("renders the intro paragraph in neutral Spanish (tú, no voseo)", () => {
     expect(html).toContain(
-      "La ruta que buscás no existe o fue movida. Si llegaste acá desde un enlace, avisanos para corregirlo.",
+      "La ruta que buscas no existe o fue movida. Si llegaste aquí desde un enlace, avísanos para corregirlo.",
     );
+  });
+
+  test("P8: renders inside the full site shell — skip link, header, main, footer", () => {
+    expect(html.startsWith('<a class="skip-link" href="#contenido">')).toBe(true);
+    expect(html).toContain('<header class="site-header">');
+    expect(html).toContain('<main id="contenido">');
+    expect(html).toContain("<footer>");
+    // Brand/nav links point back to the homepage sections from this non-home page.
+    expect(html).toContain('href="/#inicio"');
   });
 
   test("links back to the homepage as the primary CTA", () => {
@@ -31,7 +40,8 @@ describe("NotFoundPage", () => {
   });
 
   test("links to WhatsApp to report the broken link", () => {
-    const match = html.match(/<a[^>]*href="https:\/\/wa\.me\/[^"]*"[^>]*>/);
+    // The shell has its own WhatsApp CTAs; this is the page's "report it" link.
+    const match = html.match(/<a[^>]*href="https:\/\/wa\.me\/[^"]*enlace%20roto[^"]*"[^>]*>/);
     expect(match).not.toBeNull();
     expect(match![0]).toContain('target="_blank"');
     expect(match![0]).toContain('rel="noopener"');

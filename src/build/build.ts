@@ -220,6 +220,7 @@ export async function runStaticBuild(
       fontsCssHref,
       criticalFontHref,
       scriptSrcs,
+      jsonLd: route.jsonLd,
       children: route.render(renderContext),
     });
 

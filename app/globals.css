@@ -1468,6 +1468,60 @@ body.has-cookie-banner footer {
   color: var(--ink);
 }
 
+/* P5: FAQ entries are deep-linked from service pages (#igafom, …) — keep
+   the target clear of the sticky header, same as .section/.contact. */
+.legal-page-body section[id] {
+  scroll-margin-top: var(--header-height);
+}
+
+/* P5: Inicio › Servicios › <servicio> above service-page titles. */
+.breadcrumb {
+  max-width: 70ch;
+  margin: 0 auto var(--space-5);
+}
+
+.breadcrumb ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.breadcrumb li + li::before {
+  content: "›" / "";
+  margin-right: var(--space-2);
+}
+
+.breadcrumb a {
+  color: var(--copper-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.breadcrumb a:hover,
+.breadcrumb a:focus-visible {
+  color: var(--ink);
+}
+
+.breadcrumb [aria-current="page"] {
+  color: var(--ink);
+}
+
+/* P5: "Otros servicios" — title link + existing short description. */
+.legal-page-body .related-services {
+  gap: var(--space-4);
+  padding-left: 0;
+}
+
+.related-services a {
+  font-weight: 600;
+}
+
+.related-services p {
+  margin-top: var(--space-1);
+}
+
 .legal-page-footer {
   max-width: 70ch;
   margin: var(--space-9) auto 0;

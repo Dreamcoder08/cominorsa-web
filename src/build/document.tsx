@@ -14,8 +14,8 @@
 // theme-color, applicationName and JSON-LD stay site-wide.
 
 import { raw, render, type Child, type Html } from "../html/jsx-runtime";
-import { PRIMARY_WHATSAPP_NUMBER } from "../../app/constants";
 import { SITE_URL } from "./site-config";
+import { organizationJsonLd } from "./structured-data";
 
 const SITE_NAME = "COMINORSA";
 // P6 (audit P1-3): JPEG, <= 200 KB — WhatsApp link previews (the main
@@ -25,32 +25,6 @@ const SOCIAL_IMAGE_TYPE = "image/jpeg";
 const SOCIAL_IMAGE_ALT = "COMINORSA — Consultoría minera y soluciones ambientales";
 const THEME_COLOR = "#fbf8ef";
 
-// Verbatim from `app/layout.tsx`'s `jsonLd`, minus the per-request
-// `getBaseUrl()` call: the static build has no request to read a `host`
-// header from, so `url` is the same static SITE_URL used everywhere
-// else on this page.
-const JSON_LD = {
-  "@context": "https://schema.org",
-  "@type": "ProfessionalService",
-  name: "COMINORSA S.A.C.",
-  alternateName: "COMINORSA",
-  description:
-    "Consultoría minera y ambiental: formalización minera (IGAFOM, REINFO), instrumentos ambientales, ingeniería y asistencia técnica desde Piura, Perú.",
-  url: SITE_URL,
-  telephone: `+${PRIMARY_WHATSAPP_NUMBER}`,
-  taxID: "20614147131",
-  address: {
-    "@type": "PostalAddress",
-    streetAddress: "Calle B N.º 12, Urb. Santa Margarita",
-    addressLocality: "Veintiséis de Octubre",
-    addressRegion: "Piura",
-    addressCountry: "PE",
-  },
-  areaServed: {
-    "@type": "AdministrativeArea",
-    name: "Piura, Perú",
-  },
-} as const;
 
 // G2: the JSON-LD block is the site's one raw-HTML sink. `raw()` applies
 // no escaping by design (see jsx-runtime.ts) — the caller owns it, same
@@ -122,6 +96,12 @@ export type DocumentProps = {
    * mobile-nav and consent scripts; see `src/build/routes.ts`).
    */
   scriptSrcs?: string[];
+  /**
+   * Page-specific schema.org objects (P5: a service page's `Service` and
+   * `BreadcrumbList`), each emitted as its own JSON-LD block after the
+   * site-wide organization (`structured-data.ts`).
+   */
+  jsonLd?: readonly unknown[];
   children: Child;
 };
 
@@ -134,6 +114,7 @@ function Document({
   fontsCssHref,
   criticalFontHref,
   scriptSrcs,
+  jsonLd,
   children,
 }: DocumentProps) {
   const canonicalUrl = canonicalPath !== undefined ? `${SITE_URL}${canonicalPath}` : undefined;
@@ -179,7 +160,9 @@ function Document({
         <link rel="stylesheet" href={cssHref} />
         <link rel="stylesheet" href={fontsCssHref} />
 
-        <script type="application/ld+json">{jsonLdScript(JSON_LD)}</script>
+        {[organizationJsonLd, ...(jsonLd ?? [])].map((data) => (
+          <script type="application/ld+json">{jsonLdScript(data)}</script>
+        ))}
       </head>
       <body>
         {children}

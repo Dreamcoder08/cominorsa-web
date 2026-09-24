@@ -7,14 +7,17 @@
 // with a static file. `document.tsx` already links
 // `<link rel="manifest" href="/manifest.webmanifest">` on every page
 // (T4) — this is the file that link resolves to.
+import { PAGE_BACKGROUND_COLOR } from "./site-config";
+
 const WEB_MANIFEST = {
   name: "COMINORSA | Consultoría minera y ambiental",
   short_name: "COMINORSA",
   description: "Consultoría minera y soluciones ambientales desde Piura, Perú.",
   start_url: "/",
   display: "standalone",
-  background_color: "#f4eed9",
-  theme_color: "#001713",
+  // P9: both were colours the site never renders (#f4eed9, #001713).
+  background_color: PAGE_BACKGROUND_COLOR,
+  theme_color: PAGE_BACKGROUND_COLOR,
   lang: "es-PE",
   icons: [
     {

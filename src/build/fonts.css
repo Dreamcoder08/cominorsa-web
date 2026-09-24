@@ -9,10 +9,9 @@
  *
  * Resolves the same CSS custom properties `app/globals.css` already
  * consumes (`--font-display`, `--font-editorial`, `--font-mono`), so no
- * token/CSS value changes are needed there — this file is a separate
- * stylesheet the static build links alongside globals.css, never
- * imported into it (importing it there would also feed Next's own
- * build, double-defining fonts Next already self-hosts via next/font).
+ * token/CSS value changes are needed there. The static build bundles
+ * this file ahead of globals.css into one stylesheet (P9, `buildSiteCss`
+ * in build.ts) — one render-blocking request instead of two.
  *
  * Only the Latin subset ships: this is a 100%-Spanish site, and every
  * character used (including the Spanish diacritics: á é í ó ú ñ ü, and

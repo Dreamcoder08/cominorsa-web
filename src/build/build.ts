@@ -1,7 +1,7 @@
 // src/build/build.ts
 //
 // The static build pipeline: bundles+minifies+hashes `app/globals.css`
-// and `fonts.css` via `Bun.build`, copies `public/` assets, and renders
+// with `fonts.css` bundled in (one stylesheet, P9) via `Bun.build`, copies `public/` assets, and renders
 // every route in `routes.ts`'s `PAGE_ROUTES` table (including the
 // homepage, T6b) into a flat `<slug>.html` file. Run with `bun run
 // build:static` (`package.json`);
@@ -44,7 +44,8 @@ const CSS_ENTRY = join(ROOT, "app", "globals.css");
 const FONTS_CSS_ENTRY = join(import.meta.dirname, "fonts.css");
 const PUBLIC_DIR = join(ROOT, "public");
 const FONTS_DIR_NAME = "fonts";
-const CRITICAL_FONT_SOURCE = "archivo-latin-variable.woff2";
+const BODY_FONT_SOURCE = "archivo-latin-variable.woff2";
+const EDITORIAL_FONT_SOURCE = "newsreader-italic-latin-variable.woff2";
 const ASSETS_DIR_NAME = "assets";
 const SITE_SUFFIX = " | COMINORSA";
 
@@ -117,12 +118,15 @@ async function buildFonts(outDir: string): Promise<Map<string, string>> {
 }
 
 /**
- * Bundles `fonts.css` with every `/fonts/<name>.woff2` URL rewritten to
- * its hashed href. Bun.build needs an entry file on disk, so the
- * rewritten source goes to a throwaway temp dir (same `fonts.css` base
- * name, so the output stays `fonts-<hash>.css`).
+ * Bundles the site stylesheet: `fonts.css` (every `/fonts/<name>.woff2`
+ * URL rewritten to its hashed href) followed by `app/globals.css`, into
+ * ONE `globals-<hash>.css` (P9, audit P2-8: the separate fonts
+ * stylesheet was a second render-blocking request for ~1.5 KB). Bun.build
+ * needs an entry file on disk, so a throwaway temp dir holds the
+ * rewritten fonts.css and a `globals.css` entry that `@import`s both —
+ * same base name, so the output keeps its `globals-<hash>.css` name.
  */
-async function buildFontsCss(outDir: string, fontHrefs: Map<string, string>) {
+async function buildSiteCss(outDir: string, fontHrefs: Map<string, string>) {
   const source = await Bun.file(FONTS_CSS_ENTRY).text();
   const rewritten = source.replace(/\/fonts\/([a-z0-9-]+\.woff2)/g, (match, fileName: string) => {
     const href = fontHrefs.get(fileName);
@@ -130,10 +134,12 @@ async function buildFontsCss(outDir: string, fontHrefs: Map<string, string>) {
     return href;
   });
 
-  const tempDir = await mkdtemp(join(tmpdir(), "cominorsa-fonts-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "cominorsa-css-"));
   try {
-    const entry = join(tempDir, basename(FONTS_CSS_ENTRY));
-    await Bun.write(entry, rewritten);
+    const fontsEntry = join(tempDir, basename(FONTS_CSS_ENTRY));
+    await Bun.write(fontsEntry, rewritten);
+    const entry = join(tempDir, basename(CSS_ENTRY));
+    await Bun.write(entry, `@import ${JSON.stringify(fontsEntry)};\n@import ${JSON.stringify(CSS_ENTRY)};\n`);
     // The woff2 URLs are root-relative public paths, not local files —
     // Bun's bundler must pass them through, not resolve/inline them.
     return await buildCss(entry, join(outDir, ASSETS_DIR_NAME), {
@@ -182,20 +188,19 @@ export type StaticBuildOptions = {
 export async function runStaticBuild(
   outDir: string,
   options: StaticBuildOptions = {},
-): Promise<{ cssFileName: string; fontsCssFileName: string }> {
+): Promise<{ cssFileName: string }> {
   const gaMeasurementId = (
     options.gaMeasurementId ?? process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? ""
   ).trim();
   const renderContext: RenderContext = { analyticsEnabled: gaMeasurementId !== "" };
 
-  const { fileName: cssFileName } = await buildCss(CSS_ENTRY, join(outDir, ASSETS_DIR_NAME));
-  const cssHref = `/${ASSETS_DIR_NAME}/${cssFileName}`;
-
   const fontHrefs = await buildFonts(outDir);
-  const criticalFontHref = fontHrefs.get(CRITICAL_FONT_SOURCE);
-  if (!criticalFontHref) throw new Error(`critical font missing: public/fonts/${CRITICAL_FONT_SOURCE}`);
-  const { fileName: fontsCssFileName } = await buildFontsCss(outDir, fontHrefs);
-  const fontsCssHref = `/${ASSETS_DIR_NAME}/${fontsCssFileName}`;
+  const bodyFontHref = fontHrefs.get(BODY_FONT_SOURCE);
+  const editorialFontHref = fontHrefs.get(EDITORIAL_FONT_SOURCE);
+  if (!bodyFontHref) throw new Error(`font missing: public/fonts/${BODY_FONT_SOURCE}`);
+  if (!editorialFontHref) throw new Error(`font missing: public/fonts/${EDITORIAL_FONT_SOURCE}`);
+  const { fileName: cssFileName } = await buildSiteCss(outDir, fontHrefs);
+  const cssHref = `/${ASSETS_DIR_NAME}/${cssFileName}`;
 
   await copyPublicAssets(outDir);
   await writeGeneratedFiles(outDir);
@@ -217,8 +222,9 @@ export async function runStaticBuild(
       canonicalPath: route.canonicalPath,
       robots: route.robots,
       cssHref,
-      fontsCssHref,
-      criticalFontHref,
+      preloadFontHrefs: route.preloadEditorialFont
+        ? [bodyFontHref, editorialFontHref]
+        : [bodyFontHref],
       scriptSrcs,
       jsonLd: route.jsonLd,
       children: route.render(renderContext),
@@ -227,14 +233,13 @@ export async function runStaticBuild(
     await writePage(outDir, route.slug, html);
   }
 
-  return { cssFileName, fontsCssFileName };
+  return { cssFileName };
 }
 
 if (import.meta.main) {
   const outDir = join(ROOT, "dist-static");
   await Bun.$`rm -rf ${outDir}`.quiet();
-  const { cssFileName, fontsCssFileName } = await runStaticBuild(outDir);
+  const { cssFileName } = await runStaticBuild(outDir);
   console.log(`Built ${relative(ROOT, outDir)}/ (${PAGE_ROUTES.length} pages)`);
   console.log(`CSS: ${ASSETS_DIR_NAME}/${cssFileName}`);
-  console.log(`Fonts CSS: ${ASSETS_DIR_NAME}/${fontsCssFileName}`);
 }

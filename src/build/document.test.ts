@@ -15,8 +15,7 @@ const html = renderDocument({
   description: "Planes de Seguridad y Salud Ocupacional.",
   canonicalPath: "/seguridad-minera",
   cssHref: "/assets/globals-abc123.css",
-  fontsCssHref: "/assets/fonts-def456.css",
-  criticalFontHref: "/fonts/archivo-latin-variable-0123abcd.woff2",
+  preloadFontHrefs: ["/fonts/archivo-latin-variable-0123abcd.woff2"],
   children: raw("<main><p>body</p></main>"),
 });
 
@@ -67,10 +66,10 @@ describe("renderDocument", () => {
     );
   });
 
-  test("links the hashed fonts stylesheet passed in", () => {
-    expect(html).toContain(
-      '<link rel="stylesheet" href="/assets/fonts-def456.css">',
-    );
+  // P9: @font-face rules ship inside the one stylesheet — one
+  // render-blocking request instead of two.
+  test("links exactly one stylesheet", () => {
+    expect([...html.matchAll(/rel="stylesheet"/g)].length).toBe(1);
   });
 
   test("preloads only the critical font (Archivo, the body/heading font), at the hashed href passed in", () => {
@@ -91,8 +90,32 @@ describe("renderDocument", () => {
     expect(html).toContain('<meta name="application-name" content="COMINORSA">');
   });
 
-  test("sets the theme-color from the current viewport export", () => {
-    expect(html).toContain('<meta name="theme-color" content="#fbf8ef">');
+  // P9 (audit P2-13): was #fbf8ef (--white), but the header and body
+  // paint --paper.
+  test("sets theme-color to the --paper token the page actually paints", async () => {
+    const css = await Bun.file("app/globals.css").text();
+    const paper = css.match(/--paper:\s*(#[0-9a-f]{6});/i)![1];
+    expect(html).toContain(`<meta name="theme-color" content="${paper}">`);
+  });
+
+  test("preloads every font href passed in, in order", () => {
+    const withTwo = renderDocument({
+      title: "x",
+      description: "y",
+      cssHref: "/a.css",
+      preloadFontHrefs: [
+        "/fonts/archivo-latin-variable-0123abcd.woff2",
+        "/fonts/newsreader-italic-latin-variable-4567cdef.woff2",
+      ],
+      children: raw("<main></main>"),
+    });
+    const preloads = [...withTwo.matchAll(/<link rel="preload" href="([^"]+)" as="font" type="font\/woff2" crossorigin>/g)].map(
+      (m) => m[1],
+    );
+    expect(preloads).toEqual([
+      "/fonts/archivo-latin-variable-0123abcd.woff2",
+      "/fonts/newsreader-italic-latin-variable-4567cdef.woff2",
+    ]);
   });
 
   // P2 (audit P1-2): OG/Twitter title+description are per page, derived
@@ -171,8 +194,7 @@ describe("renderDocument", () => {
       description: "d",
       canonicalPath: "/x",
       cssHref: "/assets/x.css",
-      fontsCssHref: "/assets/fonts-x.css",
-      criticalFontHref: "/fonts/archivo-latin-variable-0123abcd.woff2",
+      preloadFontHrefs: ["/fonts/archivo-latin-variable-0123abcd.woff2"],
       children: raw("<p></p>"),
     });
     expect(unsafe).not.toContain("<script>alert(1)</script>");
@@ -196,8 +218,7 @@ describe("renderDocument for the site root", () => {
     description: "Formalización minera.",
     canonicalPath: "/",
     cssHref: "/assets/globals-abc123.css",
-    fontsCssHref: "/assets/fonts-def456.css",
-    criticalFontHref: "/fonts/archivo-latin-variable-0123abcd.woff2",
+    preloadFontHrefs: ["/fonts/archivo-latin-variable-0123abcd.woff2"],
     children: raw("<main></main>"),
   });
 
@@ -213,8 +234,7 @@ describe("renderDocument without canonicalPath (404 page)", () => {
     description: "Formalización minera, instrumentos ambientales, ingeniería y asistencia técnica desde Piura, Perú.",
     robots: "noindex, follow",
     cssHref: "/assets/globals-abc123.css",
-    fontsCssHref: "/assets/fonts-def456.css",
-    criticalFontHref: "/fonts/archivo-latin-variable-0123abcd.woff2",
+    preloadFontHrefs: ["/fonts/archivo-latin-variable-0123abcd.woff2"],
     children: raw("<main><p>404</p></main>"),
   });
 
@@ -252,8 +272,7 @@ describe("renderDocument scriptSrcs (T7)", () => {
       description: "Planes de Seguridad y Salud Ocupacional.",
       canonicalPath: "/seguridad-minera",
       cssHref: "/assets/globals-abc123.css",
-      fontsCssHref: "/assets/fonts-def456.css",
-      criticalFontHref: "/fonts/archivo-latin-variable-0123abcd.woff2",
+      preloadFontHrefs: ["/fonts/archivo-latin-variable-0123abcd.woff2"],
       scriptSrcs: ["/assets/mobile-nav-aaa111.js", "/assets/consent-bbb222.js"],
       children: raw("<main><p>body</p></main>"),
     });
@@ -276,8 +295,7 @@ describe("renderDocument scriptSrcs (T7)", () => {
       title: "x",
       description: "y",
       cssHref: "/a.css",
-      fontsCssHref: "/b.css",
-      criticalFontHref: "/fonts/archivo-latin-variable-0123abcd.woff2",
+      preloadFontHrefs: ["/fonts/archivo-latin-variable-0123abcd.woff2"],
       scriptSrcs: ["/assets/consent-bbb222.js"],
       children: raw("<main></main>"),
     });

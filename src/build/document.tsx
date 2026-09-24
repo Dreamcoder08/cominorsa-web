@@ -14,7 +14,7 @@
 // theme-color, applicationName and JSON-LD stay site-wide.
 
 import { raw, render, type Child, type Html } from "../html/jsx-runtime";
-import { SITE_URL } from "./site-config";
+import { PAGE_BACKGROUND_COLOR, SITE_URL } from "./site-config";
 import { organizationJsonLd } from "./structured-data";
 
 const SITE_NAME = "COMINORSA";
@@ -23,7 +23,6 @@ const SITE_NAME = "COMINORSA";
 const SOCIAL_IMAGE = `${SITE_URL}/og.jpg`;
 const SOCIAL_IMAGE_TYPE = "image/jpeg";
 const SOCIAL_IMAGE_ALT = "COMINORSA — Consultoría minera y soluciones ambientales";
-const THEME_COLOR = "#fbf8ef";
 
 
 // G2: the JSON-LD block is the site's one raw-HTML sink. `raw()` applies
@@ -42,15 +41,10 @@ export function jsonLdScript(data: unknown): Html {
   return raw(JSON.stringify(data).replace(/</g, "\\u003c"));
 }
 
-// The only font actually critical to preload: Archivo is the `body`
-// font (see app/globals.css), so it's on the critical rendering path for
-// every page. Newsreader is an italic accent font used on a handful of
-// headings, and Geist Mono only renders small labels/kickers — neither
-// blocks first paint of the bulk of the page's text the way the body
-// font does, so preloading them too would spend early-load bandwidth on
-// lower-priority requests (T5's "preload only the critical font(s)").
-// The href is passed in (`criticalFontHref`) because the build
-// content-hashes font file names (P6).
+// Fonts to preload (P9): Archivo, the `body` font, on every page; the
+// homepage adds Newsreader italic, which its above-the-fold h1 <em>
+// uses. Geist Mono only renders small labels. Hrefs are passed in
+// because the build content-hashes font file names (P6).
 
 export type DocumentProps = {
   title: string;
@@ -77,12 +71,10 @@ export type DocumentProps = {
    * tag) on every other page, matching current production behavior.
    */
   robots?: string;
-  /** Absolute path to the built, hashed stylesheet, e.g. "/assets/globals-abc123.css". */
+  /** Absolute path to the built, hashed stylesheet (globals.css with the @font-face rules bundled in), e.g. "/assets/globals-abc123.css". */
   cssHref: string;
-  /** Absolute path to the built, hashed fonts stylesheet (src/build/fonts.css). */
-  fontsCssHref: string;
-  /** Absolute path to the content-hashed Archivo woff2 to preload, e.g. "/fonts/archivo-latin-variable-0123abcd.woff2". */
-  criticalFontHref: string;
+  /** Content-hashed woff2 hrefs to preload, in order, e.g. ["/fonts/archivo-latin-variable-0123abcd.woff2"]. */
+  preloadFontHrefs: readonly string[];
   /**
    * Absolute paths to built, hashed, minified ES modules (T7,
    * `src/build/js.ts`), rendered as `<script type="module" src="...">`
@@ -111,8 +103,7 @@ function Document({
   canonicalPath,
   robots,
   cssHref,
-  fontsCssHref,
-  criticalFontHref,
+  preloadFontHrefs,
   scriptSrcs,
   jsonLd,
   children,
@@ -147,7 +138,7 @@ function Document({
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={SOCIAL_IMAGE} />
 
-        <meta name="theme-color" content={THEME_COLOR} />
+        <meta name="theme-color" content={PAGE_BACKGROUND_COLOR} />
 
         <link rel="shortcut icon" href="/favicon.ico" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -156,9 +147,10 @@ function Document({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
 
-        <link rel="preload" href={criticalFontHref} as="font" type="font/woff2" crossorigin={true} />
+        {preloadFontHrefs.map((href) => (
+          <link rel="preload" href={href} as="font" type="font/woff2" crossorigin={true} />
+        ))}
         <link rel="stylesheet" href={cssHref} />
-        <link rel="stylesheet" href={fontsCssHref} />
 
         {[organizationJsonLd, ...(jsonLd ?? [])].map((data) => (
           <script type="application/ld+json">{jsonLdScript(data)}</script>

@@ -10,6 +10,13 @@
 //     name, city, service and question (`app/api/crm-lead/route.ts`).
 //   - It also opens WhatsApp with a prefilled message the visitor sends
 //     themself; that chat is governed by WhatsApp's own policy.
+//   - P11: Cloudflare Web Analytics runs on every page (the Cloudflare
+//     edge injects its beacon). Wording follows Cloudflare's own
+//     description (cloudflare.com/web-analytics, fetched 2026-09-24):
+//     "does not use any client-side state, such as cookies or
+//     localStorage", "don't 'fingerprint' individuals"; the listed
+//     data are its documented dimensions/metrics
+//     (developers.cloudflare.com/web-analytics/data-metrics/).
 //   - Google Analytics 4 is described only when the build has a GA
 //     measurement ID (`analyticsEnabled`, from `runStaticBuild`), and
 //     then only as opt-in.
@@ -25,7 +32,7 @@ import { SiteLayout } from "./site-shell";
 
 // Bump this date whenever the policy text changes (section 6 promises
 // the date at the top reflects the latest version).
-const PRIVACY_LAST_UPDATED = new Date(Date.UTC(2026, 8, 23));
+const PRIVACY_LAST_UPDATED = new Date(Date.UTC(2026, 8, 24));
 
 export const PRIVACY_LAST_UPDATED_LABEL = new Intl.DateTimeFormat("es-PE", {
   day: "numeric",
@@ -61,8 +68,8 @@ export function PrivacyPage({ analyticsEnabled = false }: { analyticsEnabled?: b
             </p>
             <p>
               {analyticsEnabled
-                ? "Además, solo si aceptas el aviso de cookies, recibimos datos de uso agregados a través de Google Analytics (ver sección 3)."
-                : "Este sitio no usa herramientas de analítica ni de publicidad (ver sección 3)."}
+                ? "Además, obtenemos estadísticas agregadas de visitas con Cloudflare Web Analytics, sin cookies, y, solo si aceptas el aviso de cookies, datos de uso agregados a través de Google Analytics (ver sección 3)."
+                : "Además, obtenemos estadísticas agregadas de visitas con Cloudflare Web Analytics, sin cookies (ver sección 3). No usamos herramientas de publicidad."}
             </p>
           </section>
 
@@ -97,13 +104,31 @@ export function PrivacyPage({ analyticsEnabled = false }: { analyticsEnabled?: b
 
           <section>
             <h2>3. Cookies y analítica</h2>
+            <p>
+              Usamos Cloudflare Web Analytics, el servicio de medición de
+              Cloudflare (el proveedor que aloja este sitio), para obtener
+              estadísticas agregadas de visitas: páginas vistas, sitio de
+              procedencia, país, tipo de dispositivo, navegador, sistema
+              operativo y tiempos de carga. Según Cloudflare, esta
+              herramienta no usa cookies ni otro almacenamiento en tu
+              navegador y no identifica a los visitantes de forma
+              individual. Más detalles en la{" "}
+              <a
+                href="https://www.cloudflare.com/privacypolicy/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Política de Privacidad de Cloudflare
+              </a>
+              .
+            </p>
             {analyticsEnabled ? (
               <p>
                 Usamos Google Analytics 4 para entender de forma agregada cómo
                 se navega este sitio (páginas visitadas, tiempo de permanencia,
                 origen de la visita). Esta herramienta solo se activa si
                 aceptas el aviso de cookies que aparece al ingresar; si lo
-                rechazas, no se carga ningún script de analítica y no se genera
+                rechazas, no se carga Google Analytics y no se genera
                 ninguna cookie de este tipo. Tu decisión se guarda en tu
                 navegador y puedes cambiarla en cualquier momento desde
                 “Preferencias de cookies”, en el pie de página. No
@@ -112,10 +137,10 @@ export function PrivacyPage({ analyticsEnabled = false }: { analyticsEnabled?: b
               </p>
             ) : (
               <p>
-                Este sitio no usa herramientas de analítica ni píxeles de
-                publicidad, y no instala cookies de rastreo. Si en el futuro
-                incorporamos una herramienta de analítica, solo se activará si
-                la aceptas expresamente y actualizaremos esta política.
+                No usamos píxeles de publicidad ni instalamos cookies de
+                rastreo. Si en el futuro incorporamos una herramienta de
+                analítica que use cookies, solo se activará si la aceptas
+                expresamente y actualizaremos esta política.
               </p>
             )}
           </section>
@@ -128,8 +153,8 @@ export function PrivacyPage({ analyticsEnabled = false }: { analyticsEnabled?: b
               servicio que solicitas y dar seguimiento a la relación
               profesional, en caso de que decidas continuar con nosotros.
               {analyticsEnabled
-                ? " Los datos de uso agregados de Google Analytics (cuando los aceptas) los usamos solo para entender qué páginas funcionan mejor y mejorar el sitio."
-                : ""}{" "}
+                ? " Las estadísticas agregadas de visitas, y los datos de uso de Google Analytics cuando los aceptas, los usamos solo para entender qué páginas funcionan mejor y mejorar el sitio."
+                : " Las estadísticas agregadas de visitas las usamos solo para entender qué páginas funcionan mejor y mejorar el sitio."}{" "}
               No vendemos ni compartimos tu información con terceros para
               fines comerciales ajenos a tu consulta. Conservamos los datos
               solo el tiempo necesario para atender tu consulta y cumplir

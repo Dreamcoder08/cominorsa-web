@@ -19,8 +19,8 @@ describe("PrivacyPage", () => {
     expect(html).toContain("<h1>Política de Privacidad</h1>");
     // CLDR's es-PE month name is "setiembre" (the usual Peruvian
     // spelling, also RAE-accepted) — identical under Bun (JSC) and Node.
-    expect(PRIVACY_LAST_UPDATED_LABEL).toBe("23 de setiembre de 2026");
-    expect(html).toContain("Última actualización: 23 de setiembre de 2026.");
+    expect(PRIVACY_LAST_UPDATED_LABEL).toBe("24 de setiembre de 2026");
+    expect(html).toContain("Última actualización: 24 de setiembre de 2026.");
     expect(html).not.toContain("Última actualización: 2026.");
   });
 
@@ -72,10 +72,21 @@ describe("PrivacyPage", () => {
     expect(html).not.toMatch(/@[a-z0-9-]+\.[a-z]/i);
   });
 
-  test("without a GA ID: states no analytics is used and mentions no cookie preferences control", () => {
+  test("without a GA ID: mentions no Google Analytics and no cookie preferences control", () => {
     expect(html).not.toContain("Google Analytics");
     expect(html).not.toContain("Preferencias de cookies");
-    expect(html).toContain("no usa herramientas de analítica");
+  });
+
+  // P11: the Cloudflare edge injects Web Analytics on every page, so the
+  // old "no usa herramientas de analítica" sentence became false.
+  test("P11: discloses Cloudflare Web Analytics as cookieless, aggregated statistics — with or without GA", () => {
+    for (const page of [html, htmlWithAnalytics]) {
+      expect(page).toContain("Cloudflare Web Analytics");
+      expect(page).toContain("no usa cookies");
+      expect(page).toContain("estadísticas agregadas");
+      expect(page).not.toContain("no usa herramientas de analítica");
+      expect(page).not.toContain("ningún script de analítica");
+    }
   });
 
   test("with a GA ID: describes GA4 as opt-in and points to the preferences control", () => {

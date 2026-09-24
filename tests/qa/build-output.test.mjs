@@ -30,11 +30,11 @@ test("dist-static/ has the expected pages, including the homepage and 404", asyn
   }
 });
 
-test("dist-static/assets has hashed CSS and JS bundles", async () => {
+test("dist-static/assets has the hashed JS bundles and no CSS file", async () => {
   const entries = await readdir(ASSETS);
-  assert.ok(entries.some((f) => /^globals-.+\.css$/.test(f)), "globals-*.css missing");
-  // P9: @font-face rules are bundled into globals-*.css (one stylesheet).
-  assert.ok(!entries.some((f) => /^fonts-.+\.css$/.test(f)), "stray fonts-*.css (should be bundled)");
+  // P11: the one stylesheet (P9: @font-face bundled in) is inlined into
+  // every page, so no CSS file ships.
+  assert.ok(!entries.some((f) => f.endsWith(".css")), `stray CSS file (should be inlined): ${entries}`);
   assert.ok(entries.some((f) => /^mobile-nav-entry-.+\.js$/.test(f)), "mobile-nav-entry-*.js missing");
   assert.ok(entries.some((f) => /^consent-entry-.+\.js$/.test(f)), "consent-entry-*.js missing");
   assert.ok(entries.some((f) => /^consultation-form-entry-.+\.js$/.test(f)), "consultation-form-entry-*.js missing");
@@ -71,7 +71,7 @@ test("wrangler.jsonc keeps dashboard-managed vars on deploy", async () => {
 });
 
 test("public/ has copied favicons and images into dist-static (public assets are copied verbatim)", async () => {
-  for (const f of ["favicon.ico", "apple-touch-icon.png", "og.jpg", "logo-44.png"]) {
+  for (const f of ["favicon.ico", "apple-touch-icon.png", "og.jpg", "logo-44.webp"]) {
     assert.ok(await exists(join(DIST_STATIC, f)), `${f} missing from dist-static/`);
   }
 });
@@ -152,6 +152,29 @@ test("public/og.jpg weighs at most 200 KB", async () => {
   assert.ok(s.size <= 200 * 1024, `og.jpg too heavy: ${s.size} bytes`);
 });
 
+// P11 (Lighthouse modern-image-formats): the header/footer logo is a
+// lossy WebP at the PNG's own 88×85 (2× of its 44 px box).
+test("public/logo-44.webp is a real 88×85 WebP, lighter than 6 KB, and the PNG is gone", async () => {
+  const bytes = await readFile(join(PUBLIC, "logo-44.webp"));
+  assert.equal(bytes.subarray(0, 4).toString("ascii"), "RIFF");
+  assert.equal(bytes.subarray(8, 12).toString("ascii"), "WEBP");
+  assert.ok(bytes.length < 6 * 1024, `logo-44.webp too heavy: ${bytes.length} bytes`);
+  const chunk = bytes.subarray(12, 16).toString("ascii");
+  let width;
+  let height;
+  if (chunk === "VP8X") {
+    width = 1 + bytes.readUIntLE(24, 3);
+    height = 1 + bytes.readUIntLE(27, 3);
+  } else if (chunk === "VP8 ") {
+    width = bytes.readUInt16LE(26) & 0x3fff;
+    height = bytes.readUInt16LE(28) & 0x3fff;
+  } else {
+    assert.fail(`unexpected WebP chunk ${chunk} (expected lossy)`);
+  }
+  assert.deepEqual([width, height], [88, 85]);
+  assert.equal(await exists(join(PUBLIC, "logo-44.png")), false);
+});
+
 test("no stale og.png ships alongside og.jpg", async () => {
   assert.equal(await exists(join(PUBLIC, "og.png")), false);
 });
@@ -169,7 +192,7 @@ test("dist-static/ root holds only pages, generated files, and referenced assets
     "favicon-32x32.png",
     "apple-touch-icon.png",
     "og.jpg",
-    "logo-44.png",
+    "logo-44.webp",
     "assets",
     "fonts",
   ]);
@@ -193,23 +216,22 @@ test("every same-site URL referenced by the built HTML and CSS resolves to a shi
   };
 
   const pages = (await readdir(DIST_STATIC)).filter((f) => f.endsWith(".html"));
-  const cssFiles = (await readdir(ASSETS)).filter((f) => f.endsWith(".css"));
   const missing = [];
 
   for (const page of pages) {
     const html = await readFile(join(DIST_STATIC, page), "utf8");
+    // P11: CSS is inlined — check its url()s (fonts) per page.
+    for (const [, css] of html.matchAll(/<style>([\s\S]*?)<\/style>/g)) {
+      for (const [, url] of css.matchAll(/url\(["']?(\/[^"')]+)["']?\)/g)) {
+        if (!(await resolvesTo(url))) missing.push(`${page} <style>: ${url}`);
+      }
+    }
     for (const [, url] of html.matchAll(/(?:href|src|content)="([^"]+)"/g)) {
       let pathname;
       if (url.startsWith("https://cominorsa.com/")) pathname = new URL(url).pathname;
       else if (url.startsWith("/") && !url.startsWith("//")) pathname = url.split(/[?#]/)[0];
       else continue;
       if (pathname === "" || !(await resolvesTo(pathname))) missing.push(`${page}: ${url}`);
-    }
-  }
-  for (const css of cssFiles) {
-    const text = await readFile(join(ASSETS, css), "utf8");
-    for (const [, url] of text.matchAll(/url\(["']?(\/[^"')]+)["']?\)/g)) {
-      if (!(await resolvesTo(url))) missing.push(`${css}: ${url}`);
     }
   }
   assert.deepEqual(missing, []);

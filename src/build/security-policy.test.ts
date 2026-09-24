@@ -46,6 +46,22 @@ describe("buildCsp", () => {
     expect(directive("connect-src")).toContain("https://*.analytics.google.com");
   });
 
+  // P11: Cloudflare Web Analytics, auto-injected by the edge into HTML
+  // (developers.cloudflare.com/web-analytics/faq/#what-do-i-need-to-add-to-my-content-security-policy-csp).
+  // The injected snippet carries `"version"` in data-cf-beacon, and the
+  // beacon then reports to the same-origin `/cdn-cgi/rum` (only a manual
+  // snippet reports to cloudflareinsights.com) — so connect-src needs
+  // nothing beyond 'self'.
+  test("P11: script-src allows the Cloudflare Web Analytics beacon host; its reports stay same-origin", () => {
+    expect(directive("script-src").trim().split(/\s+/)).toEqual([
+      "'self'",
+      "https://www.googletagmanager.com",
+      "https://static.cloudflareinsights.com",
+    ]);
+    expect(directive("connect-src")).toContain("'self'");
+    expect(directive("connect-src")).not.toContain("cloudflareinsights");
+  });
+
   test("keeps the WhatsApp allow-list untouched (img-src, connect-src, form-action)", () => {
     expect(directive("img-src")).toContain("https://wa.me");
     expect(directive("connect-src")).toContain("https://wa.me");
@@ -64,6 +80,17 @@ describe("buildCsp", () => {
   test("style-src is 'self' only — no 'unsafe-inline'", () => {
     expect(directive("style-src").trim()).toBe("'self'");
     expect(csp).not.toContain("'unsafe-inline'");
+  });
+
+  // P11: the built stylesheet is inlined as one <style> element; the
+  // build passes its sha256 so style-src allows exactly those bytes.
+  test("P11: style-src adds exactly the given style hashes, still without 'unsafe-inline'", () => {
+    const hashed = buildCsp({ styleHashes: ["sha256-AbC+/12=", "sha256-XyZ="] });
+    const styleSrc = hashed.match(/style-src([^;]*)/)?.[1]?.trim();
+    expect(styleSrc).toBe("'self' 'sha256-AbC+/12=' 'sha256-XyZ='");
+    expect(hashed).not.toContain("'unsafe-inline'");
+    // Every other directive is unchanged.
+    expect(hashed.replace(/style-src[^;]*/, "")).toBe(csp.replace(/style-src[^;]*/, ""));
   });
 
   test("no wildcard default-src, no unsafe-eval anywhere", () => {

@@ -1,7 +1,8 @@
 // src/build/build.ts
 //
-// The static build pipeline: bundles+minifies+hashes `app/globals.css`
-// with `fonts.css` bundled in (one stylesheet, P9) via `Bun.build`, copies `public/` assets, and renders
+// The static build pipeline: bundles+minifies `app/globals.css` with
+// `fonts.css` bundled in (one stylesheet, P9) via `Bun.build` and inlines
+// it into every page (P11), copies `public/` assets, and renders
 // every route in `routes.ts`'s `PAGE_ROUTES` table (including the
 // homepage, T6b) into a flat `<slug>.html` file. Run with `bun run
 // build:static` (`package.json`);
@@ -120,13 +121,16 @@ async function buildFonts(outDir: string): Promise<Map<string, string>> {
 /**
  * Bundles the site stylesheet: `fonts.css` (every `/fonts/<name>.woff2`
  * URL rewritten to its hashed href) followed by `app/globals.css`, into
- * ONE `globals-<hash>.css` (P9, audit P2-8: the separate fonts
- * stylesheet was a second render-blocking request for ~1.5 KB). Bun.build
- * needs an entry file on disk, so a throwaway temp dir holds the
- * rewritten fonts.css and a `globals.css` entry that `@import`s both —
- * same base name, so the output keeps its `globals-<hash>.css` name.
+ * ONE minified stylesheet (P9, audit P2-8), returned as text.
+ *
+ * P11 (Lighthouse `render-blocking-resources`, ~300 ms on slow 4G): the
+ * CSS (~8 KB gzip) is inlined into every page's `<head>` instead of
+ * shipped as `/assets/globals-<hash>.css`, so nothing is written to the
+ * output. Bun.build needs an entry file on disk, so a throwaway temp dir
+ * holds the rewritten fonts.css, an entry that `@import`s both, and the
+ * bundle itself.
  */
-async function buildSiteCss(outDir: string, fontHrefs: Map<string, string>) {
+async function buildSiteCss(fontHrefs: Map<string, string>): Promise<string> {
   const source = await Bun.file(FONTS_CSS_ENTRY).text();
   const rewritten = source.replace(/\/fonts\/([a-z0-9-]+\.woff2)/g, (match, fileName: string) => {
     const href = fontHrefs.get(fileName);
@@ -142,12 +146,30 @@ async function buildSiteCss(outDir: string, fontHrefs: Map<string, string>) {
     await Bun.write(entry, `@import ${JSON.stringify(fontsEntry)};\n@import ${JSON.stringify(CSS_ENTRY)};\n`);
     // The woff2 URLs are root-relative public paths, not local files —
     // Bun's bundler must pass them through, not resolve/inline them.
-    return await buildCss(entry, join(outDir, ASSETS_DIR_NAME), {
+    const { path } = await buildCss(entry, join(tempDir, "out"), {
       external: [`/${FONTS_DIR_NAME}/*`],
     });
+    return assertInlinableCss(await Bun.file(path).text());
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
+}
+
+/**
+ * The CSP hash must match the `<style>` text the browser sees, byte for
+ * byte. `</style` would end the element early, and the HTML parser
+ * rewrites CR/CRLF to LF before hashing — either would break the match
+ * silently, so fail the build instead.
+ */
+function assertInlinableCss(css: string): string {
+  if (/<\/style/i.test(css)) throw new Error("built CSS contains `</style`; it cannot be inlined");
+  if (css.includes("\r")) throw new Error("built CSS contains a CR; its CSP hash would not match");
+  return css;
+}
+
+/** CSP hash source for an inline element's exact text, e.g. "sha256-<base64>". */
+function cspHash(text: string): string {
+  return `sha256-${new Bun.CryptoHasher("sha256").update(text).digest("base64")}`;
 }
 
 /**
@@ -155,12 +177,12 @@ async function buildSiteCss(outDir: string, fontHrefs: Map<string, string>) {
  * none of these vary per page, so they're written once at the output
  * root rather than looped per route like writePage.
  */
-async function writeGeneratedFiles(outDir: string): Promise<void> {
+async function writeGeneratedFiles(outDir: string, styleHash: string): Promise<void> {
   await Promise.all([
     Bun.write(join(outDir, "sitemap.xml"), buildSitemapXml(SITEMAP_LAST_MODIFIED)),
     Bun.write(join(outDir, "robots.txt"), buildRobotsTxt()),
     Bun.write(join(outDir, "manifest.webmanifest"), buildWebManifest()),
-    Bun.write(join(outDir, "_headers"), buildHeadersFile()),
+    Bun.write(join(outDir, "_headers"), buildHeadersFile({ styleHashes: [styleHash] })),
   ]);
 }
 
@@ -188,7 +210,7 @@ export type StaticBuildOptions = {
 export async function runStaticBuild(
   outDir: string,
   options: StaticBuildOptions = {},
-): Promise<{ cssFileName: string }> {
+): Promise<{ styleHash: string }> {
   const gaMeasurementId = (
     options.gaMeasurementId ?? process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? ""
   ).trim();
@@ -199,11 +221,11 @@ export async function runStaticBuild(
   const editorialFontHref = fontHrefs.get(EDITORIAL_FONT_SOURCE);
   if (!bodyFontHref) throw new Error(`font missing: public/fonts/${BODY_FONT_SOURCE}`);
   if (!editorialFontHref) throw new Error(`font missing: public/fonts/${EDITORIAL_FONT_SOURCE}`);
-  const { fileName: cssFileName } = await buildSiteCss(outDir, fontHrefs);
-  const cssHref = `/${ASSETS_DIR_NAME}/${cssFileName}`;
+  const inlineCss = await buildSiteCss(fontHrefs);
+  const styleHash = cspHash(inlineCss);
 
   await copyPublicAssets(outDir);
-  await writeGeneratedFiles(outDir);
+  await writeGeneratedFiles(outDir, styleHash);
 
   const { mobileNavHref, consentHref, consultationFormHref } = await buildClientScripts(
     outDir,
@@ -221,7 +243,7 @@ export async function runStaticBuild(
       description: route.description,
       canonicalPath: route.canonicalPath,
       robots: route.robots,
-      cssHref,
+      inlineCss,
       preloadFontHrefs: route.preloadEditorialFont
         ? [bodyFontHref, editorialFontHref]
         : [bodyFontHref],
@@ -233,13 +255,13 @@ export async function runStaticBuild(
     await writePage(outDir, route.slug, html);
   }
 
-  return { cssFileName };
+  return { styleHash };
 }
 
 if (import.meta.main) {
   const outDir = join(ROOT, "dist-static");
   await Bun.$`rm -rf ${outDir}`.quiet();
-  const { cssFileName } = await runStaticBuild(outDir);
+  const { styleHash } = await runStaticBuild(outDir);
   console.log(`Built ${relative(ROOT, outDir)}/ (${PAGE_ROUTES.length} pages)`);
-  console.log(`CSS: ${ASSETS_DIR_NAME}/${cssFileName}`);
+  console.log(`CSS: inlined, CSP '${styleHash}'`);
 }

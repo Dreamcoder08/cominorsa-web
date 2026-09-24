@@ -139,7 +139,12 @@ pnpm exec wrangler rollback --message "regresando a versión estable"
 
 ### Redirección `www` → dominio raíz (301)
 
-`https://www.cominorsa.com/` responde **200** con el mismo contenido
+**Estado: aplicada el 2026-09-24** (plantilla *Redirect from WWW to root*:
+`https://www.*` → `https://${1}`, 301, *Preserve query string* activado).
+Verificado: `www.cominorsa.com/seguridad-minera?utm_source=test` → 301
+`https://cominorsa.com/seguridad-minera?utm_source=test`.
+
+Antes de la regla, `https://www.cominorsa.com/` respondía **200** con el mismo contenido
 (verificado 2026-09-23 con `curl -sI https://www.cominorsa.com/`), así
 que existen dos copias del sitio para los buscadores. Las páginas ya
 declaran `<link rel="canonical">` hacia `https://cominorsa.com/…`, pero
@@ -227,29 +232,29 @@ El endpoint del formulario tiene tres capas (P4 de
    {"ok":true}` y **no** llama a Twenty ni a Resend.
 3. **Rate limiting (en el dashboard de Cloudflare, no en el Worker)** —
    un script puede falsificar `Origin`, así que el límite por IP lo
-   pone Cloudflare delante del Worker. Paso manual (no se aplicó desde
-   este repo, no hay llamadas a la API de Cloudflare):
+   pone Cloudflare delante del Worker. **Aplicado el 2026-09-24** desde
+   el dashboard (zona en plan Free):
 
-   1. Dashboard → zona `cominorsa.com` → **Security → WAF → Rate
-      limiting rules** → **Create rule**.
-   2. Nombre: `crm-lead POST por IP`.
+   1. Dashboard → zona `cominorsa.com` → **Security → Security rules →
+      Create rule → Rate limiting rules**.
+   2. Nombre: `Rate limit crm-lead POST`.
    3. Expresión (editor de expresiones):
 
       ```
       (http.request.uri.path eq "/api/crm-lead" and http.request.method eq "POST")
       ```
 
-   4. Contar por: **IP**. Umbral: **5 requests / 1 minuto**. Acción:
-      **Block** durante **10 minutos**.
-   5. Deploy y probar: 6 `POST` seguidos desde la misma IP → el sexto
-      recibe `429`.
+   4. Contar por: **IP**. Umbral: **3 requests / 10 segundos**. Acción:
+      **Block** durante **10 segundos**. El plan Free permite una sola
+      regla de rate limiting, con período y bloqueo fijos de 10 s.
+   5. Verificado: 6 `POST` seguidos desde la misma IP →
+      `403 403 403 429 429 429`; a los 10 s vuelve a aceptar; `GET /`
+      no se ve afectado.
 
-   Los períodos y duraciones disponibles dependen del plan de la zona
-   (el plan Free sólo ofrece períodos cortos, p. ej. 10 s; revisar las
-   opciones que muestra el dashboard). Con períodos cortos, usar el
-   equivalente más cercano (p. ej. 2 requests / 10 s). Una persona real
-   envía el formulario una vez; el límite no afecta el handoff a
-   WhatsApp, que no depende de esta respuesta.
+   Una persona real envía el formulario una vez; el límite no afecta el
+   handoff a WhatsApp, que no depende de esta respuesta. Con un plan
+   superior se puede ampliar a p. ej. 5 requests / 1 min con bloqueo de
+   10 min.
 
 `/api/next-business-day` **no** lleva guardia de origen ni rate limit:
 lo llama el workflow de Twenty CRM desde su servidor (nodo HTTP
@@ -294,11 +299,16 @@ Probable mismatch de compatibilidad. Verificá en `wrangler.jsonc`:
 Si Cloudflare actualizó la versión default, bumpear `compatibility_date`
 a mano (deliberadamente, no en cada deploy rutinario).
 
-### El sitio carga pero sin estilos (CSS 404)
+### El sitio carga pero sin estilos
 
-Verificar que `dist-static/assets/globals-*.css` existe (`pnpm run
-build` lo genera) y que `wrangler.jsonc`'s `assets.directory` apunta a
-`"dist-static"`.
+El CSS va inline en un `<style>` de cada página y la CSP lo permite por
+su hash (`style-src 'self' 'sha256-…'` en `dist-static/_headers`, ambos
+generados por el mismo `pnpm run build`). Si la consola muestra una
+violación de `style-src`, el HTML y el `_headers` desplegados vienen de
+builds distintos, o algo (p. ej. una optimización de HTML en el panel
+de Cloudflare) reescribió el `<style>`: volver a desplegar un build
+limpio y desactivar esa reescritura. Verificar también que
+`wrangler.jsonc`'s `assets.directory` apunta a `"dist-static"`.
 
 ### Cambios en código no se reflejan
 

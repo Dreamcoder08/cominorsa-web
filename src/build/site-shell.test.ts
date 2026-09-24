@@ -34,10 +34,25 @@ describe("SiteHeader", () => {
     expect(html).toContain('aria-label="COMINORSA, inicio"');
   });
 
+  // P11 (Lighthouse modern-image-formats): the logo ships as WebP;
+  // size attributes and the decorative empty alt are unchanged.
+  test("P11: the header logo is the WebP, 44×44, decorative", () => {
+    expect(html).toContain('<img src="/logo-44.webp" alt="" width="44" height="44">');
+    expect(html).not.toContain("logo-44.png");
+  });
+
   test("mobile nav toggle renders inert/closed static markup (T7 leftover)", () => {
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain('data-open="false"');
     expect(html).toContain("inert");
+  });
+});
+
+describe("SiteFooter (P11 logo)", () => {
+  test("the footer logo is the same WebP, 44×44, lazy", () => {
+    const footer = render(SiteFooter({ basePath: "/" }));
+    expect(footer).toContain('<img src="/logo-44.webp" alt="" width="44" height="44" loading="lazy">');
+    expect(footer).not.toContain("logo-44.png");
   });
 });
 

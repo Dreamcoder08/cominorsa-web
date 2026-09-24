@@ -89,7 +89,7 @@ describe("PAGE_ROUTES", () => {
     const home = PAGE_ROUTES.find((r) => r.slug === "")!;
     const html = render(home.render());
     expect(html).toContain('<span class="reveal-line">Técnica que impulsa.</span>');
-    expect(html).toContain('<form class="consultation-form" id="consultation-form">');
+    expect(html).toContain('<form class="consultation-form" id="consultation-form" method="post">');
   });
 
   test("the seguridad-minera route renders its known h1 (parity with the pre-route-table build)", () => {

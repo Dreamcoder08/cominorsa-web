@@ -6,7 +6,8 @@ on:
   pull_request:
     branches:
       - main
-      - "feat/bun-vanilla-migration**"
+      # Slice PRs target feature tracker branches (feat/landing-polish, …).
+      - "feat/**"
 
 # Cancel in-flight runs for the same branch on rapid pushes.
 concurrency:

@@ -131,9 +131,25 @@ Legal accuracy (Ley 29733), search visibility and trust drive leads.
         POST deliberately not sent (`.env` has `TWENTY_API_*`).
         Playwright: honeypot never reached by Tab, `clip-path: inset(50%)`,
         no layout gap in the form (1440/390).
-- [ ] **P5 — Service pages & JSON-LD** (P1-8, P1-10): related services,
+- [x] **P5 — Service pages & JSON-LD** (P1-8, P1-10): related services,
       `BreadcrumbList`, `Service`, enriched `ProfessionalService` with
-      only verified data. Route: delegated writer.
+      only verified data. Route: delegated writer. Commit `c92e453`.
+      - Service pages: breadcrumb `nav[aria-label="Migas de pan"]`
+        (Inicio › Servicios › `pageTitle`), "Preguntas frecuentes" links
+        to mapped FAQ anchors (new `FaqEntry.id`/`serviceSlug`, mapped by
+        existing question text; trámites has none), "Otros servicios"
+        with the 5 siblings (`pageTitle` + `description`). No new copy.
+      - `structured-data.ts`: `ProfessionalService` `@id`
+        `https://cominorsa.com/#organization`, `contactPoint` ×2 (both
+        WhatsApp lines), `logo` `/apple-touch-icon.png` (180×180 logo
+        mark; `logo-44.png` is 88×85), `image` `/og.jpg`, `areaServed`
+        ["Piura, Perú", "Norte del Perú"] (hero eyebrow + FAQ). Per
+        service page: `Service` (`provider` → `@id`) + `BreadcrumbList`
+        (positions 1–3, absolute URLs). No `geo`/hours/`email`/`sameAs`.
+      - RED: `service-page.test.ts` 12 fail (`expect(block).not.toBeNull()`
+        received null), `faq.test.ts` 2 fail, `structured-data.test.ts`
+        module missing, `build.test.ts` P5 `expected 6, received 0` →
+        GREEN 281 pass.
 - [x] **P6 — Image & cache weight** (P1-3, P2-10, P2-12). Route:
       delegated writer. Commit `ecd8792`.
       - OG: `og.png` 715 180 B → `og.jpg` 149 876 B (1200×630, baseline
@@ -158,8 +174,24 @@ Legal accuracy (Ley 29733), search visibility and trust drive leads.
         `/og.png`, `/file.svg` 404. Gotcha: a 404 under `/fonts/*` (old
         unhashed URL) also gets the immutable header — harmless since
         HTML is always revalidated.
-- [ ] **P7 — Form UX & robustness** (P2-6, P2-7, P2-3). Route: delegated
-      writer.
+- [x] **P7 — Form UX & robustness** (P2-6, P2-7, P2-3). Route: delegated
+      writer. Commit `7a0e15b`.
+      - Submit renders enabled; form is `method="post"` (a submit before
+        the script attaches, or with JS off, never puts PII in a URL —
+        the static host answers 405 and stores nothing; trade-off: a
+        no-JS submit shows that 405). `<noscript>` line links
+        `wa.me/51910728575` with the default inquiry text. JS sets
+        `form[data-enhanced]` as the e2e readiness marker.
+      - Status: "Preparamos tu mensaje en WhatsApp. Revísalo y envíalo…"
+        + link "Si WhatsApp no se abrió, toca aquí" → the same wa.me URL
+        (DOM-built, no innerHTML). Placeholders end with "…".
+      - Contrast (contrast-check.mjs): field border 1.58:1 →
+        `--copper-ink` 9.51:1 on `--white`, 8.94:1 on `--paper`; focus
+        2px `--copper-ink` outline, offset 2px (8.94:1).
+      - RED: `consultation-form.test.ts` 7 fail, `globals-css.test.ts` 2
+        fail; e2e P7 specs run RED against the pre-change build (4 failed:
+        `Received: disabled`, fallback link `element(s) not found`) →
+        GREEN (form specs 22 passed).
 - [x] **P8 — Copy fixes** (P2-1 voseo on 404 + shell, P2-15 quotes).
       IGAFOM framing (P2-2) needs client confirmation (untouched). Route:
       delegated writer. Commit `44014f3`.
@@ -171,10 +203,43 @@ Legal accuracy (Ley 29733), search visibility and trust drive leads.
         (404 shell, landmarks, GA button on 404, copy scan) → GREEN 250
         pass. Copy scan re-run with the old privacy text proves it
         catches the straight quotes in the GA build.
-- [ ] **P9 — Performance & CSS polish** (P2-8, P2-9, P2-11, P2-13,
-      P2-15 tokens). Route: delegated writer.
-- [ ] **P10 — Migration follow-up T12**: `pnpm shots` screenshot script
-      (used >2 times) + skill update. Route: inline.
+- [x] **P9 — Performance & CSS polish** (P2-8, P2-9, P2-11, P2-13,
+      P2-15 tokens). Route: delegated writer. Commit `31e06c1`.
+      - `fonts.css` bundled into `globals-<hash>.css`: CSS requests 2 → 1
+        per page (transfer 8 342 → 8 193 B, decoded 33 235 → 35 290 B,
+        `wrangler dev`). Home preloads Newsreader italic too: its load
+        finished at ~850–1 100 ms before, ~50–90 ms after (headless, 390
+        px).
+      - Hero reveal: clip-path mask → transform + opacity from 0.4 (never
+        hidden). Chrome's LCP entry was already ≈FCP before (~870–1 000
+        ms locally) and still is — the gain is the h1 being visible from
+        first paint, not the local metric. Reduced motion unchanged.
+      - CSP `style-src 'self'` (no `'unsafe-inline'`): no `style=`/
+        `<style>` in built HTML (new guard); Playwright console check on
+        all 11 pages (with and without GA ID, and after accepting GA
+        consent) → 0 CSP violations.
+      - `theme-color` and manifest colours → `--paper` `#f6f1e2` (was
+        `#fbf8ef` / `#001713` + `#f4eed9`).
+      - Global `text-wrap: balance` (h1–h3) / `pretty` (p, li,
+        blockquote). Channel tokens `--ink-rgb`, `--copper-rgb`,
+        `--copper-light-rgb`, `--white-rgb`, `--line-rgb`; all
+        `rgba(255,253,247,…)` → `--white-rgb`, `rgba(243,207,89,…)` →
+        `--copper-rgb`. Lowest affected text: `.section-kicker.light`
+        4.72 → 4.57:1, `.footer-meta` 4.91 → 4.75:1 (still ≥ 4.5).
+        Lint test allows only 8 remaining literals (token gaps: Preflight
+        `#0000`, hero gradient greens, contour line, copper-orange glow,
+        card and form shadows).
+      - RED: 15 fail (CSP, manifest, theme-color, preloads, stylesheet
+        count, reveal, text-wrap, colour lint) → GREEN 295 pass.
+- [x] **P10 — Migration follow-up T12**: `pnpm shots` screenshot script
+      (used >2 times) + skill update. Route: delegated writer (bundled
+      with P5–P9). Commit `42e454f`.
+      - `ci.yml` `pull_request.branches`: `main` + `"feat/**"` (push to
+        `main` kept). RED `ci-workflow.test.mjs` 1 fail → GREEN.
+      - `scripts/screenshots.mjs` + `pnpm shots <baseUrl> <outDir>
+        <paths…>` (1440/390 full page, `home-1440.png` naming, refuses
+        `test-results/`); `cominorsa-run` skill step 3 uses it. RED
+        `ERR_MODULE_NOT_FOUND` → GREEN 5 pass.
 - [ ] **BLOCKED — Trust section** (P1-9): needs real data from the
       client.
 
@@ -200,6 +265,9 @@ Client-review items raised by P1 (also for the PR description):
   response time, email.
 - IGAFOM framing ("IGAFOM de Cierre" as separate service vs. included).
 - `.env.example` stale `vinext` comment (harness blocks `.env*` edits).
+- Structured data gaps (P5, not on the site so not in JSON-LD): email,
+  opening hours, geo coordinates, social profiles (`sameAs`), a square
+  logo ≥ 112 px other than the favicon mark.
 - Cloudflare WAF rate-limiting rule for `POST /api/crm-lead`
   (`DEPLOY.md`) — dashboard step for the zone owner.
 
@@ -218,6 +286,17 @@ Progress section links each task to its IDs; the raw audit is summarized
 in Engram topic `odd/landing-polish/audit`.
 
 ## Progress
+
+- 2026-09-24: P5, P7, P9, P10 done on `feat/landing-polish-p5` (commits
+  `c92e453`, `7a0e15b`, `31e06c1`, `42e454f`). `git diff --shortstat
+  feat/landing-polish...HEAD` → 34 files changed, 1102 insertions(+),
+  256 deletions(-) before this document update. Checks: `pnpm validate`
+  OK (1 known `.env` warning), `pnpm lint` 0, `pnpm typecheck` 0, `bun
+  test src/` 295 pass / 0 fail, `pnpm build` 11 pages, `pnpm test` 192
+  pass / 0 fail, `pnpm test:e2e` 58 passed (first attempt: wrangler's
+  local proxy crashed "Network connection lost" → 45 ERR_CONNECTION_REFUSED;
+  rerun clean). Screenshots before/after (1440/390) in the session
+  scratchpad `polish-p5/`. Engram mirror update left to the orchestrator.
 
 - 2026-09-23: P4, P6, P8 done on `feat/landing-polish-p4` (commits
   `5cb0021`, `ecd8792`, `44014f3`). `git diff --shortstat
@@ -257,8 +336,19 @@ in Engram topic `odd/landing-polish/audit`.
   `feat/bun-vanilla-migration**`; slice PRs into `feat/landing-polish`
   get no CI — fix in P10 (trigger on `feat/**`).
 
+- Slice 2 (P4, P6, P8): PR #11 → tracker #12 → `main` (`0e8b5d6`),
+  deployed 2026-09-23. Rollback point before it:
+  `79193eec-0111-41dc-ace7-30a4737a5046`. Live: routes 200/404, `og.jpg`
+  200 (1-day cache), `og.png` 404, 404 copy without voseo, curl without
+  Origin → 403. **Chrome (real browser) same-origin POST with the
+  honeypot filled → 200 `{"ok":true}` on the preview and on production**
+  (proves real leads pass the origin gate; honeypot prevents a real CRM
+  record).
+
 ## Next step
 
-Slice 2 (P4, P6, P8) ready for PR into `feat/landing-polish`. Then
-slice 3: P5 (service pages & JSON-LD), P7 (form UX), P9 (performance &
-CSS polish).
+Slice 3 (P5, P7, P9, P10) ready for PR `feat/landing-polish-p5` →
+`feat/landing-polish` (CI now triggers on it). After merge to `main`,
+verify live: JSON-LD in Google's Rich Results test, CSP header without
+`'unsafe-inline'` and no console violations. Remaining: BLOCKED trust
+section (client data).

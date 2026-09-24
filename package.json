@@ -21,6 +21,7 @@
     "verify": "pnpm typecheck && bun test src/ && pnpm test",
     "types:worker": "wrangler types worker-configuration.d.ts --config wrangler.jsonc --include-env=false",
     "bundle:report": "node scripts/bundle-report.mjs",
+    "shots": "node scripts/screenshots.mjs",
     "crm:export": "node scripts/generate-crm-import-csvs.mjs",
     "cf:setup": "bash scripts/cloudflare-setup.sh",
     "cf:deploy": "bash scripts/cloudflare-deploy.sh",

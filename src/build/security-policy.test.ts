@@ -58,8 +58,12 @@ describe("buildCsp", () => {
     expect(csp).toMatch(/base-uri 'self'/);
   });
 
-  test("style-src is unchanged from proxy.ts (still allows 'unsafe-inline' — CSS, not JS)", () => {
-    expect(directive("style-src")).toContain("'unsafe-inline'");
+  // P9 (audit P2-11): the built HTML has no style="" attribute and no
+  // <style> block (build.test.ts proves it); JS only writes CSSOM
+  // (element.style), which CSP never blocks.
+  test("style-src is 'self' only — no 'unsafe-inline'", () => {
+    expect(directive("style-src").trim()).toBe("'self'");
+    expect(csp).not.toContain("'unsafe-inline'");
   });
 
   test("no wildcard default-src, no unsafe-eval anywhere", () => {

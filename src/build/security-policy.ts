@@ -29,14 +29,14 @@
 // depending on account configuration.
 //
 // `'unsafe-inline'` in `script-src` is never used, nor was it before.
-// `style-src 'unsafe-inline'` is unchanged from `proxy.ts` — this
-// project has always used inline `style` attributes/`<style>` blocks for
-// CSS, which is a separate, much lower-severity risk class than inline
-// script, and out of this task's scope to remove.
+// P9 (audit P2-11): `style-src` is `'self'` only. The static build emits
+// no `style=""` attribute and no `<style>` block (build.test.ts guards
+// it); the one runtime style write (mobile-nav's `body.style.*`) goes
+// through the CSSOM, which CSP does not restrict.
 export const CSP_DIRECTIVES: readonly string[] = [
   "default-src 'self'",
   "img-src 'self' data: https://wa.me https://*.whatsapp.net https://*.fbcdn.net https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com",
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self'",
   "font-src 'self' data:",
   "script-src 'self' https://www.googletagmanager.com",
   "connect-src 'self' https://wa.me https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com",

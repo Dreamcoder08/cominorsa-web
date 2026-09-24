@@ -66,7 +66,7 @@ describe("runStaticBuild", () => {
       expect(html).toContain('<link rel="canonical" href="https://cominorsa.com/">');
       expect(html).toContain('<meta property="og:url" content="https://cominorsa.com/">');
       expect(html).toContain('<span class="reveal-line">Técnica que impulsa.</span>');
-      expect(html).toContain('<form class="consultation-form" id="consultation-form">');
+      expect(html).toContain('<form class="consultation-form" id="consultation-form" method="post">');
       expect(html).toContain('href="/seguridad-minera"');
     }));
 
@@ -157,43 +157,76 @@ describe("runStaticBuild", () => {
       }
     }));
 
-  test("every page links the same hashed CSS and fonts files that actually exist in the output", () =>
+  // P9: the @font-face rules are bundled into the one stylesheet (was a
+  // second render-blocking fonts-*.css request).
+  test("every page links the same single hashed stylesheet, which carries the @font-face rules", () =>
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
       const seguridadHtml = await Bun.file(join(outDir, "seguridad-minera.html")).text();
       const matches = [...seguridadHtml.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map(
         (m) => m[1]!,
       );
-      expect(matches.length).toBe(2);
-      const cssHref = matches.find((href) => href.includes("globals-"))!;
-      const fontsHref = matches.find((href) => href.includes("fonts-"))!;
+      expect(matches.length).toBe(1);
+      const cssHref = matches[0]!;
       expect(cssHref).toMatch(/^\/assets\/globals-[a-z0-9]+\.css$/);
-      expect(fontsHref).toMatch(/^\/assets\/fonts-[a-z0-9]+\.css$/);
-      expect(await Bun.file(join(outDir, cssHref.replace(/^\//, ""))).exists()).toBe(true);
-      expect(await Bun.file(join(outDir, fontsHref.replace(/^\//, ""))).exists()).toBe(true);
+      const css = await Bun.file(join(outDir, cssHref.replace(/^\//, ""))).text();
+      expect(css).toContain("@font-face");
+      expect(css).toContain("--font-display:");
+      // @font-face must precede the rules that use the families.
+      expect(css.indexOf("@font-face")).toBeLessThan(css.indexOf("body{"));
+      expect(await Array.fromAsync(new Glob("fonts-*.css").scan({ cwd: join(outDir, "assets") }))).toEqual([]);
 
-      // Every other page links the exact same hashed files — one CSS
+      // Every other page links the exact same hashed file — one CSS
       // build, shared across the whole route table, not one per page.
       for (const route of PAGE_ROUTES) {
         if (route.slug === "seguridad-minera") continue;
         const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        expect([...html.matchAll(/rel="stylesheet"/g)].length).toBe(1);
         expect(html).toContain(`<link rel="stylesheet" href="${cssHref}">`);
-        expect(html).toContain(`<link rel="stylesheet" href="${fontsHref}">`);
+      }
+    }));
+
+  // P9 (audit P2-8): the home h1 <em> renders in Newsreader italic above
+  // the fold, so the homepage preloads it too; other pages don't use it.
+  test("P9: only the homepage preloads Newsreader italic, every page preloads Archivo", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      for (const route of PAGE_ROUTES) {
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        const preloads = [...html.matchAll(/<link rel="preload" href="\/fonts\/([a-z-]+)-[0-9a-f]{8}\.woff2"/g)].map(
+          (m) => m[1],
+        );
+        expect(preloads).toEqual(
+          route.slug === ""
+            ? ["archivo-latin-variable", "newsreader-italic-latin-variable"]
+            : ["archivo-latin-variable"],
+        );
+      }
+    }));
+
+  // P9 (audit P2-11): what lets the CSP drop style-src 'unsafe-inline'.
+  test("P9: no page has a style attribute or a <style> element", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir, { gaMeasurementId: "G-TEST123" });
+      for (const route of PAGE_ROUTES) {
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        expect(html).not.toMatch(/\sstyle=/i);
+        expect(html).not.toMatch(/<style[\s>]/i);
       }
     }));
 
   test("P6: fonts ship under content-hashed names, preloaded and referenced by hash", () =>
     withTempOutDir(async (outDir) => {
-      const { fontsCssFileName } = await runStaticBuild(outDir);
+      const { cssFileName } = await runStaticBuild(outDir);
       const html = await Bun.file(join(outDir, "seguridad-minera.html")).text();
-      const fontsCss = await Bun.file(join(outDir, "assets", fontsCssFileName)).text();
+      const fontsCss = await Bun.file(join(outDir, "assets", cssFileName)).text();
       const shipped = (await Array.fromAsync(new Glob("*").scan({ cwd: join(outDir, "fonts") }))).sort();
 
       const hashed = /^(archivo-latin-variable|newsreader-italic-latin-variable|geist-mono-latin)-[0-9a-f]{8}\.woff2$/;
       expect(shipped).toHaveLength(3);
       for (const file of shipped) {
         expect(file).toMatch(hashed);
-        // Every shipped font is referenced by the fonts stylesheet under that exact name.
+        // Every shipped font is referenced by the stylesheet under that exact name.
         expect(fontsCss).toContain(`/fonts/${file}`);
       }
 
@@ -393,6 +426,46 @@ describe("runStaticBuild", () => {
       });
     }
   });
+
+  // P5 (audit P1-8, P1-10): each service page carries the organization,
+  // its own Service and a BreadcrumbList — all valid JSON, linked by @id.
+  test("P5: every service page has parseable Service + BreadcrumbList JSON-LD tied to the organization", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const serviceSlugs = PAGE_ROUTES.filter((r) => r.jsonLd !== undefined).map((r) => r.slug);
+      expect(serviceSlugs.length).toBe(6);
+
+      for (const route of PAGE_ROUTES) {
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(
+          (m) => JSON.parse(m[1]!),
+        );
+        const org = blocks.find((b) => b["@type"] === "ProfessionalService");
+        expect(org["@id"]).toBe("https://cominorsa.com/#organization");
+        if (!serviceSlugs.includes(route.slug)) {
+          expect(blocks.length).toBe(1);
+          continue;
+        }
+
+        const service = blocks.find((b) => b["@type"] === "Service");
+        expect(service.provider["@id"]).toBe(org["@id"]);
+        expect(service.url).toBe(`https://cominorsa.com/${route.slug}`);
+
+        const breadcrumbs = blocks.find((b) => b["@type"] === "BreadcrumbList");
+        const items = breadcrumbs.itemListElement as { position: number; item: string }[];
+        expect(items.map((i) => i.position)).toEqual([1, 2, 3]);
+        for (const item of items) expect(item.item).toMatch(/^https:\/\/cominorsa\.com\//);
+        expect(items.at(-1)!.item).toBe(service.url);
+
+        for (const key of ["geo", "openingHoursSpecification", "openingHours", "email"]) {
+          expect(html).not.toContain(`"${key}"`);
+        }
+        expect(html).toContain('aria-label="Migas de pan"');
+        for (const sibling of serviceSlugs.filter((slug) => slug !== route.slug)) {
+          expect(html).toContain(`<a href="/${sibling}">`);
+        }
+      }
+    }));
 
   // T8: sitemap.xml/robots.txt/manifest.webmanifest, generated from the
   // same PAGE_ROUTES table + site-config.ts constants exercised in

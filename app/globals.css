@@ -288,7 +288,18 @@ input:where([type=button],[type=reset],[type=submit]) {
   --cream: #efe8d4;
   --paper: #f6f1e2;
   --white: #fbf8ef;
-  --line: rgba(23, 51, 45, 0.18);
+  /* P9 (audit P2-15): channel tokens for translucent uses of palette
+     colours — rgb(var(--white-rgb) / 0.48) instead of a raw rgba(). Each
+     must equal its hex token above/below (globals-css.test.ts checks it).
+     --line-rgb is --line's own hue. The old rgba(255, 253, 247, …) and
+     rgba(243, 207, 89, …) literals were off-palette near-duplicates of
+     --white and --copper; they now use those tokens. */
+  --ink-rgb: 11 35 24;
+  --copper-rgb: 224 184 74;
+  --copper-light-rgb: 235 206 126;
+  --white-rgb: 251 248 239;
+  --line-rgb: 23 51 45;
+  --line: rgb(var(--line-rgb) / 0.18);
   /* Same value as --copper-ink (forest-700, 8.94:1 / 8.25:1 above) — kept as a
      separate token because it means something different (secondary body text
      vs. accent), even though the two currently resolve to the same color. */
@@ -381,6 +392,20 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* P9: balanced headings, no orphaned last words in running text. Later,
+   more specific rules may still override either. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p,
+li,
+blockquote {
+  text-wrap: pretty;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -430,7 +455,7 @@ blockquote {
   border-bottom: 1px solid var(--line);
   background: var(--paper);
   color: var(--ink);
-  box-shadow: 0 16px 40px rgba(11, 35, 24, 0.1);
+  box-shadow: 0 16px 40px rgb(var(--ink-rgb) / 0.1);
 }
 
 .site-header-inner {
@@ -460,7 +485,7 @@ blockquote {
 
 .brand-logo-wrap {
   overflow: hidden;
-  border: 1px solid rgba(235, 206, 126, 0.55);
+  border: 1px solid rgb(var(--copper-light-rgb) / 0.55);
   background: var(--ink-deep);
 }
 
@@ -555,7 +580,7 @@ blockquote {
 .mobile-nav-toggle:hover,
 .mobile-nav-toggle:focus-visible {
   border-color: var(--forest);
-  background: rgba(11, 35, 24, 0.06);
+  background: rgb(var(--ink-rgb) / 0.06);
 }
 
 /* Full-screen takeover, not a corner dropdown — same surface as the header
@@ -643,7 +668,7 @@ blockquote {
   /* Decorative radial glow, not a UI component — exempt from the radius-0 rule,
      which applies to buttons/cards/icons. */
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(224, 184, 74, 0.26), transparent 66%);
+  background: radial-gradient(circle, rgb(var(--copper-rgb) / 0.26), transparent 66%);
   filter: blur(5px);
 }
 
@@ -704,13 +729,17 @@ blockquote {
   text-wrap: balance;
 }
 
-/* The one orchestrated moment on the page: the two hero lines reveal
-   upward behind a clip-path mask, staggered, once on load. Everything else
-   on the page is static on entry. */
+/* The one orchestrated moment on the page: the two hero lines settle
+   upward, staggered, once on load. Everything else on the page is static
+   on entry.
+   P9 (audit P2-9): was a clip-path mask from inset(0 0 100% 0), which
+   kept the h1 — the page's LCP element — unpainted for the whole reveal.
+   Now the lines paint on the first frame and only move/brighten
+   (transform + opacity: compositor-only, never opacity 0). Reduced
+   motion collapses --dur-reveal to 1ms (see :root above). */
 .hero h1 .reveal-line {
   display: block;
-  clip-path: inset(0 0 100% 0);
-  animation: reveal-up var(--dur-reveal) var(--ease-out) forwards;
+  animation: reveal-up var(--dur-reveal) var(--ease-out) both;
 }
 
 .hero h1 .reveal-line + .reveal-line {
@@ -718,8 +747,9 @@ blockquote {
 }
 
 @keyframes reveal-up {
-  to {
-    clip-path: inset(0 0 0 0);
+  from {
+    opacity: 0.4;
+    transform: translateY(0.25em);
   }
 }
 
@@ -736,7 +766,7 @@ blockquote {
 .hero-intro {
   max-width: 650px;
   margin-top: 2rem;
-  color: rgba(255, 253, 247, 0.72);
+  color: rgb(var(--white-rgb) / 0.72);
   font-size: clamp(1rem, 1.6vw, 1.28rem);
   line-height: 1.65;
 }
@@ -782,13 +812,13 @@ blockquote {
 }
 
 .button-quiet {
-  border-color: rgba(255, 253, 247, 0.32);
+  border-color: rgb(var(--white-rgb) / 0.32);
 }
 
 .button-quiet:hover,
 .button-quiet:focus-visible {
   border-color: var(--white);
-  background: rgba(255, 253, 247, 0.08);
+  background: rgb(var(--white-rgb) / 0.08);
 }
 
 .hero-card {
@@ -796,9 +826,9 @@ blockquote {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgba(255, 253, 247, 0.3);
+  border: 1px solid rgb(var(--white-rgb) / 0.3);
   background:
-    linear-gradient(155deg, rgba(255, 253, 247, 0.12), rgba(255, 253, 247, 0.03)),
+    linear-gradient(155deg, rgb(var(--white-rgb) / 0.12), rgb(var(--white-rgb) / 0.03)),
     rgba(16, 39, 33, 0.25);
   backdrop-filter: blur(8px);
 }
@@ -821,7 +851,7 @@ blockquote {
   display: flex;
   justify-content: space-between;
   padding: 1.4rem;
-  border-bottom: 1px solid rgba(255, 253, 247, 0.2);
+  border-bottom: 1px solid rgb(var(--white-rgb) / 0.2);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -842,7 +872,7 @@ blockquote {
 
 .hero-card-copy p {
   margin-top: 1rem;
-  color: rgba(255, 253, 247, 0.65);
+  color: rgb(var(--white-rgb) / 0.65);
   font-size: 0.9rem;
   line-height: 1.55;
 }
@@ -853,7 +883,7 @@ blockquote {
   gap: 0.5rem 1.5rem;
   margin-top: 1.5rem;
   padding-top: 1.25rem;
-  border-top: 1px solid rgba(255, 253, 247, 0.16);
+  border-top: 1px solid rgb(var(--white-rgb) / 0.16);
 }
 
 .hero-card-numbers .inline-phone {
@@ -870,10 +900,10 @@ blockquote {
   grid-template-columns: auto repeat(4, 1fr);
   align-items: center;
   gap: 0 0.5rem;
-  border-top: 1px solid rgba(255, 253, 247, 0.2);
+  border-top: 1px solid rgb(var(--white-rgb) / 0.2);
   /* Was 0.56 — measured ~4.67:1 against the gradient here, barely above the
      4.5:1 AA floor for text this small (11px). 0.68 gives real margin. */
-  color: rgba(255, 253, 247, 0.68);
+  color: rgb(var(--white-rgb) / 0.68);
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -882,7 +912,7 @@ blockquote {
 
 .hero-footer span {
   padding-left: 1.25rem;
-  border-left: 1px solid rgba(255, 253, 247, 0.2);
+  border-left: 1px solid rgb(var(--white-rgb) / 0.2);
 }
 
 .hero-footer .hero-footer-label {
@@ -1019,7 +1049,7 @@ blockquote {
 }
 
 .section-kicker.light {
-  color: rgba(255, 253, 247, 0.48);
+  color: rgb(var(--white-rgb) / 0.48);
 }
 
 .light-title {
@@ -1027,13 +1057,13 @@ blockquote {
 }
 
 .section-heading > p {
-  color: rgba(255, 253, 247, 0.56);
+  color: rgb(var(--white-rgb) / 0.56);
   font-size: 0.95rem;
   line-height: 1.7;
 }
 
 .service-list {
-  border-top: 1px solid rgba(255, 253, 247, 0.18);
+  border-top: 1px solid rgb(var(--white-rgb) / 0.18);
 }
 
 .service-card {
@@ -1043,13 +1073,13 @@ blockquote {
   align-items: center;
   gap: 2rem;
   min-height: 190px;
-  border-bottom: 1px solid rgba(255, 253, 247, 0.18);
+  border-bottom: 1px solid rgb(var(--white-rgb) / 0.18);
   transition: background 220ms ease, padding 220ms ease;
 }
 
 .service-card:hover {
   padding: 0 1.5rem;
-  background: rgba(255, 253, 247, 0.045);
+  background: rgb(var(--white-rgb) / 0.045);
 }
 
 .service-number {
@@ -1070,7 +1100,7 @@ blockquote {
 .service-main p {
   max-width: 570px;
   margin-top: 0.8rem;
-  color: rgba(255, 253, 247, 0.56);
+  color: rgb(var(--white-rgb) / 0.56);
   font-size: 0.93rem;
   line-height: 1.65;
 }
@@ -1083,8 +1113,8 @@ blockquote {
 
 .service-tags span {
   padding: 0.55rem 0.75rem;
-  border: 1px solid rgba(255, 253, 247, 0.2);
-  color: rgba(255, 253, 247, 0.66);
+  border: 1px solid rgb(var(--white-rgb) / 0.2);
+  color: rgb(var(--white-rgb) / 0.66);
   font-size: 0.67rem;
   letter-spacing: 0.05em;
 }
@@ -1094,14 +1124,14 @@ blockquote {
   place-items: center;
   width: 2.65rem;
   aspect-ratio: 1;
-  border: 1px solid rgba(255, 253, 247, 0.28);
+  border: 1px solid rgb(var(--white-rgb) / 0.28);
   color: var(--copper-light);
 }
 
 .method {
   background:
-    linear-gradient(rgba(23, 51, 45, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(23, 51, 45, 0.07) 1px, transparent 1px),
+    linear-gradient(rgb(var(--line-rgb) / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--line-rgb) / 0.07) 1px, transparent 1px),
     var(--cream);
   background-size: 80px 80px;
 }
@@ -1220,14 +1250,14 @@ blockquote {
   gap: clamp(4rem, 10vw, 11rem);
   padding: clamp(3rem, 6vw, 6.5rem);
   background:
-    radial-gradient(circle at 85% 20%, rgba(243, 207, 89, 0.28), transparent 25%),
+    radial-gradient(circle at 85% 20%, rgb(var(--copper-rgb) / 0.28), transparent 25%),
     linear-gradient(120deg, var(--forest), var(--ink-deep));
   color: var(--white);
 }
 
 .impact-eyebrow {
   margin-bottom: 2rem;
-  color: rgba(255, 253, 247, 0.62);
+  color: rgb(var(--white-rgb) / 0.62);
 }
 
 .impact h2 {
@@ -1241,7 +1271,7 @@ blockquote {
 .impact blockquote {
   padding-left: 1.5rem;
   border-left: 1px solid var(--copper-light);
-  color: rgba(255, 253, 247, 0.68);
+  color: rgb(var(--white-rgb) / 0.68);
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(1rem, 1.6vw, 1.3rem);
   font-style: italic;
@@ -1252,7 +1282,7 @@ blockquote {
   padding: var(--section-y) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
   scroll-margin-top: var(--header-height);
   background:
-    repeating-radial-gradient(circle at 100% 100%, transparent 0 45px, rgba(23, 51, 45, 0.08) 46px 47px),
+    repeating-radial-gradient(circle at 100% 100%, transparent 0 45px, rgb(var(--line-rgb) / 0.08) 46px 47px),
     var(--sand);
 }
 
@@ -1278,7 +1308,7 @@ blockquote {
   gap: clamp(4rem, 12vw, 13rem);
   margin-top: 7rem;
   padding-top: 2.5rem;
-  border-top: 1px solid rgba(23, 51, 45, 0.3);
+  border-top: 1px solid rgb(var(--line-rgb) / 0.3);
 }
 
 .contact-note {
@@ -1362,13 +1392,13 @@ body.has-cookie-banner footer {
   padding: var(--space-4) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
   background: var(--ink-deep);
   color: var(--white);
-  border-top: 1px solid rgba(255, 253, 247, 0.18);
+  border-top: 1px solid rgb(var(--white-rgb) / 0.18);
 }
 
 .cookie-consent p {
   max-width: 640px;
   margin: 0;
-  color: rgba(255, 253, 247, 0.75);
+  color: rgb(var(--white-rgb) / 0.75);
   font-size: var(--text-sm);
   line-height: 1.6;
 }
@@ -1468,6 +1498,60 @@ body.has-cookie-banner footer {
   color: var(--ink);
 }
 
+/* P5: FAQ entries are deep-linked from service pages (#igafom, …) — keep
+   the target clear of the sticky header, same as .section/.contact. */
+.legal-page-body section[id] {
+  scroll-margin-top: var(--header-height);
+}
+
+/* P5: Inicio › Servicios › <servicio> above service-page titles. */
+.breadcrumb {
+  max-width: 70ch;
+  margin: 0 auto var(--space-5);
+}
+
+.breadcrumb ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.breadcrumb li + li::before {
+  content: "›" / "";
+  margin-right: var(--space-2);
+}
+
+.breadcrumb a {
+  color: var(--copper-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.breadcrumb a:hover,
+.breadcrumb a:focus-visible {
+  color: var(--ink);
+}
+
+.breadcrumb [aria-current="page"] {
+  color: var(--ink);
+}
+
+/* P5: "Otros servicios" — title link + existing short description. */
+.legal-page-body .related-services {
+  gap: var(--space-4);
+  padding-left: 0;
+}
+
+.related-services a {
+  font-weight: 600;
+}
+
+.related-services p {
+  margin-top: var(--space-1);
+}
+
 .legal-page-footer {
   max-width: 70ch;
   margin: var(--space-9) auto 0;
@@ -1496,7 +1580,7 @@ footer > .brand {
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  color: rgba(255, 253, 247, 0.48);
+  color: rgb(var(--white-rgb) / 0.48);
   font-size: 0.67rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1507,7 +1591,7 @@ footer > .brand {
    rendered. `> * + *` applies it between every item regardless of tag. */
 .footer-meta > * + * {
   padding-left: 1.5rem;
-  border-left: 1px solid rgba(255, 253, 247, 0.18);
+  border-left: 1px solid rgb(var(--white-rgb) / 0.18);
 }
 
 .footer-meta a {
@@ -1539,7 +1623,7 @@ footer > .brand {
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 253, 247, 0.3);
+  border: 1px solid rgb(var(--white-rgb) / 0.3);
   color: var(--copper-light);
   transition: border-color 180ms ease, background 180ms ease;
 }
@@ -1547,7 +1631,7 @@ footer > .brand {
 .back-to-top:hover,
 .back-to-top:focus-visible {
   border-color: var(--copper-light);
-  background: rgba(255, 253, 247, 0.08);
+  background: rgb(var(--white-rgb) / 0.08);
 }
 
 :focus-visible {
@@ -1557,7 +1641,7 @@ footer > .brand {
      other (copper-light on light backgrounds measured ~1.4:1, invisible). */
   outline: 2px solid var(--forest);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(255, 253, 247, 0.75);
+  box-shadow: 0 0 0 4px rgb(var(--white-rgb) / 0.75);
 }
 
 .inline-phone {
@@ -1569,21 +1653,21 @@ footer > .brand {
 .detailed-services-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid rgba(255, 253, 247, 0.2);
-  border-left: 1px solid rgba(255, 253, 247, 0.2);
+  border-top: 1px solid rgb(var(--white-rgb) / 0.2);
+  border-left: 1px solid rgb(var(--white-rgb) / 0.2);
 }
 
 .detailed-service-card {
   min-height: 100%;
   padding: clamp(1.6rem, 3vw, 2.5rem);
-  border-right: 1px solid rgba(255, 253, 247, 0.2);
-  border-bottom: 1px solid rgba(255, 253, 247, 0.2);
-  background: linear-gradient(145deg, rgba(255, 253, 247, 0.045), transparent);
+  border-right: 1px solid rgb(var(--white-rgb) / 0.2);
+  border-bottom: 1px solid rgb(var(--white-rgb) / 0.2);
+  background: linear-gradient(145deg, rgb(var(--white-rgb) / 0.045), transparent);
   transition: background 180ms ease, transform 180ms ease;
 }
 
 .detailed-service-card:hover {
-  background: rgba(235, 206, 126, 0.07);
+  background: rgb(var(--copper-light-rgb) / 0.07);
   transform: translateY(-3px);
 }
 
@@ -1602,7 +1686,7 @@ footer > .brand {
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(235, 206, 126, 0.4);
+  border: 1px solid rgb(var(--copper-light-rgb) / 0.4);
   font-style: normal;
 }
 
@@ -1616,7 +1700,7 @@ footer > .brand {
 
 .detailed-service-card > p {
   margin-top: 1rem;
-  color: rgba(255, 253, 247, 0.58);
+  color: rgb(var(--white-rgb) / 0.58);
   font-size: 0.9rem;
   line-height: 1.65;
 }
@@ -1626,14 +1710,14 @@ footer > .brand {
   gap: 0.8rem;
   margin: 2rem 0 0;
   padding: 1.4rem 0 0;
-  border-top: 1px solid rgba(255, 253, 247, 0.14);
+  border-top: 1px solid rgb(var(--white-rgb) / 0.14);
   list-style: none;
 }
 
 .detailed-service-card li {
   position: relative;
   padding-left: 1.4rem;
-  color: rgba(255, 253, 247, 0.82);
+  color: rgb(var(--white-rgb) / 0.82);
   font-size: 0.82rem;
   line-height: 1.5;
 }
@@ -1652,13 +1736,13 @@ footer > .brand {
   align-items: start;
   gap: clamp(4rem, 9vw, 9rem);
   background:
-    repeating-radial-gradient(circle at 0 100%, transparent 0 48px, rgba(235, 206, 126, 0.11) 49px 50px),
+    repeating-radial-gradient(circle at 0 100%, transparent 0 48px, rgb(var(--copper-light-rgb) / 0.11) 49px 50px),
     linear-gradient(125deg, var(--ink-deep), var(--forest));
   color: var(--white);
 }
 
 .consultation-kicker {
-  color: rgba(255, 253, 247, 0.55);
+  color: rgb(var(--white-rgb) / 0.55);
 }
 
 .consultation-intro h2 {
@@ -1680,7 +1764,7 @@ footer > .brand {
 .consultation-intro > p {
   max-width: 570px;
   margin-top: 1.8rem;
-  color: rgba(255, 253, 247, 0.65);
+  color: rgb(var(--white-rgb) / 0.65);
   font-size: 1rem;
   line-height: 1.7;
 }
@@ -1716,14 +1800,17 @@ footer > .brand {
 .consultation-form select,
 .consultation-form textarea {
   width: 100%;
-  border: 1px solid rgba(11, 35, 24, 0.22);
+  /* P7 (audit P2-7): was rgb(var(--ink-rgb) / 0.22) — 1.58:1 on --white, below
+     the 3:1 minimum for a field boundary (WCAG 1.4.11). --copper-ink:
+     9.51:1 on the field's --white, 8.94:1 on the form's --paper. */
+  border: 1px solid var(--copper-ink);
   border-radius: 0;
   padding: 0.95rem 1rem;
   background: var(--white);
   color: var(--ink);
   font: inherit;
   outline: 0;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition: border-color 160ms ease;
 }
 
 .consultation-form input,
@@ -1739,8 +1826,10 @@ footer > .brand {
 .consultation-form input:focus-visible,
 .consultation-form select:focus-visible,
 .consultation-form textarea:focus-visible {
-  border-color: var(--copper-ink);
-  box-shadow: 0 0 0 3px rgba(224, 184, 74, 0.16);
+  /* P7: the border is already --copper-ink, so focus adds a visible 2px
+     outline (--copper-ink on --paper, 8.94:1) instead of a faint glow. */
+  outline: 2px solid var(--copper-ink);
+  outline-offset: 2px;
 }
 
 .form-submit {
@@ -1817,6 +1906,28 @@ footer > .brand {
   color: var(--forest);
   font-size: 0.75rem;
   font-weight: 700;
+}
+
+/* P7: the fallback link to the prepared wa.me URL, and the <noscript>
+   direct link — same link treatment as .form-disclaimer a. */
+.form-status a,
+.form-noscript a {
+  color: var(--copper-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.form-status a:hover,
+.form-status a:focus-visible,
+.form-noscript a:hover,
+.form-noscript a:focus-visible {
+  color: var(--ink);
+}
+
+.form-noscript {
+  color: var(--ink);
+  font-size: var(--text-sm);
+  line-height: 1.55;
 }
 
 /* P4: honeypot wrapper (see src/build/consultation-form.tsx). Standard

@@ -23,4 +23,27 @@ describe("faqs", () => {
       expect(faq.answer.length).toBeGreaterThan(0);
     }
   });
+
+  // P5: stable anchors so service pages can deep-link their FAQ entries.
+  test("every entry has a unique, URL-safe anchor id", () => {
+    const ids = faqs.map((faq) => faq.id);
+    expect(new Set(ids).size).toBe(faqs.length);
+    for (const id of ids) expect(id).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+  });
+
+  // P5: the mapping follows the existing question text only — each
+  // question that names a service's own subject points to that service.
+  test("service-specific questions map to the service they talk about", () => {
+    const bySlug = Object.fromEntries(faqs.map((faq) => [faq.id, faq.serviceSlug]));
+    expect(bySlug).toEqual({
+      igafom: "igafom-reinfo",
+      reinfo: "igafom-reinfo",
+      "dia-pama": "gestion-ambiental-minera",
+      "dac-estamin": "declaraciones-dac-estamin",
+      "plan-de-minado": "ingenieria-y-planes-de-minado",
+      "consultoria-mensual": "seguridad-minera",
+      ubicacion: undefined,
+      "como-empezar": undefined,
+    });
+  });
 });

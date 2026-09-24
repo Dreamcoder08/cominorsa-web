@@ -399,6 +399,28 @@ in Engram topic `odd/landing-polish/audit`.
   (proves real leads pass the origin gate; honeypot prevents a real CRM
   record).
 
+- Slice 4 (P11): PR #15 → tracker #16 → `main` (`47e3c81`), deployed
+  2026-09-24. Rollback point before it:
+  `32fe4211-4609-49f8-8e26-9f433e0fff7c` (preview) / previous
+  production `675222d2-13e7-4a1e-9fd4-f7d0590edecd`. Chrome on the
+  preview: inline `<style>` applied (paper background, Archivo), logo
+  WebP loaded, h1 reaches opacity 1, no CSP messages.
+- Cloudflare dashboard (2026-09-24, account Dreamcoder.dev08, Free plan):
+  www → apex 301 Redirect Rule (query preserved) and rate-limit rule
+  `POST /api/crm-lead` 3 req / 10 s per IP, block 10 s — both verified
+  with curl (`301`, `403 403 403 429 429 429`). Recorded in `DEPLOY.md`.
+
+## Final Lighthouse (production, 2026-09-24, Lighthouse 12 local)
+
+| | Performance | Accessibility | Best practices | SEO |
+|---|---|---|---|---|
+| Mobile (3 quiet runs) | 89–90 (FCP=LCP 2.9–3.0 s, TBT 0–10 ms, CLS 0) | 100 | 100 | 100 |
+| Desktop (2 runs) | 99 (FCP=LCP 0.7 s, CLS 0) | 100 | 100 | 100 |
+
+Baseline before landing polish: mobile 90/100/93/100, desktop 99/100/93/100.
+Remaining mobile gap is simulated slow-4G latency for HTML + two
+preloaded fonts; further gains would trade font quality for score.
+
 ## Next step
 
 After P11 merges and deploys: re-run production Lighthouse (expect

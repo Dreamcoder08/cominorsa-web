@@ -13,30 +13,31 @@
 // `.button`/`.button-primary`) — same copy, same two calls to action
 // (home, WhatsApp), and already `border-radius: 0` by the design
 // system's own rule (the ported page never actually needs the
-// Tailwind `rounded-md` it's dropping). Layout stays a standalone full
-// page with no SiteHeader/SiteFooter, matching today's structure.
+// Tailwind `rounded-md` it's dropping). P8 (audit P2-1): rendered
+// inside the full site shell (`SiteLayout`: skip link, header, main,
+// footer) so a visitor on a broken link still has the navigation, and
+// the copy uses tú instead of voseo. Still `noindex, follow` with no
+// canonical (see routes.ts).
 //
 // Cloudflare Workers Static Assets serves this file (`dist-static/404.html`)
 // for unmatched paths once `not_found_handling: "404-page"` is
 // configured in T9 — noted here per T6a's scope (metadata/markup only).
 
 import { buildWhatsAppLink } from "../../app/constants";
-import { SkipLink } from "./site-shell";
+import { SiteLayout } from "./site-shell";
 
 const WHATSAPP_HREF = buildWhatsAppLink("Hola, llegué a un enlace roto en su web");
 
-export function NotFoundPage() {
+export function NotFoundPage({ analyticsEnabled = false }: { analyticsEnabled?: boolean } = {}) {
   return (
-    <>
-      <SkipLink />
-      <main id="contenido">
+    <SiteLayout basePath="/" analyticsEnabled={analyticsEnabled}>
       <section className="legal-page">
         <div className="legal-page-header">
           <p>Error 404</p>
           <h1>Página no encontrada</h1>
           <p>
-            La ruta que buscás no existe o fue movida. Si llegaste acá desde
-            un enlace, avisanos para corregirlo.
+            La ruta que buscas no existe o fue movida. Si llegaste aquí desde
+            un enlace, avísanos para corregirlo.
           </p>
         </div>
 
@@ -53,7 +54,6 @@ export function NotFoundPage() {
           </section>
         </div>
       </section>
-      </main>
-    </>
+    </SiteLayout>
   );
 }

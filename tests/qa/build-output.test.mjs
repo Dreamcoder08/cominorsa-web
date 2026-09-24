@@ -70,7 +70,7 @@ test("wrangler.jsonc keeps dashboard-managed vars on deploy", async () => {
 });
 
 test("public/ has copied favicons and images into dist-static (public assets are copied verbatim)", async () => {
-  for (const f of ["favicon.ico", "apple-touch-icon.png", "og.png", "logo-44.png"]) {
+  for (const f of ["favicon.ico", "apple-touch-icon.png", "og.jpg", "logo-44.png"]) {
     assert.ok(await exists(join(DIST_STATIC, f)), `${f} missing from dist-static/`);
   }
 });
@@ -117,18 +117,101 @@ test("public/ has apple-touch-icon.png at 180x180", async () => {
   );
 });
 
-test("public/og.png is 1200x630 (Open Graph spec)", async () => {
-  const p = join(PUBLIC, "og.png");
-  assert.ok(await exists(p), "public/og.png missing");
-  const { width, height } = await readPngDimensions(p);
-  assert.equal(width, 1200, `og.png width should be 1200, got ${width}`);
-  assert.equal(height, 630, `og.png height should be 630, got ${height}`);
+/** Reads width/height from a JPEG's first SOFn (start-of-frame) segment. */
+async function readJpegDimensions(filePath) {
+  const buf = await readFile(filePath);
+  if (buf.readUInt16BE(0) !== 0xffd8) throw new Error(`${filePath} is not a JPEG`);
+  let offset = 2;
+  while (offset + 9 < buf.length) {
+    if (buf[offset] !== 0xff) throw new Error(`${filePath}: bad JPEG marker at ${offset}`);
+    const marker = buf[offset + 1];
+    const length = buf.readUInt16BE(offset + 2);
+    const isSof = marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker);
+    if (isSof) {
+      return { height: buf.readUInt16BE(offset + 5), width: buf.readUInt16BE(offset + 7) };
+    }
+    offset += 2 + length;
+  }
+  throw new Error(`${filePath}: no SOF segment found`);
+}
+
+// P6 (audit P1-3): WhatsApp link previews — the site's main share
+// channel — are unreliable for heavy images. JPEG at <= 200 KB is the
+// safe OG format for WhatsApp/Facebook.
+test("public/og.jpg is a 1200x630 JPEG (Open Graph spec)", async () => {
+  const p = join(PUBLIC, "og.jpg");
+  assert.ok(await exists(p), "public/og.jpg missing");
+  const { width, height } = await readJpegDimensions(p);
+  assert.equal(width, 1200, `og.jpg width should be 1200, got ${width}`);
+  assert.equal(height, 630, `og.jpg height should be 630, got ${height}`);
 });
 
-test("public/og.png size is under 1 MB", async () => {
-  const p = join(PUBLIC, "og.png");
-  const s = await stat(p);
-  assert.ok(s.size < 1024 * 1024, `og.png too heavy: ${s.size} bytes`);
+test("public/og.jpg weighs at most 200 KB", async () => {
+  const s = await stat(join(PUBLIC, "og.jpg"));
+  assert.ok(s.size <= 200 * 1024, `og.jpg too heavy: ${s.size} bytes`);
+});
+
+test("no stale og.png ships alongside og.jpg", async () => {
+  assert.equal(await exists(join(PUBLIC, "og.png")), false);
+});
+
+// P6 (audit P2-10): only files the site actually serves ship at the
+// dist-static/ root — no leftover scaffold SVGs, unused logos or docs.
+test("dist-static/ root holds only pages, generated files, and referenced assets", async () => {
+  const expected = new Set([
+    "_headers",
+    "sitemap.xml",
+    "robots.txt",
+    "manifest.webmanifest",
+    "favicon.ico",
+    "favicon-16x16.png",
+    "favicon-32x32.png",
+    "apple-touch-icon.png",
+    "og.jpg",
+    "logo-44.png",
+    "assets",
+    "fonts",
+  ]);
+  const unexpected = (await readdir(DIST_STATIC)).filter(
+    (entry) => !entry.endsWith(".html") && !expected.has(entry),
+  );
+  assert.deepEqual(unexpected, []);
+  const fonts = await readdir(join(DIST_STATIC, "fonts"));
+  assert.ok(fonts.every((f) => f.endsWith(".woff2")), `non-font file in fonts/: ${fonts}`);
+});
+
+// Every root-relative (or own-origin absolute) URL a built page points
+// at — links, scripts, stylesheets, preloads, icons, og:image — must
+// resolve to a file in dist-static/ (a page route resolves to its
+// flat `<slug>.html`, see src/build/build.ts).
+test("every same-site URL referenced by the built HTML and CSS resolves to a shipped file", async () => {
+  const resolvesTo = async (pathname) => {
+    const clean = decodeURIComponent(pathname);
+    if (clean === "/") return exists(join(DIST_STATIC, "index.html"));
+    return (await exists(join(DIST_STATIC, clean))) || exists(join(DIST_STATIC, `${clean}.html`));
+  };
+
+  const pages = (await readdir(DIST_STATIC)).filter((f) => f.endsWith(".html"));
+  const cssFiles = (await readdir(ASSETS)).filter((f) => f.endsWith(".css"));
+  const missing = [];
+
+  for (const page of pages) {
+    const html = await readFile(join(DIST_STATIC, page), "utf8");
+    for (const [, url] of html.matchAll(/(?:href|src|content)="([^"]+)"/g)) {
+      let pathname;
+      if (url.startsWith("https://cominorsa.com/")) pathname = new URL(url).pathname;
+      else if (url.startsWith("/") && !url.startsWith("//")) pathname = url.split(/[?#]/)[0];
+      else continue;
+      if (pathname === "" || !(await resolvesTo(pathname))) missing.push(`${page}: ${url}`);
+    }
+  }
+  for (const css of cssFiles) {
+    const text = await readFile(join(ASSETS, css), "utf8");
+    for (const [, url] of text.matchAll(/url\(["']?(\/[^"')]+)["']?\)/g)) {
+      if (!(await resolvesTo(url))) missing.push(`${css}: ${url}`);
+    }
+  }
+  assert.deepEqual(missing, []);
 });
 
 test("the built homepage declares the full favicon set", async () => {

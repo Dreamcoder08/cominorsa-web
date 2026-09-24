@@ -18,7 +18,10 @@ import { PRIMARY_WHATSAPP_NUMBER } from "../../app/constants";
 import { SITE_URL } from "./site-config";
 
 const SITE_NAME = "COMINORSA";
-const SOCIAL_IMAGE = `${SITE_URL}/og.png`;
+// P6 (audit P1-3): JPEG, <= 200 KB — WhatsApp link previews (the main
+// share channel) are unreliable with the old 715 KB PNG.
+const SOCIAL_IMAGE = `${SITE_URL}/og.jpg`;
+const SOCIAL_IMAGE_TYPE = "image/jpeg";
 const SOCIAL_IMAGE_ALT = "COMINORSA — Consultoría minera y soluciones ambientales";
 const THEME_COLOR = "#fbf8ef";
 
@@ -72,7 +75,8 @@ export function jsonLdScript(data: unknown): Html {
 // blocks first paint of the bulk of the page's text the way the body
 // font does, so preloading them too would spend early-load bandwidth on
 // lower-priority requests (T5's "preload only the critical font(s)").
-const CRITICAL_FONT_HREF = "/fonts/archivo-latin-variable.woff2";
+// The href is passed in (`criticalFontHref`) because the build
+// content-hashes font file names (P6).
 
 export type DocumentProps = {
   title: string;
@@ -103,6 +107,8 @@ export type DocumentProps = {
   cssHref: string;
   /** Absolute path to the built, hashed fonts stylesheet (src/build/fonts.css). */
   fontsCssHref: string;
+  /** Absolute path to the content-hashed Archivo woff2 to preload, e.g. "/fonts/archivo-latin-variable-0123abcd.woff2". */
+  criticalFontHref: string;
   /**
    * Absolute paths to built, hashed, minified ES modules (T7,
    * `src/build/js.ts`), rendered as `<script type="module" src="...">`
@@ -126,6 +132,7 @@ function Document({
   robots,
   cssHref,
   fontsCssHref,
+  criticalFontHref,
   scriptSrcs,
   children,
 }: DocumentProps) {
@@ -149,6 +156,7 @@ function Document({
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:image" content={SOCIAL_IMAGE} />
+        <meta property="og:image:type" content={SOCIAL_IMAGE_TYPE} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content={SOCIAL_IMAGE_ALT} />
@@ -167,7 +175,7 @@ function Document({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
 
-        <link rel="preload" href={CRITICAL_FONT_HREF} as="font" type="font/woff2" crossorigin={true} />
+        <link rel="preload" href={criticalFontHref} as="font" type="font/woff2" crossorigin={true} />
         <link rel="stylesheet" href={cssHref} />
         <link rel="stylesheet" href={fontsCssHref} />
 

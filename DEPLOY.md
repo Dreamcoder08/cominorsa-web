@@ -18,8 +18,9 @@ Guía de despliegue de **COMINORSA — Web** a Cloudflare Workers.
 4. [Dominio custom](#dominio-custom)
 5. [Variables de entorno y secrets](#variables-de-entorno-y-secrets)
 6. [Headers de seguridad](#headers-de-seguridad)
-7. [Troubleshooting](#troubleshooting)
-8. [Checklist pre-producción](#checklist-pre-producción)
+7. [Protección de `/api/crm-lead`](#protección-de-apicrm-lead)
+8. [Troubleshooting](#troubleshooting)
+9. [Checklist pre-producción](#checklist-pre-producción)
 
 ---
 
@@ -207,6 +208,54 @@ Si hace falta agregar una excepción (por ejemplo, un nuevo dominio de
 analytics), editar `src/build/security-policy.ts` y volver a buildear —
 `dist-static/_headers` se regenera solo. **No editar `_headers` a
 mano**: se sobreescribe en cada build.
+
+---
+
+## Protección de `/api/crm-lead`
+
+El endpoint del formulario tiene tres capas (P4 de
+`odd/tasks/landing-polish.md`):
+
+1. **Guardia de origen (en el código)** — `app/api/crm-lead/route.ts`
+   sólo acepta un `POST` cuyo `Origin` sea `https://cominorsa.com` o el
+   propio origen de la request (así siguen funcionando `wrangler dev` en
+   localhost y los previews `*.workers.dev`), y cuyo `Sec-Fetch-Site`,
+   si viene, sea `same-origin`. Sin `Origin` (curl, scripts) → `403
+   {"ok":false}`. El formulario real nunca cae en ese camino.
+2. **Honeypot (en el código)** — campo oculto `website` en el
+   formulario. Si llega con algo escrito, la ruta responde `200
+   {"ok":true}` y **no** llama a Twenty ni a Resend.
+3. **Rate limiting (en el dashboard de Cloudflare, no en el Worker)** —
+   un script puede falsificar `Origin`, así que el límite por IP lo
+   pone Cloudflare delante del Worker. Paso manual (no se aplicó desde
+   este repo, no hay llamadas a la API de Cloudflare):
+
+   1. Dashboard → zona `cominorsa.com` → **Security → WAF → Rate
+      limiting rules** → **Create rule**.
+   2. Nombre: `crm-lead POST por IP`.
+   3. Expresión (editor de expresiones):
+
+      ```
+      (http.request.uri.path eq "/api/crm-lead" and http.request.method eq "POST")
+      ```
+
+   4. Contar por: **IP**. Umbral: **5 requests / 1 minuto**. Acción:
+      **Block** durante **10 minutos**.
+   5. Deploy y probar: 6 `POST` seguidos desde la misma IP → el sexto
+      recibe `429`.
+
+   Los períodos y duraciones disponibles dependen del plan de la zona
+   (el plan Free sólo ofrece períodos cortos, p. ej. 10 s; revisar las
+   opciones que muestra el dashboard). Con períodos cortos, usar el
+   equivalente más cercano (p. ej. 2 requests / 10 s). Una persona real
+   envía el formulario una vez; el límite no afecta el handoff a
+   WhatsApp, que no depende de esta respuesta.
+
+`/api/next-business-day` **no** lleva guardia de origen ni rate limit:
+lo llama el workflow de Twenty CRM desde su servidor (nodo HTTP
+Request, sin `Origin`) para calcular la fecha de seguimiento de una
+Task — ver `app/api/next-business-day/route.ts` y el commit `6e22cc5`.
+No borrar mientras ese workflow exista.
 
 ---
 

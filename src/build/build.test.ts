@@ -19,6 +19,7 @@
 // the live site's own canonical tag), so the output must be a flat
 // `<slug>.html` file to get that shape with zero redirects.
 
+import { Glob } from "bun";
 import { describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -142,6 +143,9 @@ describe("runStaticBuild", () => {
       expect(html).toContain('<meta name="robots" content="noindex, follow">');
       expect(html).not.toContain('rel="canonical"');
       expect(html).toContain("Volver al inicio");
+      // P8 (audit P2-1): rendered inside the full site shell.
+      expect(html).toContain('<header class="site-header">');
+      expect(html).toContain("<footer>");
     }));
 
   test("never emits a URL on the stale, non-resolving .com.pe domain, on any page", () =>
@@ -178,21 +182,29 @@ describe("runStaticBuild", () => {
       }
     }));
 
-  test("preloads the critical font, and the woff2 files ship in the output", () =>
+  test("P6: fonts ship under content-hashed names, preloaded and referenced by hash", () =>
     withTempOutDir(async (outDir) => {
-      await runStaticBuild(outDir);
+      const { fontsCssFileName } = await runStaticBuild(outDir);
       const html = await Bun.file(join(outDir, "seguridad-minera.html")).text();
+      const fontsCss = await Bun.file(join(outDir, "assets", fontsCssFileName)).text();
+      const shipped = (await Array.fromAsync(new Glob("*").scan({ cwd: join(outDir, "fonts") }))).sort();
 
-      expect(html).toContain(
-        '<link rel="preload" href="/fonts/archivo-latin-variable.woff2" as="font" type="font/woff2" crossorigin>',
-      );
-      for (const fontFile of [
-        "archivo-latin-variable.woff2",
-        "newsreader-italic-latin-variable.woff2",
-        "geist-mono-latin.woff2",
-      ]) {
-        expect(await Bun.file(join(outDir, "fonts", fontFile)).exists()).toBe(true);
+      const hashed = /^(archivo-latin-variable|newsreader-italic-latin-variable|geist-mono-latin)-[0-9a-f]{8}\.woff2$/;
+      expect(shipped).toHaveLength(3);
+      for (const file of shipped) {
+        expect(file).toMatch(hashed);
+        // Every shipped font is referenced by the fonts stylesheet under that exact name.
+        expect(fontsCss).toContain(`/fonts/${file}`);
       }
+
+      const archivo = shipped.find((f) => f.startsWith("archivo-"))!;
+      expect(html).toContain(
+        `<link rel="preload" href="/fonts/${archivo}" as="font" type="font/woff2" crossorigin>`,
+      );
+      // No unhashed font URL survives anywhere, and no README ships publicly.
+      expect(fontsCss).not.toMatch(/\/fonts\/[a-z-]+\.woff2/);
+      expect(html).not.toMatch(/\/fonts\/[a-z-]+\.woff2/);
+      expect(shipped).not.toContain("README.md");
     }));
 
   test("is deterministic across repeated builds of the same source", () =>
@@ -312,7 +324,7 @@ describe("runStaticBuild", () => {
         const mainEnd = html.indexOf("</main>");
         for (const tag of ['<header class="site-header">', "<footer>"]) {
           const at = html.indexOf(tag);
-          if (at === -1) continue; // the 404 page renders no site chrome
+          expect(at, `${label}: ${tag} present`).not.toBe(-1);
           expect(at < mainStart || at > mainEnd, `${label}: ${tag} inside <main>`).toBe(true);
         }
       }
@@ -352,13 +364,35 @@ describe("runStaticBuild", () => {
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir, { gaMeasurementId: "G-TEST123" });
       for (const route of PAGE_ROUTES) {
-        if (route.slug === "404") continue; // standalone page, no SiteFooter
         const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
         expect(html, route.slug || "index").toContain('id="cookie-preferences-button"');
       }
       const privacy = await Bun.file(join(outDir, "privacidad.html")).text();
       expect(privacy).toContain("Google Analytics 4");
     }));
+
+  // P8 (audit P2-1, P2-15): visible copy is neutral Peruvian Spanish
+  // (tú, never voseo) and prose quotes are typographic (“ ” / ‘ ’).
+  // Checked on every page, with and without analytics (the GA-only
+  // privacy paragraphs render only in the second build).
+  test("P8: no page's visible text uses voseo or straight quotes", async () => {
+    const VOSEO = /(?<!\p{L})(buscás|acá|avisanos|tenés|podés|querés|sabés)(?!\p{L})/iu;
+    for (const gaMeasurementId of ["", "G-TEST123"]) {
+      await withTempOutDir(async (outDir) => {
+        await runStaticBuild(outDir, { gaMeasurementId });
+        for (const route of PAGE_ROUTES) {
+          const label = `${route.slug || "index"} (GA: ${gaMeasurementId || "none"})`;
+          const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+          const text = html
+            .replace(/<head>[\s\S]*?<\/head>/, "")
+            .replace(/<script\b[\s\S]*?<\/script>/g, "")
+            .replace(/<[^>]*>/g, " ");
+          expect(text, label).not.toMatch(VOSEO);
+          expect(text, label).not.toMatch(/"|&quot;|&#34;/);
+        }
+      });
+    }
+  });
 
   // T8: sitemap.xml/robots.txt/manifest.webmanifest, generated from the
   // same PAGE_ROUTES table + site-config.ts constants exercised in

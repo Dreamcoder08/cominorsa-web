@@ -99,6 +99,6 @@ export const PAGE_ROUTES: PageRoute[] = [
     title: "Página no encontrada",
     description: ROOT_DESCRIPTION,
     robots: "noindex, follow",
-    render: () => NotFoundPage(),
+    render: (ctx = NO_ANALYTICS) => NotFoundPage(ctx),
   },
 ];

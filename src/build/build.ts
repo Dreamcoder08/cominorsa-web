@@ -26,7 +26,9 @@
 // the file's purpose is clear before that config lands.
 
 import { Glob } from "bun";
-import { join, relative } from "node:path";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, join, relative } from "node:path";
 import { buildCss } from "./css";
 import { renderDocument } from "./document";
 import { buildHeadersFile } from "./headers";
@@ -41,6 +43,8 @@ const ROOT = join(import.meta.dirname, "..", "..");
 const CSS_ENTRY = join(ROOT, "app", "globals.css");
 const FONTS_CSS_ENTRY = join(import.meta.dirname, "fonts.css");
 const PUBLIC_DIR = join(ROOT, "public");
+const FONTS_DIR_NAME = "fonts";
+const CRITICAL_FONT_SOURCE = "archivo-latin-variable.woff2";
 const ASSETS_DIR_NAME = "assets";
 const SITE_SUFFIX = " | COMINORSA";
 
@@ -85,8 +89,58 @@ async function copyPublicAssets(outDir: string): Promise<void> {
   // stale file under public/ to skip copying.
   const glob = new Glob("**/*");
   for await (const relativePath of glob.scan({ cwd: PUBLIC_DIR, dot: false })) {
+    // Fonts ship under content-hashed names instead (buildFonts, P6).
+    if (relativePath.startsWith(`${FONTS_DIR_NAME}/`)) continue;
     const source = Bun.file(join(PUBLIC_DIR, relativePath));
     await Bun.write(join(outDir, relativePath), source);
+  }
+}
+
+/**
+ * P6 (audit P2-12): copies every `public/fonts/*.woff2` to
+ * `<outDir>/fonts/<name>-<hash>.woff2` (first 8 hex chars of the
+ * SHA-256 of its bytes) so `/fonts/*` can keep its one-year `immutable`
+ * cache: a changed font gets a new URL. Returns source file name ->
+ * hashed public href, used to rewrite `fonts.css` and the preload link.
+ */
+async function buildFonts(outDir: string): Promise<Map<string, string>> {
+  const hrefs = new Map<string, string>();
+  const glob = new Glob("*.woff2");
+  for await (const fileName of glob.scan({ cwd: join(PUBLIC_DIR, FONTS_DIR_NAME) })) {
+    const bytes = await Bun.file(join(PUBLIC_DIR, FONTS_DIR_NAME, fileName)).bytes();
+    const hash = new Bun.CryptoHasher("sha256").update(bytes).digest("hex").slice(0, 8);
+    const hashedName = fileName.replace(/\.woff2$/, `-${hash}.woff2`);
+    await Bun.write(join(outDir, FONTS_DIR_NAME, hashedName), bytes);
+    hrefs.set(fileName, `/${FONTS_DIR_NAME}/${hashedName}`);
+  }
+  return hrefs;
+}
+
+/**
+ * Bundles `fonts.css` with every `/fonts/<name>.woff2` URL rewritten to
+ * its hashed href. Bun.build needs an entry file on disk, so the
+ * rewritten source goes to a throwaway temp dir (same `fonts.css` base
+ * name, so the output stays `fonts-<hash>.css`).
+ */
+async function buildFontsCss(outDir: string, fontHrefs: Map<string, string>) {
+  const source = await Bun.file(FONTS_CSS_ENTRY).text();
+  const rewritten = source.replace(/\/fonts\/([a-z0-9-]+\.woff2)/g, (match, fileName: string) => {
+    const href = fontHrefs.get(fileName);
+    if (!href) throw new Error(`fonts.css references a missing font: ${match}`);
+    return href;
+  });
+
+  const tempDir = await mkdtemp(join(tmpdir(), "cominorsa-fonts-"));
+  try {
+    const entry = join(tempDir, basename(FONTS_CSS_ENTRY));
+    await Bun.write(entry, rewritten);
+    // The woff2 URLs are root-relative public paths, not local files —
+    // Bun's bundler must pass them through, not resolve/inline them.
+    return await buildCss(entry, join(outDir, ASSETS_DIR_NAME), {
+      external: [`/${FONTS_DIR_NAME}/*`],
+    });
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
   }
 }
 
@@ -137,15 +191,10 @@ export async function runStaticBuild(
   const { fileName: cssFileName } = await buildCss(CSS_ENTRY, join(outDir, ASSETS_DIR_NAME));
   const cssHref = `/${ASSETS_DIR_NAME}/${cssFileName}`;
 
-  const { fileName: fontsCssFileName } = await buildCss(
-    FONTS_CSS_ENTRY,
-    join(outDir, ASSETS_DIR_NAME),
-    // The woff2 files fonts.css references live under public/fonts/,
-    // copied verbatim by copyPublicAssets below — not local files
-    // relative to this CSS entry, so Bun's bundler must not try to
-    // resolve/inline them.
-    { external: ["/fonts/*"] },
-  );
+  const fontHrefs = await buildFonts(outDir);
+  const criticalFontHref = fontHrefs.get(CRITICAL_FONT_SOURCE);
+  if (!criticalFontHref) throw new Error(`critical font missing: public/fonts/${CRITICAL_FONT_SOURCE}`);
+  const { fileName: fontsCssFileName } = await buildFontsCss(outDir, fontHrefs);
   const fontsCssHref = `/${ASSETS_DIR_NAME}/${fontsCssFileName}`;
 
   await copyPublicAssets(outDir);
@@ -169,6 +218,7 @@ export async function runStaticBuild(
       robots: route.robots,
       cssHref,
       fontsCssHref,
+      criticalFontHref,
       scriptSrcs,
       children: route.render(renderContext),
     });

@@ -41,9 +41,10 @@ describe("worker.fetch", () => {
     // No TWENTY_API_KEY/TWENTY_API_URL/RESEND_API_KEY set here (and none
     // are set in this sandbox) — the handler's own env gate makes both
     // integrations true no-ops; this only proves routing + header wrap.
+    // Same-origin `Origin`, as a browser sends it (P4 origin guard).
     const request = new Request("http://localhost/api/crm-lead", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Origin: "http://localhost" },
       body: JSON.stringify(VALID_CRM_LEAD_PAYLOAD),
     });
     const env = { ASSETS: makeAssetsFetcher() };
@@ -54,6 +55,23 @@ describe("worker.fetch", () => {
     expect(body).toEqual({ ok: true });
     expect(response.headers.get("Content-Security-Policy")).toContain("default-src 'self'");
     expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+  });
+
+  test("P4: a cross-origin POST /api/crm-lead is rejected with 403 and still carries security headers", async () => {
+    const request = new Request("http://localhost/api/crm-lead", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "https://evil.example" },
+      body: JSON.stringify(VALID_CRM_LEAD_PAYLOAD),
+    });
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+      const response = await worker.fetch(request, { ASSETS: makeAssetsFetcher() });
+      expect(response.status).toBe(403);
+      expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+    } finally {
+      console.error = originalError;
+    }
   });
 
   test("GET /api/next-business-day calls the existing handler and returns its date shape with security headers", async () => {

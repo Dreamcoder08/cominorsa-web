@@ -19,6 +19,7 @@ import {
 import type { ServiceGroup } from "../data/services-data";
 import { ConsultationForm } from "./consultation-form";
 import { SiteLayout } from "./site-shell";
+import { Strata } from "./strata";
 
 // Formalization route (landing-craft T3). Sourced from MINEM's
 // "Proceso de Formalización Minera" (gob.pe/101185) — see
@@ -127,6 +128,8 @@ export function HomePage({
         </div>
       </section>
 
+      <Strata to="paper" />
+
       <section className="section about" id="nosotros">
         <div className="section-kicker">
           <span>01</span>
@@ -171,6 +174,8 @@ export function HomePage({
         </div>
       </section>
 
+      <Strata to="ink" />
+
       <section className="section services" id="servicios">
         <div className="section-heading">
           <div className="section-kicker light">
@@ -205,6 +210,8 @@ export function HomePage({
         </div>
       </section>
 
+      <Strata to="cream" />
+
       <section className="section method" id="metodo">
         <div className="method-intro">
           <div className="section-kicker">
@@ -238,6 +245,8 @@ export function HomePage({
         </p>
       </section>
 
+      <Strata to="deep" />
+
       <section className="section consultation" id="consulta">
         <div className="consultation-intro">
           <div className="section-kicker consultation-kicker">
@@ -256,6 +265,8 @@ export function HomePage({
 
         <ConsultationForm />
       </section>
+
+      <Strata to="sand" />
 
       <section className="contact" id="contacto">
         <div className="contact-top">

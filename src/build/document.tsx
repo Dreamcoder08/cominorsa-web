@@ -1,4 +1,3 @@
-/** @jsxImportSource ../html */
 // src/build/document.tsx
 //
 // Full `<head>` document shell for the static build (T4), replacing

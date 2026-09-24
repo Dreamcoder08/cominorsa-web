@@ -9,7 +9,7 @@ metadata:
 
 ## Activation Contract
 
-Use before writing or editing any CSS in `app/globals.css`, or any inline style/className touching color, spacing, or typography in `app/*.tsx`.
+Use before writing or editing any CSS in `app/globals.css`, or any inline style/className touching color, spacing, or typography in `src/build/*.tsx` (page markup) or `src/client/**` (widget DOM).
 
 ## Hard Rules
 

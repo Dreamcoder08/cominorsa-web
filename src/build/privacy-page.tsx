@@ -1,4 +1,3 @@
-/** @jsxImportSource ../html */
 // src/build/privacy-page.tsx
 //
 // Ported from `app/privacidad/page.tsx`, verbatim markup and copy.

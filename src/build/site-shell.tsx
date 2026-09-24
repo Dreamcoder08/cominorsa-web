@@ -1,4 +1,3 @@
-/** @jsxImportSource ../html */
 // src/build/site-shell.tsx
 //
 // Ported from `app/SiteHeader.tsx` / `app/SiteFooter.tsx`. Markup and

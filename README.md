@@ -5,7 +5,7 @@
 Landing page institucional de **COMINORSA S.A.C.**, consultoría minera y ambiental desde Piura, Perú.
 
 [![License](https://img.shields.io/badge/license-proprietary-lightgrey.svg)](LICENSE)
-[![Stack](https://img.shields.io/badge/stack-Next.js%2016%20%2B%20React%2019%20%2F%20Cloudflare%20Workers-informational)]()
+[![Stack](https://img.shields.io/badge/stack-Bun%20%2B%20vanilla%20%2F%20Cloudflare%20Workers-informational)]()
 
 </div>
 
@@ -40,23 +40,26 @@ Sitio institucional de COMINORSA S.A.C., consultoría minera y ambiental. Presen
 - Accesibilidad: HTML semántico en español, `lang` declarado, skip-link, landmarks, jerarquía de headings monotónica.
 - SEO: Open Graph y Twitter Card completos, `robots.ts`, `sitemap.ts`, `manifest.ts`, `og.png` preloadeado.
 - Aviso de cookies y páginas legales (`privacidad`, `terminos`).
-- Headers de seguridad (CSP, HSTS, X-Frame-Options, Permissions-Policy) vía `public/_headers` para Cloudflare Pages.
-- Suite de tests propia (a11y, performance, seguridad de output, SEO, integridad del build) con `node --test`, sin dependencias externas.
+- Headers de seguridad (CSP, HSTS, X-Frame-Options, Permissions-Policy) generados en build time en `dist-static/_headers`, aplicados por Cloudflare Workers Static Assets.
+- Suite de tests propia (a11y, performance, seguridad de output, SEO, integridad del build) con `node --test` y `bun test`, sin dependencias externas de testing.
 
 ## Stack técnico
 
 | Capa | Tecnología |
 |------|-----------|
-| Frontend | Next.js 16 (App Router) + React 19, servido con [Vinext](https://github.com/cloudflare/vinext) |
-| Backend | Route handler de Next.js (`app/api/crm-lead`) que reenvía leads a Twenty CRM |
+| Frontend | Sitio estático — HTML generado en build time por un JSX-runtime propio (`src/html/`), cero React, cero framework |
+| Interactividad | 4 módulos ES vanilla (`src/client/`), progressive enhancement, sin bundler runtime |
+| Backend | 2 route handlers library-free (`app/api/crm-lead`, `app/api/next-business-day`), servidos por `src/worker/index.ts` |
 | Base de datos | Ninguna — los leads van a Twenty CRM vía `/api/crm-lead` |
-| Infraestructura | Cloudflare Workers + Cloudflare Pages, deploy con Wrangler |
-| Estilos | Tailwind CSS 4 (`@tailwindcss/postcss`, sin config custom) |
-| Testing | `node --test` (unit/QA) + Playwright (`pnpm test:e2e`) |
+| Infraestructura | Cloudflare Workers (Static Assets + Worker), deploy con Wrangler |
+| Build/dev/test runtime | [Bun](https://bun.sh) (`Bun.build`, `bun test`) — nunca corre en producción (Cloudflare Workers corre `workerd`, no Bun) |
+| Package manager | pnpm (lockfile, `allowBuilds` allowlist, pre-commit hook, CI) |
+| Estilos | CSS plano hecho a mano (`app/globals.css`), sin Tailwind ni preprocesador |
+| Testing | `node --test` (QA/integración) + `bun test` (unidades de `src/`) + Playwright (`pnpm test:e2e`, determinístico vía `webServer`) |
 
 ## Instalación
 
-Requisitos: **Node.js >= 22.18.0** y **pnpm >= 11.0.0**.
+Requisitos: **Node.js >= 22.18.0**, **pnpm >= 11.0.0**, y **Bun** (build/dev/test runtime — `curl -fsSL https://bun.sh/install | bash`).
 
 ```bash
 git clone git@github.com:Dreamcoder08/cominorsa-web.git
@@ -79,58 +82,66 @@ Variables relevantes documentadas en el proyecto (ver `.env.example` y `DEPLOY.m
 
 ```bash
 pnpm dev
-# -> http://localhost:3000
+# builds dist-static/ once, then serves it with `wrangler dev`
+# (no live rebuild on save — re-run `pnpm dev` after editing source,
+# or run `bun --watch src/build/build.ts` in one terminal and
+# `wrangler dev` in another: Wrangler's asset dev server reloads the
+# browser automatically once dist-static/ changes)
 
-pnpm build     # compila el worker y los assets en dist/
-pnpm start     # sirve el build de producción localmente
+pnpm build     # bun run src/build/build.ts -> dist-static/
+pnpm start     # build + wrangler dev (same as `pnpm dev`)
 ```
 
 ## Estructura del proyecto
 
 ```
 cominorsa-web/
-├── app/                    # Next.js App Router (RSC)
-│   ├── layout.tsx          # Root layout + generateMetadata (OG, Twitter)
-│   ├── page.tsx            # Landing principal
-│   ├── ConsultationForm.tsx
-│   ├── api/crm-lead/       # Reenvío de leads a Twenty CRM
-│   ├── <servicio>/page.tsx # Páginas de cada línea de servicio
-│   ├── robots.ts, sitemap.ts, manifest.ts
-│   └── globals.css
-├── public/                 # og.png, logo.png, favicons, _headers
-├── docker/twenty/           # Stack local/producción de Twenty CRM
+├── src/
+│   ├── html/                # jsx-runtime propio (JSX -> HTML strings, sin React)
+│   ├── build/                # pipeline de build: páginas, css.ts, js.ts, routes.ts, security-policy.ts...
+│   ├── client/               # 4 widgets vanilla (progressive enhancement)
+│   ├── data/                 # catálogo de servicios, FAQ (compartido)
+│   └── worker/                # Worker de producción (Static Assets + /api/*)
+├── app/
+│   ├── constants.ts          # WhatsApp numbers, GA env var, etc.
+│   ├── globals.css           # CSS plano hecho a mano (tokens en :root)
+│   └── api/                  # crm-lead, next-business-day (route handlers library-free)
+├── public/                   # og.png, logo.png, favicons, fonts/
+├── docker/twenty/             # Stack local/producción de Twenty CRM
 ├── tests/
 │   ├── rendered-html.test.mjs
-│   └── qa/                  # a11y, performance, security, SEO, build
-├── scripts/                 # Automatización de Cloudflare y Twenty CRM
-├── DEPLOY.md                # Guía de despliegue a Cloudflare Workers
+│   ├── qa/                    # a11y, performance, security, SEO, build (node --test)
+│   └── e2e/                   # Playwright, deterministic webServer
+├── scripts/                   # Automatización de Cloudflare y Twenty CRM
+├── wrangler.jsonc              # config canónico del Worker (Static Assets + /api/*)
+├── DEPLOY.md                   # Guía de despliegue a Cloudflare Workers
 └── package.json
 ```
 
 ## Testing
 
 ```bash
-pnpm test                    # build + suite completa (CI)
+pnpm test                    # build + suite QA completa (node --test)
+bun test src/                # unidades de src/ (bun test)
 node --test tests/rendered-html.test.mjs   # sólo render
 node --test tests/qa/                      # sólo QA suite
-pnpm test:e2e                              # Playwright
+pnpm test:e2e                              # Playwright, determinístico (build propio + wrangler dev)
 ```
 
-## E2E local aislado
+## E2E
 
-Antes de `pnpm test:e2e`, iniciá manualmente la web local en el puerto 3001. La
-suite E2E sólo acepta un `PLAYWRIGHT_BASE_URL` loopback y todos los specs deben
-importar `test`/`expect` desde `tests/e2e/guarded-test.ts`. Ese fixture bloquea
-service workers y tráfico externo, intercepta `POST /api/crm-lead`, responde con
-un resultado sintético y expone los payloads capturados para las aserciones.
-
-**Dejar variables de entorno vacías no es aislamiento:** Vinext puede cargar
-archivos `.env` igualmente. No ejecutes formularios con el `test` base de
-`@playwright/test` ni apuntes la suite a un dominio desplegado.
+`pnpm test:e2e` (alias de `e2e:static`) es determinístico y autocontenido:
+Playwright's `webServer` (ver `playwright.config.ts`) buildea el sitio con
+un `NEXT_PUBLIC_GA_MEASUREMENT_ID` de prueba fijo y lo sirve vía el `wrangler
+dev` real — no depende de ningún servidor iniciado a mano ni de lo que haya
+en `.env`. Todos los specs importan `test`/`expect` desde
+`tests/e2e/guarded-test.ts`, que bloquea service workers y tráfico externo,
+intercepta `POST /api/crm-lead`, responde con un resultado sintético y
+expone los payloads capturados para las aserciones.
 
 ```bash
 pnpm test:e2e
-# Regresión de aislamiento, sin Vinext ni integraciones:
+# Regresión de aislamiento:
 pnpm exec playwright test tests/e2e/provider-isolation.spec.ts --project=chromium
 ```
 

@@ -31,10 +31,8 @@ function fileNameFor(slug: string): string {
 }
 
 async function withTempOutDir<T>(fn: (outDir: string) => Promise<T>): Promise<T> {
-  // Under the repo, not /tmp: the CSS entry (`app/globals.css`) imports
-  // the bare specifier "tailwindcss", which only resolves against this
-  // project's node_modules — the output dir itself can still be
-  // anywhere, but keeping it here too avoids surprises.
+  // Under the repo, not /tmp, for consistency with this project's other
+  // fixture directories.
   const outDir = await mkdtemp(join(process.cwd(), ".build-fixture-"));
   try {
     return await fn(outDir);

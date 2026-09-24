@@ -1,4 +1,3 @@
-/** @jsxImportSource ../html */
 // src/build/not-found-page.tsx
 //
 // Ported from `app/not-found.tsx`. The original renders with Tailwind

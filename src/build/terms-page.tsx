@@ -1,4 +1,3 @@
-/** @jsxImportSource ../html */
 // src/build/terms-page.tsx
 //
 // Ported from `app/terminos/page.tsx`, verbatim markup and copy.

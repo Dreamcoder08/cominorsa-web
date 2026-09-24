@@ -1,12 +1,17 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Twenty CRM's local Docker stack (docker/twenty/) already owns port 3000,
-// so the site's dev server runs on 3001 in local dev — see
-// docker/twenty/README.md and app/api/crm-lead/route.ts. Not auto-started
-// here (webServer would need the same Twenty/.env prerequisites as
-// `pnpm dev`, which this config has no business assuming): run `pnpm dev
-// -- --port 3001` yourself first, then `pnpm test:e2e`.
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001";
+// T11 cutover: `e2e:static`/`test:e2e` (package.json) is now deterministic
+// and self-contained — Playwright's own `webServer` below builds the
+// static site with a FIXED test GA measurement ID (so the consent specs
+// always exercise the real GA4-loading branch, never silently skipping it
+// depending on whatever `.env` happens to have — see the "Parent
+// verification of T7" follow-up in odd/tasks/bun-vanilla-migration.md)
+// and serves it via the real `wrangler dev` on the canonical
+// wrangler.jsonc (Static Assets + the 2 API routes), not a throwaway
+// static file server. `reuseExistingServer` skips the rebuild when a
+// server is already listening on this port in local dev.
+const PORT = 8788;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -18,6 +23,12 @@ export default defineConfig({
     baseURL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
+  },
+  webServer: {
+    command: `NEXT_PUBLIC_GA_MEASUREMENT_ID=G-TEST123 bun run src/build/build.ts && pnpm exec wrangler dev --port ${PORT}`,
+    url: baseURL,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
   },
   projects: [
     {

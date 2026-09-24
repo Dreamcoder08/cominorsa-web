@@ -14,20 +14,31 @@ Use before claiming any CSS/layout/component change is done on this repo. A buil
 ## Hard Rules
 
 - Never claim a visual/CSS change works without a screenshot from this flow.
-- Always `lsof -ti:3000 -sTCP:LISTEN | xargs -r kill` before relaunching — the wrapper script doesn't forward SIGTERM.
-- Treat `db/index.ts`, `vite.config.ts`, `worker/index.ts` TS errors during `next build` as pre-existing/unrelated (Cloudflare D1/R2 binding types) — not a regression you introduced.
+- This is a static site (T11 cutover) built with Bun and served by
+  `wrangler dev` — no Next.js, no Vite dev server, no hot module reload.
+  A source edit needs a rebuild (`bun run src/build/build.ts`) before
+  the server reflects it; `wrangler dev`'s asset watcher only reloads
+  the browser once `dist-static/` actually changes on disk.
+- Kill the server by **exact PID** (`kill <pid>`, captured when you
+  launched it), never by port-matching pattern — `wrangler dev` spawns
+  a child `workerd` process that can outlive a parent `kill` if you
+  only killed the wrapper. Verify with `lsof -ti:<port> -sTCP:LISTEN`
+  and `pgrep -fa workerd` before declaring the port free; a stale
+  `.wrangler/deploy/config.json` from an old `wrangler deploy --dry-run`
+  can also make Wrangler silently pick up the wrong config (`rm -rf
+  .wrangler` if a rebuilt site doesn't show up).
 
 ## Execution Steps
 
-1. Build check: `npx next build 2>&1 | grep -E "Compiled|error TS"` — expect `Compiled successfully`.
-2. Launch: `(npm run dev > /tmp/dev-server.log 2>&1 &)`, then poll `curl -sf http://localhost:3000` (don't `sleep` blindly — the first Vite/Next compile can take 10s+).
+1. Build check: `bun run src/build/build.ts` — expect `Built dist-static/ (11 pages)` with no errors.
+2. Launch: `(pnpm exec wrangler dev --port 8788 > /tmp/dev-server.log 2>&1 &)`, capture the PID, then poll `curl -sf http://localhost:8788` (don't `sleep` blindly — the first `workerd` boot can take a few seconds).
 3. Screenshot with Playwright (no `chromium-cli` in this sandbox):
    - `npx playwright install chromium` once per environment (no `--with-deps` — `apt-get` isn't available here; the "OS not officially supported, downloading fallback build" warning is expected and fine).
    - In the scratchpad dir: `npm install --no-save --prefix "$SCRATCH" playwright` (**not** plain `npm install --no-save playwright` after just `cd`-ing there — this repo's npm config bleeds in the parent pnpm workspace and the install silently fails with `npm error Cannot read properties of null (reading 'isDescendantOf')`, leaving no `node_modules/playwright` and a confusing `ERR_MODULE_NOT_FOUND` on the next run. `--prefix` isolates it and installs cleanly in ~2s).
    - Run an ESM script (`import { chromium } from "playwright"`) that navigates, `scrollIntoViewIfNeeded()` on the section under review, and screenshots to `/tmp/`. See `assets/shot-template.mjs` (desktop) or `assets/mobile-shot-template.mjs` (mobile viewport + the fixed-overlay reachability check below).
    - Read the resulting PNG with the Read tool — don't skip this step.
 4. Any `position: fixed` element (cookie/consent banners, sticky CTAs, toasts) needs an extra check beyond a normal screenshot: it doesn't grow document height, so on a short page it can permanently cover the last bit of content — e.g. footer legal links — with no room left to scroll past it, especially on mobile viewports. A `fullPage: true` screenshot is **not** reliable evidence either way for this (Chromium composites fixed elements at a fixed pixel offset in the stitched image, which can look like an overlap that isn't real, or hide one that is). Verify for real: scroll a normal (non-fullPage) viewport to `window.scrollTo(0, document.body.scrollHeight)`, confirm `window.scrollY === document.body.scrollHeight - window.innerHeight` (true max scroll), then screenshot and read it — don't trust `locator(...).boundingBox()` overlap math alone, it can report stale/misleading positions (seen with `.last()` on a page with only one match). See `assets/mobile-shot-template.mjs`.
-5. Stop the server when done: `lsof -ti:3000 -sTCP:LISTEN | xargs -r kill`.
+5. Stop the server when done: kill the exact PID captured in step 2 (`kill <pid>`); confirm with `lsof -ti:8788 -sTCP:LISTEN` that nothing is left listening.
 
 ## Output Contract
 

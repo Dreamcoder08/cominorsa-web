@@ -92,14 +92,14 @@ echo ""
 hr
 echo "5. Build"
 hr
-if [[ -d "dist/client" ]]; then
-  ok "dist/ existe (build previo)"
-  JS_SIZE=$(du -sb dist/client/_next/static/chunks/*.js 2>/dev/null | awk '{sum+=$1} END {print sum+0}')
-  CSS_SIZE=$(du -sb dist/client/_next/static/css/*.css 2>/dev/null | awk '{sum+=$1} END {print sum+0}')
+if [[ -d "dist-static/assets" ]]; then
+  ok "dist-static/ existe (build previo)"
+  JS_SIZE=$(du -sb dist-static/assets/*.js 2>/dev/null | awk '{sum+=$1} END {print sum+0}')
+  CSS_SIZE=$(du -sb dist-static/assets/*.css 2>/dev/null | awk '{sum+=$1} END {print sum+0}')
   echo "    JS:  $((JS_SIZE / 1024)) KB"
   echo "    CSS: $((CSS_SIZE / 1024)) KB"
 else
-  warn "No hay dist/ - corre 'pnpm run build' antes de deployar"
+  warn "No hay dist-static/ - corre 'pnpm run build' antes de deployar"
 fi
 echo ""
 
@@ -125,12 +125,12 @@ echo ""
 hr
 echo "7. Headers de seguridad"
 hr
-if [[ -f "dist/client/_headers" ]]; then
-  HEADERS=$(cat dist/client/_headers)
+if [[ -f "dist-static/_headers" ]]; then
+  HEADERS=$(cat dist-static/_headers)
   if echo "$HEADERS" | grep -q "Content-Security-Policy"; then
     ok "CSP presente"
   else
-    fail "CSP faltante en dist/client/_headers"
+    fail "CSP faltante en dist-static/_headers"
   fi
   if echo "$HEADERS" | grep -q "Strict-Transport-Security"; then
     ok "HSTS presente"
@@ -143,17 +143,17 @@ if [[ -f "dist/client/_headers" ]]; then
     warn "X-Frame-Options faltante"
   fi
 else
-  fail "dist/client/_headers no existe (corre build)"
+  fail "dist-static/_headers no existe (corre build)"
 fi
 echo ""
 
 hr
 echo "8. Files críticos"
 hr
-# robots.txt y sitemap.xml se sirven dinámicamente vía app/robots.ts y
-# app/sitemap.ts (detectan host/protocolo reales) — no deben existir como
-# archivos estáticos en public/, o el estático gana y sirve el dominio
-# equivocado. Se verifican en la sección 9 (DNS/HTTP), no acá.
+# T11: robots.txt y sitemap.xml ahora son archivos estáticos generados en
+# build time (src/build/robots.ts / sitemap.ts, escritos a dist-static/ por
+# build.ts) — ya no hay generación por-request. Se verifican en la sección 9
+# (DNS/HTTP) contra el sitio real, no acá.
 for f in public/favicon.ico public/og.png; do
   if [[ -f "$f" ]]; then
     SIZE=$(stat -c%s "$f" 2>/dev/null)

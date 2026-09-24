@@ -19,6 +19,24 @@ import { buildCsp, SECURITY_HEADERS } from "./security-policy";
 
 const IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
 
+// P6 (audit P2-12): images served under fixed, non-hashed names — the
+// OG image, the header/footer logo and the favicons. They used to fall
+// through to Cloudflare's default (revalidate every time); a one-day
+// public cache saves the round trips while a replaced file still
+// propagates within a day. Never `immutable`: the names don't change
+// when the bytes do. HTML keeps no Cache-Control override (always
+// revalidated). Listed explicitly rather than by extension so a new
+// file never inherits a cache policy by accident.
+const IMAGE_CACHE = "public, max-age=86400";
+export const CACHED_IMAGE_PATHS: readonly string[] = [
+  "/og.jpg",
+  "/logo-44.png",
+  "/favicon.ico",
+  "/favicon-16x16.png",
+  "/favicon-32x32.png",
+  "/apple-touch-icon.png",
+];
+
 export function buildHeadersFile(): string {
   const securityLines = [
     `Content-Security-Policy: ${buildCsp()}`,
@@ -33,8 +51,11 @@ export function buildHeadersFile(): string {
       "/assets/*",
       `  Cache-Control: ${IMMUTABLE_CACHE}`,
       "",
+      // P6: font files are content-hashed by the build (build.ts,
+      // buildFonts), so immutable is safe here too.
       "/fonts/*",
       `  Cache-Control: ${IMMUTABLE_CACHE}`,
+      ...CACHED_IMAGE_PATHS.flatMap((path) => ["", path, `  Cache-Control: ${IMAGE_CACHE}`]),
     ].join("\n") + "\n"
   );
 }

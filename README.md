@@ -38,7 +38,7 @@ Sitio institucional de COMINORSA S.A.C., consultoría minera y ambiental. Presen
 - Formulario de consulta que arma un mensaje prellenado y abre WhatsApp (`wa.me/...`), sin depender de que ningún backend responda.
 - Reenvío opcional y no bloqueante del lead a Twenty CRM vía `/api/crm-lead`, activo solo si `TWENTY_API_KEY`/`TWENTY_API_URL` están configuradas.
 - Accesibilidad: HTML semántico en español, `lang` declarado, skip-link, landmarks, jerarquía de headings monotónica.
-- SEO: Open Graph y Twitter Card completos, `robots.ts`, `sitemap.ts`, `manifest.ts`, `og.png` preloadeado.
+- SEO: Open Graph y Twitter Card completos, `robots.ts`, `sitemap.ts`, `manifest.ts`, imagen OG `og.jpg` (≤ 200 KB).
 - Aviso de cookies y páginas legales (`privacidad`, `terminos`).
 - Headers de seguridad (CSP, HSTS, X-Frame-Options, Permissions-Policy) generados en build time en `dist-static/_headers`, aplicados por Cloudflare Workers Static Assets.
 - Suite de tests propia (a11y, performance, seguridad de output, SEO, integridad del build) con `node --test` y `bun test`, sin dependencias externas de testing.
@@ -106,7 +106,7 @@ cominorsa-web/
 │   ├── constants.ts          # WhatsApp numbers, GA env var, etc.
 │   ├── globals.css           # CSS plano hecho a mano (tokens en :root)
 │   └── api/                  # crm-lead, next-business-day (route handlers library-free)
-├── public/                   # og.png, logo.png, favicons, fonts/
+├── public/                   # og.jpg, logo-44.png, favicons, fonts/
 ├── docker/twenty/             # Stack local/producción de Twenty CRM
 ├── tests/
 │   ├── rendered-html.test.mjs

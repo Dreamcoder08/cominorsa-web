@@ -1819,6 +1819,22 @@ footer > .brand {
   font-weight: 700;
 }
 
+/* P4: honeypot wrapper (see src/build/consultation-form.tsx). Standard
+   visually-hidden clip, not display:none — bots that skip display:none
+   fields would otherwise leave it empty. Absolutely positioned, so it
+   takes no slot (and no gap) in the form's grid. Also aria-hidden and
+   out of the tab order in the markup. */
+.form-honeypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .contact-note-body {
   display: flex;
   flex-direction: column;

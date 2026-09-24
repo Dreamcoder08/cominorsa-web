@@ -34,6 +34,20 @@ describe("buildHeadersFile", () => {
     expect(file).toMatch(/\n\/fonts\/\*\n\s*Cache-Control: public, max-age=31536000, immutable/);
   });
 
+  test("P6: caches the non-hashed images (OG, logo, favicons) for a day, not immutably", () => {
+    for (const path of [
+      "/og.jpg",
+      "/logo-44.png",
+      "/favicon.ico",
+      "/favicon-16x16.png",
+      "/favicon-32x32.png",
+      "/apple-touch-icon.png",
+    ]) {
+      const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      expect(file).toMatch(new RegExp(`\\n${escaped}\\n\\s*Cache-Control: public, max-age=86400\\n`));
+    }
+  });
+
   test("never sets Cache-Control on the /* (HTML) rule — HTML must not be cached immutably", () => {
     const globalRuleBlock = file.split(/\n\/assets\/\*/)[0]!;
     expect(globalRuleBlock).not.toMatch(/Cache-Control/);

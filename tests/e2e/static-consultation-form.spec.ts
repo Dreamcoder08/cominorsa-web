@@ -69,6 +69,8 @@ test.describe("static consultation form", () => {
       city: SAMPLE_LEAD.city,
       service: SAMPLE_LEAD.service,
       question: SAMPLE_LEAD.question,
+      // P4 honeypot: a real visitor never fills it.
+      website: "",
       whatsappLine: "51910728575",
     });
 

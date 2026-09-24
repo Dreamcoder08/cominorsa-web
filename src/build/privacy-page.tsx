@@ -106,7 +106,7 @@ export function PrivacyPage({ analyticsEnabled = false }: { analyticsEnabled?: b
                 rechazas, no se carga ningún script de analítica y no se genera
                 ninguna cookie de este tipo. Tu decisión se guarda en tu
                 navegador y puedes cambiarla en cualquier momento desde
-                &quot;Preferencias de cookies&quot;, en el pie de página. No
+                “Preferencias de cookies”, en el pie de página. No
                 usamos píxeles de publicidad de terceros ni construimos perfiles
                 de navegación fuera de este sitio.
               </p>

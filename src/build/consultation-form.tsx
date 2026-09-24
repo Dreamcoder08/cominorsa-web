@@ -23,6 +23,13 @@
 // Field `name`s (`name`, `city`, `service`, `whatsapp`, `question`)
 // match `app/ConsultationForm.tsx`'s `FormData` keys exactly, so T7 can
 // reuse the same `new FormData(form)` reading code verbatim.
+//
+// P4 (audit P1-7): `website` is a honeypot. Its wrapper is visually
+// hidden (`.form-honeypot`) and `aria-hidden`, and the input is out of
+// the tab order (`tabindex="-1"`) with autofill off, so people and
+// assistive tech never reach it; naive bots that fill every field do.
+// `/api/crm-lead` silently drops any submission where it is non-empty.
+// It is not read by the WhatsApp message builder.
 
 import {
   PRIMARY_WHATSAPP_NUMBER,
@@ -91,6 +98,19 @@ export function ConsultationForm() {
           required
         />
       </label>
+
+      <div className="form-honeypot" aria-hidden="true">
+        <label>
+          <span>Sitio web</span>
+          <input
+            type="text"
+            name="website"
+            tabindex={-1}
+            autocomplete="off"
+            aria-hidden="true"
+          />
+        </label>
+      </div>
 
       <div className="form-submit">
         <div>

@@ -48,7 +48,8 @@ test("social image references an asset that exists", async () => {
   const { html } = await fetchHtml();
   const ogImage = ogContent(html, "og:image");
   assert.ok(ogImage, "og:image is required");
-  assert.match(ogImage, /\/(og|logo)\.png/);
+  assert.equal(ogImage, "https://cominorsa.com/og.jpg");
+  assert.equal(ogContent(html, "og:image:type"), "image/jpeg");
 });
 
 test("h1 is unique (one per page)", async () => {

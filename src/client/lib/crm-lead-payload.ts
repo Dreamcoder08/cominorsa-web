@@ -11,6 +11,13 @@ export type CrmLeadFields = {
   city: string;
   service: string;
   question: string;
+  /**
+   * P4 honeypot: the hidden `website` input from
+   * `src/build/consultation-form.tsx`. A person never sees or fills it,
+   * so it is always "" for a real submission; the route silently drops
+   * any payload where it is non-empty. Never part of the WhatsApp message.
+   */
+  website: string;
 };
 
 export type CrmLeadPayload = CrmLeadFields & { whatsappLine: string };
@@ -24,6 +31,7 @@ export function buildCrmLeadPayload(
     city: fields.city,
     service: fields.service,
     question: fields.question,
+    website: fields.website,
     whatsappLine,
   };
 }

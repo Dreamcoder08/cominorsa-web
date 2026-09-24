@@ -92,7 +92,7 @@ const required = [
   "src/build/build.ts",
   "src/worker/index.ts",
   "wrangler.jsonc",
-  "public/og.png",
+  "public/og.jpg",
   "public/favicon.ico",
   "public/apple-touch-icon.png",
   "scripts/validate-env.mjs",
@@ -103,13 +103,14 @@ for (const f of required) {
 }
 
 // 4. Public assets within size budgets
-const ogSize = existsSync(join(ROOT, "public/og.png"))
-  ? statSync(join(ROOT, "public/og.png")).size
-  : 0;
+// P6: WhatsApp link previews are unreliable for heavy images.
+const ogSize = existsSync(join(ROOT, "public/og.jpg"))
+  ? statSync(join(ROOT, "public/og.jpg")).size
+  : Infinity;
 check(
-  "public/og.png < 1 MB",
-  ogSize < 1024 * 1024,
-  `${(ogSize / 1024 / 1024).toFixed(2)} MB`,
+  "public/og.jpg <= 200 KB",
+  ogSize <= 200 * 1024,
+  `${(ogSize / 1024).toFixed(0)} KB`,
 );
 
 // 5. Security headers now come from a single source: src/build/security-policy.ts

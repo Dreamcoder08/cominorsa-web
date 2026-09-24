@@ -15,6 +15,7 @@ describe("buildCrmLeadPayload", () => {
         city: "Piura",
         service: "REINFO",
         question: "Necesito ayuda con mi trámite.",
+        website: "",
       },
       "51910728575",
     );
@@ -24,17 +25,26 @@ describe("buildCrmLeadPayload", () => {
       city: "Piura",
       service: "REINFO",
       question: "Necesito ayuda con mi trámite.",
+      website: "",
       whatsappLine: "51910728575",
     });
   });
 
-  test("carries exactly 5 keys, nothing extra", () => {
+  test("carries exactly 6 keys (5 lead fields + the honeypot), nothing extra", () => {
     const payload = buildCrmLeadPayload(
-      { name: "a", city: "b", service: "c", question: "d" },
+      { name: "a", city: "b", service: "c", question: "d", website: "" },
       "e",
     );
     expect(Object.keys(payload).sort()).toEqual(
-      ["city", "name", "question", "service", "whatsappLine"].sort(),
+      ["city", "name", "question", "service", "website", "whatsappLine"].sort(),
     );
+  });
+
+  test("P4: forwards the honeypot value verbatim so the route can drop bot submissions", () => {
+    const payload = buildCrmLeadPayload(
+      { name: "a", city: "b", service: "c", question: "d", website: "https://spam.example" },
+      "e",
+    );
+    expect(payload.website).toBe("https://spam.example");
   });
 });

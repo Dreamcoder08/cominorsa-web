@@ -1,8 +1,10 @@
 /* src/build/fonts.css
  *
  * Self-hosted @font-face declarations replacing `next/font/google`
- * (T5). Sourced from the exact "latin"-subset woff2 files next/font
- * itself downloaded for this project — see `public/fonts/README.md` for
+ * (T5). The `/fonts/<name>.woff2` URLs below are source names: the
+ * build rewrites each to its content-hashed output name (P6, see
+ * `buildFonts` in build.ts) before bundling this file. Sourced from the exact "latin"-subset woff2 files next/font
+ * itself downloaded for this project — see `docs/fonts.md` for
  * provenance and license (all three are SIL OFL 1.1).
  *
  * Resolves the same CSS custom properties `app/globals.css` already

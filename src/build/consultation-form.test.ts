@@ -82,4 +82,17 @@ describe("ConsultationForm consent notice", () => {
     expect(notice![0]).toContain('<a href="/privacidad">Ver Política de Privacidad</a>');
     expect(html.indexOf("form-consent")).toBeGreaterThan(html.indexOf("consultation-form-submit"));
   });
+
+  test("P4: renders a honeypot `website` field hidden from assistive tech and the tab order", () => {
+    const match = html.match(/<input[^>]*name="website"[^>]*>/);
+    expect(match).not.toBeNull();
+    const input = match![0];
+    expect(input).toContain('type="text"');
+    expect(input).toContain('tabindex="-1"');
+    expect(input).toContain('autocomplete="off"');
+    expect(input).toContain('aria-hidden="true"');
+    expect(input).not.toContain("required");
+    // Its wrapper is hidden from AT too, so its label text is never announced.
+    expect(html).toMatch(/<div class="form-honeypot" aria-hidden="true">[\s\S]*name="website"/);
+  });
 });

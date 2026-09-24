@@ -82,3 +82,12 @@ test("/assets/* and /fonts/* get immutable caching; the page rule (/*) does not"
   const rootBlock = rawHeadersFile.match(/^\/\*\n([\s\S]*?)(?=\n\/|\n*$)/)?.[1] ?? "";
   assert.doesNotMatch(rootBlock, /Cache-Control/);
 });
+
+test("P6: non-hashed images get a one-day public cache, never immutable", () => {
+  for (const path of ["/og.jpg", "/logo-44.png", "/favicon.ico", "/apple-touch-icon.png"]) {
+    const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const block = rawHeadersFile.match(new RegExp(`\\n${escaped}\\n([\\s\\S]*?)(?=\\n\\/|\\n*$)`))?.[1] ?? "";
+    assert.match(block, /Cache-Control:\s*public, max-age=86400$/m, `${path} cache rule`);
+    assert.doesNotMatch(block, /immutable/);
+  }
+});

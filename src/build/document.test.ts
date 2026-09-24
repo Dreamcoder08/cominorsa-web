@@ -16,6 +16,7 @@ const html = renderDocument({
   canonicalPath: "/seguridad-minera",
   cssHref: "/assets/globals-abc123.css",
   fontsCssHref: "/assets/fonts-def456.css",
+  criticalFontHref: "/fonts/archivo-latin-variable-0123abcd.woff2",
   children: raw("<main><p>body</p></main>"),
 });
 
@@ -72,9 +73,9 @@ describe("renderDocument", () => {
     );
   });
 
-  test("preloads only the critical font (Archivo, the body/heading font)", () => {
+  test("preloads only the critical font (Archivo, the body/heading font), at the hashed href passed in", () => {
     expect(html).toContain(
-      '<link rel="preload" href="/fonts/archivo-latin-variable.woff2" as="font" type="font/woff2" crossorigin>',
+      '<link rel="preload" href="/fonts/archivo-latin-variable-0123abcd.woff2" as="font" type="font/woff2" crossorigin>',
     );
     // Not preloaded: Newsreader (italic accent font) and Geist Mono
     // (small labels) are lower-priority than the body/heading font.
@@ -111,8 +112,9 @@ describe("renderDocument", () => {
       '<meta property="og:description" content="Planes de Seguridad y Salud Ocupacional.">',
     );
     expect(html).toContain(
-      '<meta property="og:image" content="https://cominorsa.com/og.png">',
+      '<meta property="og:image" content="https://cominorsa.com/og.jpg">',
     );
+    expect(html).toContain('<meta property="og:image:type" content="image/jpeg">');
     expect(html).toContain('<meta property="og:image:width" content="1200">');
     expect(html).toContain('<meta property="og:image:height" content="630">');
     expect(html).toContain(
@@ -129,7 +131,7 @@ describe("renderDocument", () => {
       '<meta name="twitter:description" content="Planes de Seguridad y Salud Ocupacional.">',
     );
     expect(html).toContain(
-      '<meta name="twitter:image" content="https://cominorsa.com/og.png">',
+      '<meta name="twitter:image" content="https://cominorsa.com/og.jpg">',
     );
   });
 
@@ -170,6 +172,7 @@ describe("renderDocument", () => {
       canonicalPath: "/x",
       cssHref: "/assets/x.css",
       fontsCssHref: "/assets/fonts-x.css",
+      criticalFontHref: "/fonts/archivo-latin-variable-0123abcd.woff2",
       children: raw("<p></p>"),
     });
     expect(unsafe).not.toContain("<script>alert(1)</script>");
@@ -194,6 +197,7 @@ describe("renderDocument for the site root", () => {
     canonicalPath: "/",
     cssHref: "/assets/globals-abc123.css",
     fontsCssHref: "/assets/fonts-def456.css",
+    criticalFontHref: "/fonts/archivo-latin-variable-0123abcd.woff2",
     children: raw("<main></main>"),
   });
 
@@ -210,6 +214,7 @@ describe("renderDocument without canonicalPath (404 page)", () => {
     robots: "noindex, follow",
     cssHref: "/assets/globals-abc123.css",
     fontsCssHref: "/assets/fonts-def456.css",
+    criticalFontHref: "/fonts/archivo-latin-variable-0123abcd.woff2",
     children: raw("<main><p>404</p></main>"),
   });
 
@@ -248,6 +253,7 @@ describe("renderDocument scriptSrcs (T7)", () => {
       canonicalPath: "/seguridad-minera",
       cssHref: "/assets/globals-abc123.css",
       fontsCssHref: "/assets/fonts-def456.css",
+      criticalFontHref: "/fonts/archivo-latin-variable-0123abcd.woff2",
       scriptSrcs: ["/assets/mobile-nav-aaa111.js", "/assets/consent-bbb222.js"],
       children: raw("<main><p>body</p></main>"),
     });
@@ -271,6 +277,7 @@ describe("renderDocument scriptSrcs (T7)", () => {
       description: "y",
       cssHref: "/a.css",
       fontsCssHref: "/b.css",
+      criticalFontHref: "/fonts/archivo-latin-variable-0123abcd.woff2",
       scriptSrcs: ["/assets/consent-bbb222.js"],
       children: raw("<main></main>"),
     });

@@ -11,7 +11,7 @@
 #   5. Lint limpio
 #   6. Scripts ejecutables
 #   7. Headers CSP correctos
-#   8. Files críticos presentes (favicon, og.png, robots, sitemap)
+#   8. Files críticos presentes (favicon, og.jpg, robots, sitemap)
 #
 # Sale 0 si todo OK, 1 si hay problemas.
 
@@ -154,7 +154,7 @@ hr
 # build time (src/build/robots.ts / sitemap.ts, escritos a dist-static/ por
 # build.ts) — ya no hay generación por-request. Se verifican en la sección 9
 # (DNS/HTTP) contra el sitio real, no acá.
-for f in public/favicon.ico public/og.png; do
+for f in public/favicon.ico public/og.jpg; do
   if [[ -f "$f" ]]; then
     SIZE=$(stat -c%s "$f" 2>/dev/null)
     ok "$f ($SIZE bytes)"

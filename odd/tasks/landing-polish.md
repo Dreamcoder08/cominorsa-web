@@ -101,21 +101,76 @@ Legal accuracy (Ley 29733), search visibility and trust drive leads.
       - Visual: hero/section headings unchanged (lines are block-level);
         first Tab focuses "Ir al contenido" on `/`, `/seguridad-minera`,
         `/privacidad`.
-- [ ] **P4 — Harden `/api/crm-lead`** (P1-7): Origin/`Sec-Fetch-Site`
+- [x] **P4 — Harden `/api/crm-lead`** (P1-7): Origin/`Sec-Fetch-Site`
       check, honeypot; rate limiting documented as a Cloudflare rule.
       Decide on unused `/api/next-business-day` (it was built for a
       Twenty CRM SLA workflow — verify before removing). Route: delegated
-      writer.
+      writer. Commit `5cb0021`.
+      - Guard: `Origin` must be `https://cominorsa.com` or the request's
+        own origin; `Sec-Fetch-Site`, if present, must be `same-origin`;
+        missing `Origin` → `403 {"ok":false}` (browsers always send it on
+        POST). Accepted/dropped submissions keep `200 {"ok":true}`.
+      - Honeypot `website` (wrapper `.form-honeypot` visually hidden +
+        `aria-hidden`; input `tabindex=-1`, `autocomplete=off`); non-empty
+        → dropped silently, no Twenty/Resend call.
+      - Rate limit: `DEPLOY.md` → "Protección de `/api/crm-lead`" (WAF
+        rule 5 req/1 min per IP → block 10 min; plan-dependent). Not
+        applied (dashboard step for the owner).
+      - `/api/next-business-day` KEPT: commit `6e22cc5` + route header —
+        Twenty workflow's HTTP Request node calls it server-to-server for
+        Task due dates; documented in `DEPLOY.md`.
+      - RED `crm-lead-route.test.mjs`: 4 fail (`actual: 200, expected:
+        403` ×3; honeypot `actual: 3, expected: 0` fetch calls);
+        `crm-lead-payload.test.ts` 3 fail (`website` missing),
+        `consultation-form.test.ts` honeypot `Expected: not null` → GREEN
+        24/24 route, 14/14 payload+form. Worker test updated to send
+        `Origin` + new 403 case (written with the fix).
+      - Local `wrangler dev`: same-origin `{}` → 200 ok; `Origin:
+        https://evil.example` → 403; no `Origin` → 403; honeypot → 200 +
+        log "dropped submission with a filled honeypot". Valid-payload
+        POST deliberately not sent (`.env` has `TWENTY_API_*`).
+        Playwright: honeypot never reached by Tab, `clip-path: inset(50%)`,
+        no layout gap in the form (1440/390).
 - [ ] **P5 — Service pages & JSON-LD** (P1-8, P1-10): related services,
       `BreadcrumbList`, `Service`, enriched `ProfessionalService` with
       only verified data. Route: delegated writer.
-- [ ] **P6 — Image & cache weight** (P1-3, P2-10, P2-12). Route:
-      delegated writer.
+- [x] **P6 — Image & cache weight** (P1-3, P2-10, P2-12). Route:
+      delegated writer. Commit `ecd8792`.
+      - OG: `og.png` 715 180 B → `og.jpg` 149 876 B (1200×630, baseline
+        JPEG q88 4:4:4 via ImageMagick; SSIM distance 0.020 vs the PNG);
+        `og:image:type image/jpeg`; validate-env, smoke/bootstrap
+        scripts, README updated.
+      - Removed `file.svg`, `globe.svg`, `window.svg` (unreferenced);
+        `logo.png` → `docs/assets/logo-source.png`, `public/fonts/README.md`
+        → `docs/fonts.md`. `logo-44.png` (88×85) left as is: no square
+        source exists (`logo.png` is 211×203).
+      - Fonts content-hashed at build (`/fonts/<name>-<sha256:8>.woff2`,
+        `fonts.css` + preload rewritten), `/fonts/*` stays immutable.
+        Images (`og.jpg`, logo, favicons) → `public, max-age=86400`; HTML
+        unchanged (`max-age=0, must-revalidate`).
+      - RED: bun 5 fail (document og/preload, headers image rule, build
+        hashed fonts); node 6 fail (og.jpg missing, dist root had
+        `file.svg`/`globe.svg`/`logo.png`/`og.png`/`window.svg`, image
+        cache rule) → GREEN. New guard "every same-site URL in built
+        HTML/CSS resolves" passed before and after.
+      - `wrangler dev`: `/og.jpg` 200 `image/jpeg` `max-age=86400`;
+        hashed font 200 `immutable`; `/` `max-age=0, must-revalidate`;
+        `/og.png`, `/file.svg` 404. Gotcha: a 404 under `/fonts/*` (old
+        unhashed URL) also gets the immutable header — harmless since
+        HTML is always revalidated.
 - [ ] **P7 — Form UX & robustness** (P2-6, P2-7, P2-3). Route: delegated
       writer.
-- [ ] **P8 — Copy fixes** (P2-1 voseo on 404 + shell, P2-15 quotes).
-      IGAFOM framing (P2-2) needs client confirmation. Route: inline or
-      delegated.
+- [x] **P8 — Copy fixes** (P2-1 voseo on 404 + shell, P2-15 quotes).
+      IGAFOM framing (P2-2) needs client confirmation (untouched). Route:
+      delegated writer. Commit `44014f3`.
+      - 404: "buscas / aquí / avísanos", rendered in `SiteLayout` (skip
+        link, header, footer, GA-aware footer); `noindex, follow`, no
+        canonical kept. Only voseo in the built site was the 404.
+      - Privacy (GA builds only): `“Preferencias de cookies”`.
+      - RED: `not-found-page.test.ts` 2 fail, `build.test.ts` 4 fail
+        (404 shell, landmarks, GA button on 404, copy scan) → GREEN 250
+        pass. Copy scan re-run with the old privacy text proves it
+        catches the straight quotes in the GA build.
 - [ ] **P9 — Performance & CSS polish** (P2-8, P2-9, P2-11, P2-13,
       P2-15 tokens). Route: delegated writer.
 - [ ] **P10 — Migration follow-up T12**: `pnpm shots` screenshot script
@@ -145,6 +200,8 @@ Client-review items raised by P1 (also for the PR description):
   response time, email.
 - IGAFOM framing ("IGAFOM de Cierre" as separate service vs. included).
 - `.env.example` stale `vinext` comment (harness blocks `.env*` edits).
+- Cloudflare WAF rate-limiting rule for `POST /api/crm-lead`
+  (`DEPLOY.md`) — dashboard step for the zone owner.
 
 ## Acceptance criteria
 
@@ -162,6 +219,16 @@ in Engram topic `odd/landing-polish/audit`.
 
 ## Progress
 
+- 2026-09-23: P4, P6, P8 done on `feat/landing-polish-p4` (commits
+  `5cb0021`, `ecd8792`, `44014f3`). `git diff --shortstat
+  feat/landing-polish...HEAD` → 37 files changed, 659 insertions(+),
+  93 deletions(-) before this document update. Checks: `pnpm validate`
+  OK (1 known `.env` warning), `pnpm lint` 0, `pnpm typecheck` 0, `bun
+  test src/` 250 pass / 0 fail, `pnpm build` 11 pages, `pnpm test` 187
+  pass / 0 fail, `pnpm test:e2e` 54 passed. Screenshots (`/`, `/nope`,
+  form, 1440/390) in the session scratchpad `polish-p4/`. Engram mirror
+  update left to the orchestrator.
+
 - 2026-09-23: P1–P3 done on `feat/landing-polish-p1` (commits `638868c`,
   `9468c45`, `6361642`). `git diff --shortstat feat/landing-polish...HEAD`
   → 30 files changed, 1081 insertions(+), 378 deletions(-) at `6361642`
@@ -178,7 +245,20 @@ in Engram topic `odd/landing-polish/audit`.
   "impulsa.Responsabilidad"), P1-1 (`www.cominorsa.com` → 200, no
   redirect).
 
+## Delivery log
+
+- Slice 1 (P1–P3): PR #10 → tracker #9 → `main` (`b0cb63a`), deployed by
+  Workers Builds 2026-09-23. Rollback point before it:
+  `da7ecedd-ecb0-41ba-8803-2fd29f1178df`. Live checks: home canonical,
+  no cookie button, privacy no longer claims "ningún servidor", routes
+  200/404, CRM API 200. Chrome: skip link is first Tab stop and becomes
+  visible after its 180 ms transition.
+- CI gap: `ci.yml` only triggers on PRs to `main` and
+  `feat/bun-vanilla-migration**`; slice PRs into `feat/landing-polish`
+  get no CI — fix in P10 (trigger on `feat/**`).
+
 ## Next step
 
-P4 (harden `/api/crm-lead`) — after the P1–P3 slice is reviewed/merged
-into `feat/landing-polish`.
+Slice 2 (P4, P6, P8) ready for PR into `feat/landing-polish`. Then
+slice 3: P5 (service pages & JSON-LD), P7 (form UX), P9 (performance &
+CSS polish).

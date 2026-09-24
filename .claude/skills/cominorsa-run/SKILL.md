@@ -33,6 +33,7 @@ Use before claiming any CSS/layout/component change is done on this repo. A buil
 1. Build check: `bun run src/build/build.ts` — expect `Built dist-static/ (11 pages)` with no errors.
 2. Launch: `(pnpm exec wrangler dev --port 8788 > /tmp/dev-server.log 2>&1 &)`, capture the PID, then poll `curl -sf http://localhost:8788` (don't `sleep` blindly — the first `workerd` boot can take a few seconds).
 3. Screenshot with `pnpm shots <baseUrl> <outDir> <paths…>` (`scripts/screenshots.mjs`): full-page PNGs of every path at 1440 and 390 px, named `home-1440.png`, `seguridad-minera-390.png`, … It reuses the repo's `@playwright/test` (no scratch install). Example: `pnpm shots http://localhost:8788 "$SCRATCH/shots" / /seguridad-minera`.
+   - Shots render with `reducedMotion: "reduce"`: full-page capture never scrolls, so scroll-driven reveals would otherwise stay hidden and sections look blank. To see the motion itself, scroll a normal viewport (adapt `assets/shot-template.mjs`).
    - `outDir` must be outside `test-results/` — every `pnpm test:e2e` run wipes that folder (the script refuses it).
    - Chromium missing? `pnpm exec playwright install chromium` once per environment (no `--with-deps` — `apt-get` isn't available here; the "OS not officially supported, downloading fallback build" warning is expected and fine).
    - For a section-level or interaction shot (scroll to a section, fill a form, focus state), adapt `assets/shot-template.mjs` / `assets/mobile-shot-template.mjs`; run it from the repo root so `@playwright/test` resolves.

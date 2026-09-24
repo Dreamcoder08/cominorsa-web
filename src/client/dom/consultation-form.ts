@@ -47,6 +47,7 @@ export function initConsultationForm(doc: Document = document): void {
     const city = String(data.get("city") ?? "").trim();
     const service = String(data.get("service") ?? "").trim();
     const question = String(data.get("question") ?? "").trim();
+    const website = String(data.get("website") ?? "");
     const selectedWhatsApp = String(data.get("whatsapp") ?? "");
     const recipient = selectWhatsAppRecipient(selectedWhatsApp);
 
@@ -62,7 +63,10 @@ export function initConsultationForm(doc: Document = document): void {
     window.open(url, "_blank", "noopener,noreferrer");
     status.textContent = WHATSAPP_OPENED_STATUS;
 
-    const payload = buildCrmLeadPayload({ name, city, service, question }, recipient);
+    const payload = buildCrmLeadPayload(
+      { name, city, service, question, website },
+      recipient,
+    );
     fetch("/api/crm-lead", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -10,10 +10,13 @@ const VALID_PAYLOAD = {
   whatsappLine: "51910728575",
 };
 
-function makeRequest(body) {
+// Browsers send `Origin` on every POST, same-origin included; the route
+// rejects requests without a same-origin `Origin` (P4), so the default
+// test request carries the request's own origin like the real form does.
+function makeRequest(body, headers = { Origin: "http://localhost" }) {
   return new Request("http://localhost/api/crm-lead", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: typeof body === "string" ? body : JSON.stringify(body),
   });
 }
@@ -22,7 +25,7 @@ function makeStreamingRequest(chunks) {
   const encoder = new TextEncoder();
   return new Request("http://localhost/api/crm-lead", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Origin: "http://localhost" },
     body: new ReadableStream({
       start(controller) {
         for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
@@ -517,4 +520,139 @@ test("malformed JSON body: returns 200, no throw, no fetch call", async (t) => {
   );
 
   assert.equal(fetchSpy.mock.calls.length, 0);
+});
+
+// P4 (audit P1-7): same-origin guard and honeypot.
+
+const ALL_INTEGRATIONS_ENV = {
+  TWENTY_API_KEY: "secret-key",
+  TWENTY_API_URL: "http://localhost:3000",
+  RESEND_API_KEY: "resend-secret",
+};
+
+function forbidFetch(t) {
+  const fetchSpy = t.mock.fn(() => {
+    throw new Error("fetch must not be called for this request");
+  });
+  t.mock.method(globalThis, "fetch", fetchSpy);
+  t.mock.method(console, "error", () => {});
+  t.mock.method(console, "log", () => {});
+  return fetchSpy;
+}
+
+test("origin guard: a cross-site POST is rejected with 403 before any fetch", async (t) => {
+  const fetchSpy = forbidFetch(t);
+
+  await withEnv(ALL_INTEGRATIONS_ENV, async () => {
+    const response = await POST(
+      makeRequest(VALID_PAYLOAD, { Origin: "https://evil.example" }),
+    );
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { ok: false });
+  });
+
+  assert.equal(fetchSpy.mock.calls.length, 0);
+});
+
+test("origin guard: a POST with no Origin header (curl, server-to-server) is rejected with 403", async (t) => {
+  const fetchSpy = forbidFetch(t);
+
+  await withEnv(ALL_INTEGRATIONS_ENV, async () => {
+    const response = await POST(makeRequest(VALID_PAYLOAD, {}));
+    assert.equal(response.status, 403);
+  });
+
+  assert.equal(fetchSpy.mock.calls.length, 0);
+});
+
+test("origin guard: Sec-Fetch-Site other than same-origin is rejected even with a matching Origin", async (t) => {
+  const fetchSpy = forbidFetch(t);
+
+  await withEnv(ALL_INTEGRATIONS_ENV, async () => {
+    for (const site of ["cross-site", "same-site", "none"]) {
+      const response = await POST(
+        makeRequest(VALID_PAYLOAD, {
+          Origin: "http://localhost",
+          "Sec-Fetch-Site": site,
+        }),
+      );
+      assert.equal(response.status, 403, `Sec-Fetch-Site: ${site}`);
+    }
+  });
+
+  assert.equal(fetchSpy.mock.calls.length, 0);
+});
+
+test("origin guard: the production origin is accepted even when the Worker sees another host", async (t) => {
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (url) => {
+    calls.push(String(url));
+    return { ok: true, status: 200, text: async () => "" };
+  });
+
+  await withEnv({ RESEND_API_KEY: "resend-secret" }, async () => {
+    const response = await POST(
+      makeRequest(VALID_PAYLOAD, {
+        Origin: "https://cominorsa.com",
+        "Sec-Fetch-Site": "same-origin",
+      }),
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { ok: true });
+  });
+
+  assert.deepEqual(calls, ["https://api.resend.com/emails"]);
+});
+
+test("origin guard: the request's own origin is accepted (wrangler dev, workers.dev previews)", async (t) => {
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (url) => {
+    calls.push(String(url));
+    return { ok: true, status: 200, text: async () => "" };
+  });
+
+  await withEnv({ RESEND_API_KEY: "resend-secret" }, async () => {
+    const response = await POST(
+      new Request("https://cominorsa-web.example.workers.dev/api/crm-lead", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "https://cominorsa-web.example.workers.dev",
+        },
+        body: JSON.stringify(VALID_PAYLOAD),
+      }),
+    );
+    assert.equal(response.status, 200);
+  });
+
+  assert.equal(calls.length, 1);
+});
+
+test("honeypot: a filled `website` field is silently dropped — 200 ok, no Twenty or Resend call", async (t) => {
+  const fetchSpy = forbidFetch(t);
+
+  await withEnv(ALL_INTEGRATIONS_ENV, async () => {
+    const response = await POST(
+      makeRequest({ ...VALID_PAYLOAD, website: "https://spam.example" }),
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { ok: true });
+  });
+
+  assert.equal(fetchSpy.mock.calls.length, 0);
+});
+
+test("honeypot: an empty `website` field (what the real form sends) is processed normally", async (t) => {
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (url) => {
+    calls.push(String(url));
+    return { ok: true, status: 200, text: async () => "" };
+  });
+
+  await withEnv({ RESEND_API_KEY: "resend-secret" }, async () => {
+    const response = await POST(makeRequest({ ...VALID_PAYLOAD, website: "" }));
+    assert.equal(response.status, 200);
+  });
+
+  assert.deepEqual(calls, ["https://api.resend.com/emails"]);
 });

@@ -11,9 +11,9 @@
 // check; those require separate, explicit operational authorization. Resend's
 // POST shape follows https://resend.com/docs/api-reference/emails/send-email.
 //
-// Response contract: this handler ALWAYS returns `200 {"ok":true}`,
-// whatever happens internally (env unset, bad JSON, an integration's
-// non-2xx response, network error). Nothing on the client reads this
+// Response contract: for any same-origin request this handler returns
+// `200 {"ok":true}`, whatever happens internally (env unset, bad JSON,
+// an integration's non-2xx response, network error, a filled honeypot). Nothing on the client reads this
 // response — a non-2xx here would only mislead uptime/monitoring tooling
 // about an intentional no-op path. Real diagnostics go to server-side
 // `console.error` only.
@@ -22,6 +22,23 @@
 // gates on its own env vars and runs even if the other's are unset, and
 // one's failure never blocks or is masked by the other's (`Promise.allSettled`,
 // not sequential awaits).
+//
+// Abuse controls (P4, audit P1-7):
+// - Same-origin guard: a request is accepted only when its `Origin` is
+//   the production origin (`https://cominorsa.com`) or the request's own
+//   origin (so `wrangler dev` on localhost and `*.workers.dev` previews
+//   keep working), and its `Sec-Fetch-Site`, when present, is
+//   `same-origin`. A missing `Origin` is rejected too: every browser
+//   sends it on a POST (same-origin included), so its absence means curl,
+//   a script or a server-to-server call — never the real form. Rejected
+//   requests get `403 {"ok":false}`; the real form never takes that path,
+//   so the WhatsApp handoff is unaffected. This stops drive-by cross-site
+//   posts from other pages; a script can still forge `Origin`, which is
+//   what the honeypot and the Cloudflare rate-limiting rule (DEPLOY.md,
+//   "Rate limiting de /api/crm-lead") are for.
+// - Honeypot: a non-empty `website` field (hidden in the form, see
+//   `src/build/consultation-form.tsx`) is dropped silently — `200
+//   {"ok":true}`, no Twenty or Resend call — so a bot learns nothing.
 //
 // Deliberately does NOT import `twentyRequest` from
 // `docker/twenty/scripts/create-fields.mjs`: that helper calls
@@ -51,6 +68,8 @@ const FIELD_LIMITS = {
 } as const;
 
 const MAX_REQUEST_BYTES = 16_384;
+const PRODUCTION_ORIGIN = "https://cominorsa.com";
+const HONEYPOT_FIELD = "website";
 const SERVICE_OPTION_SET = new Set<string>(SERVICE_OPTIONS);
 const WHATSAPP_LINE_SET = new Set([
   PRIMARY_WHATSAPP_NUMBER,
@@ -70,9 +89,19 @@ const LEAD_NOTIFICATION_FROM = "COMINORSA Web <avisos@cominorsa.com>";
 const LEAD_NOTIFICATION_TO = "cominorsa@gmail.com";
 
 export async function POST(request: Request): Promise<Response> {
+  if (!isSameOriginRequest(request)) {
+    console.error("crm-lead: rejected cross-origin or origin-less request");
+    return Response.json({ ok: false }, { status: 403 });
+  }
+
   try {
     const rawBody = await readBoundedBody(request);
-    const body = validatePayload(JSON.parse(rawBody));
+    const parsed: unknown = JSON.parse(rawBody);
+    if (isHoneypotFilled(parsed)) {
+      console.log("crm-lead: dropped submission with a filled honeypot");
+      return Response.json({ ok: true });
+    }
+    const body = validatePayload(parsed);
     if (!body) throw new Error("invalid payload");
 
     await Promise.allSettled([
@@ -84,6 +113,22 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   return Response.json({ ok: true });
+}
+
+function isSameOriginRequest(request: Request): boolean {
+  const fetchSite = request.headers.get("sec-fetch-site");
+  if (fetchSite !== null && fetchSite !== "same-origin") return false;
+
+  const origin = request.headers.get("origin");
+  if (origin === null) return false;
+  return origin === PRODUCTION_ORIGIN || origin === new URL(request.url).origin;
+}
+
+function isHoneypotFilled(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const honeypot = (value as Record<string, unknown>)[HONEYPOT_FIELD];
+  if (honeypot === undefined) return false;
+  return typeof honeypot !== "string" || honeypot.trim() !== "";
 }
 
 async function readBoundedBody(request: Request): Promise<string> {

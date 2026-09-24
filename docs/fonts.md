@@ -1,5 +1,11 @@
 # Self-hosted fonts (T5)
 
+Source files: `public/fonts/*.woff2`. The static build ships them under
+content-hashed names (`/fonts/<name>-<hash>.woff2`, see
+`src/build/build.ts`), so they can be cached immutably. This note lived
+in `public/fonts/` until P6 (landing-polish) moved it here so it no
+longer ships publicly.
+
 These three `.woff2` files are the exact "latin" Google Fonts subset that
 `next/font/google` already downloads for this project (see
 `app/layout.tsx`), extracted from a local `pnpm build` run

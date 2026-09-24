@@ -162,13 +162,13 @@ else
 fi
 
 # Test 10: OG image
-OG=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "$TEST_URL/og.png")
+OG=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "$TEST_URL/og.jpg")
 if [[ "$OG" == "200" ]]; then
-  OG_SIZE=$(curl -sSI --max-time 10 "$TEST_URL/og.png" | grep -i "content-length" | awk '{print $2}' | tr -d '\r')
-  echo "  [✓] /og.png responde 200 (size: ${OG_SIZE} bytes)"
+  OG_SIZE=$(curl -sSI --max-time 10 "$TEST_URL/og.jpg" | grep -i "content-length" | awk '{print $2}' | tr -d '\r')
+  echo "  [✓] /og.jpg responde 200 (size: ${OG_SIZE} bytes)"
   PASS=$((PASS + 1))
 else
-  echo "  [✗] /og.png responde $OG"
+  echo "  [✗] /og.jpg responde $OG"
   FAIL=$((FAIL + 1))
 fi
 

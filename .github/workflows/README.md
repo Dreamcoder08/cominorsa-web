@@ -21,7 +21,7 @@ checkout → setup pnpm 11.22.0 → setup Node 22.18.0 → cache pnpm store
   sync with `package.json` (someone bumped a dep but didn't regen), it fails
   here before any code runs.
 - **validate** is fast (no build, no install) and catches structural issues
-  early: missing required files, oversized `og.png`, CSP missing, etc.
+  early: missing required files, oversized `og.jpg` (> 200 KB), CSP missing, etc.
 - **audit** blocks on `high` or `critical` vulnerabilities. The project is
   currently at 0 vulns.
 - **build** + **test** is the canonical `pnpm test` split so the build

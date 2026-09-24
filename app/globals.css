@@ -672,19 +672,20 @@ blockquote {
   filter: blur(5px);
 }
 
+/* landing-craft T4: real contour lines of the Piura highlands (Paimas /
+   Ayabaca), generated from SRTM tiles by scripts/generate-contours.ts.
+   The SVG is a mask, so the color stays a token; the second mask layer
+   fades the lines out behind the headline. */
 .hero-contours {
   position: absolute;
   inset: 0;
-  /* was 0.22 — the pattern was competing with hero text instead of sitting behind it. */
-  opacity: 0.13;
-  background:
-    repeating-radial-gradient(
-      ellipse at 88% 42%,
-      transparent 0 34px,
-      rgba(244, 239, 228, 0.24) 35px 36px,
-      transparent 37px 64px
-    );
-  transform: rotate(-8deg) scale(1.2);
+  opacity: 0.16;
+  background-color: var(--copper-light);
+  mask-image: url(/piura-contours.svg), linear-gradient(100deg, transparent 15%, black 65%);
+  mask-size: cover, 100% 100%;
+  mask-position: 70% 40%, 0 0;
+  mask-repeat: no-repeat;
+  mask-composite: intersect;
 }
 
 .hero-grid {
@@ -1252,11 +1253,27 @@ blockquote {
 }
 
 .contact {
+  position: relative;
+  isolation: isolate;
   padding: var(--section-y) max(var(--container-margin), calc((100vw - var(--container-max)) / 2));
   scroll-margin-top: var(--header-height);
-  background:
-    repeating-radial-gradient(circle at 100% 100%, transparent 0 45px, rgb(var(--line-rgb) / 0.08) 46px 47px),
-    var(--sand);
+  background: var(--sand);
+}
+
+/* Same Piura contours as the hero (T4), so the terrain threads the page
+   from the first screen to the last. */
+.contact::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.08;
+  background-color: var(--forest);
+  mask-image: url(/piura-contours.svg), linear-gradient(to top, black, transparent 70%);
+  mask-size: cover, 100% 100%;
+  mask-position: 20% 80%, 0 0;
+  mask-repeat: no-repeat;
+  mask-composite: intersect;
 }
 
 .contact-eyebrow {

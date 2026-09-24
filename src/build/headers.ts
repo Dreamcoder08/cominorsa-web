@@ -35,6 +35,8 @@ export const CACHED_IMAGE_PATHS: readonly string[] = [
   "/favicon-16x16.png",
   "/favicon-32x32.png",
   "/apple-touch-icon.png",
+  // landing-craft T4: generated contour mask (scripts/generate-contours.ts).
+  "/piura-contours.svg",
 ];
 
 /** P11: `cspOptions.styleHashes` carries the inlined stylesheet's hash. */

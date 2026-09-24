@@ -87,10 +87,30 @@ trust, speed and one obvious action — not WebGL or scroll-jacking.
         0 px overflow, 0 console errors. Color pairs reused
         (`--muted`/`--copper-ink` on `--cream`), no new pair.
         RDD: off (clone-local), assess `medium`/`under_budget`.
-- [ ] **T4 — Real Piura contours**: build-time script (no deps) that
+- [x] **T4 — Real Piura contours**: build-time script (no deps) that
       decodes Terrarium tiles and runs marching squares to emit an SVG of
       real Piura contour lines; replace the hero gradient and reuse it as
       the site-wide thread.
+      - Commit `aa87774`. Route: inline (writers OOM-killed earlier;
+        module is self-contained). Pure `src/build/contours.ts` (PNG
+        decode with all 5 filters, Terrarium, marching squares with
+        saddle resolution, segment joining, RDP, SVG) +
+        `scripts/generate-contours.ts` (manual, network) →
+        committed `public/piura-contours.svg`: z11 tiles x568–570
+        y1050–1051 (Paimas/Ayabaca), 149–3493 m, 200 m interval,
+        1000 m index lines, 75 KB raw / 32 KB gzip.
+      - Deviation: SVG used as CSS `mask-image` over a token
+        `background-color` (an SVG loaded by CSS cannot inherit
+        `currentColor`), so colors stay tokens. Marked external in the
+        CSS bundle (not inlined as data: into every page's `<style>`),
+        1-day cache like the other fixed-name images. Thread: hero
+        (copper-light 0.16, faded behind the headline) + contact
+        (forest 0.08, faded upward) — replaces both radial-gradient
+        stand-ins.
+      - Evidence: RED (missing module; then 4 wiring fails) → GREEN;
+        `bun test src/` 323/323, `pnpm test` 195/195, typecheck ok;
+        screenshots hero/contact 1440/390: 0 px overflow, 0 console
+        errors, text legible over the lines.
 - [ ] **T5 — Geological strata**: section transitions as layered strata
       in the forest → sand → cream palette.
 - [ ] **T6 — CSS-only motion**: scroll-driven reveals

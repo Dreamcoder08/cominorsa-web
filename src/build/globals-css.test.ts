@@ -82,7 +82,6 @@ describe("colour tokens (P9, audit P2-15)", () => {
     ["rgba(0,23,19,0.99)", 1],
     ["rgba(0,50,35,0.98)", 1],
     ["rgba(0,77,48,0.96)", 1],
-    ["rgba(244,239,228,0.24)", 1],
     ["rgba(16,39,33,0.25)", 1],
     ["rgba(198,106,61,0.16)", 1],
     ["rgba(0,0,0,0.2)", 1],
@@ -114,5 +113,21 @@ describe("colour tokens (P9, audit P2-15)", () => {
       const hex = root.match(new RegExp(`--${name}:\\s*#([0-9a-f]{6});`, "i"))![1]!;
       expect([r, g, b].map(Number)).toEqual([0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16)));
     }
+  });
+});
+
+describe("real Piura contours as the site-wide thread (landing-craft T4)", () => {
+  const MASK = "url(/piura-contours.svg)";
+
+  test("the hero draws the generated contour SVG, not the radial-gradient stand-in", () => {
+    const body = ruleBody(".hero-contours");
+    expect(body).toContain(`mask-image: ${MASK}`);
+    expect(body).toContain("background-color: var(--copper-light);");
+    expect(body).not.toContain("repeating-radial-gradient");
+  });
+
+  test("the contact section reuses the same contours instead of its own rings", () => {
+    expect(ruleBody(".contact")).not.toContain("repeating-radial-gradient");
+    expect(ruleBody(".contact::before")).toContain(`mask-image: ${MASK}`);
   });
 });

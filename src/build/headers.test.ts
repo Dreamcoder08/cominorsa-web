@@ -42,6 +42,7 @@ describe("buildHeadersFile", () => {
       "/favicon-16x16.png",
       "/favicon-32x32.png",
       "/apple-touch-icon.png",
+      "/piura-contours.svg",
     ]) {
       const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       expect(file).toMatch(new RegExp(`\\n${escaped}\\n\\s*Cache-Control: public, max-age=86400\\n`));

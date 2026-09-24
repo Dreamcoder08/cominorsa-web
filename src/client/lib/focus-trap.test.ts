@@ -9,7 +9,7 @@
 // job, not this file's.
 
 import { describe, expect, test } from "bun:test";
-import { computeFocusTrapTarget } from "./focus-trap";
+import { buildFocusCycle, computeFocusTrapTarget } from "./focus-trap";
 
 describe("computeFocusTrapTarget", () => {
   test("Shift+Tab on the first element wraps to the last", () => {
@@ -46,5 +46,29 @@ describe("computeFocusTrapTarget", () => {
   test("an out-of-range active index (nothing in the panel focused) does nothing", () => {
     expect(computeFocusTrapTarget(-1, 5, false)).toBeNull();
     expect(computeFocusTrapTarget(-1, 5, true)).toBeNull();
+  });
+});
+
+// P3 (audit P2-5): the open panel's trap must include the toggle (the
+// "Cerrar menú" button), or keyboard users can never Tab back to it.
+describe("buildFocusCycle", () => {
+  test("puts the toggle first, then the panel's focusables in DOM order", () => {
+    expect(buildFocusCycle("toggle", ["a", "b", "cta"])).toEqual(["toggle", "a", "b", "cta"]);
+  });
+
+  test("Tab on the panel's last element wraps to the toggle", () => {
+    const cycle = buildFocusCycle("toggle", ["a", "b", "cta"]);
+    const target = computeFocusTrapTarget(cycle.indexOf("cta"), cycle.length, false);
+    expect(cycle[target!]).toBe("toggle");
+  });
+
+  test("Shift+Tab on the toggle wraps to the panel's last element", () => {
+    const cycle = buildFocusCycle("toggle", ["a", "b", "cta"]);
+    const target = computeFocusTrapTarget(cycle.indexOf("toggle"), cycle.length, true);
+    expect(cycle[target!]).toBe("cta");
+  });
+
+  test("with an empty panel the toggle alone is the cycle", () => {
+    expect(buildFocusCycle("toggle", [])).toEqual(["toggle"]);
   });
 });

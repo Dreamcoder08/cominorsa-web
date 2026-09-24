@@ -94,16 +94,21 @@ describe("renderDocument", () => {
     expect(html).toContain('<meta name="theme-color" content="#fbf8ef">');
   });
 
-  test("sets complete Open Graph tags, site-wide (not per-page) as today", () => {
+  // P2 (audit P1-2): OG/Twitter title+description are per page, derived
+  // from the page's own <title>/description — no longer one site-wide
+  // copy shared by every route.
+  test("sets complete Open Graph tags, with per-page title and description", () => {
     expect(html).toContain('<meta property="og:type" content="website">');
     expect(html).toContain('<meta property="og:locale" content="es_PE">');
     expect(html).toContain('<meta property="og:site_name" content="COMINORSA">');
     expect(html).toContain(
       '<meta property="og:url" content="https://cominorsa.com/seguridad-minera">',
     );
-    expect(html).toContain('<meta property="og:title" content="COMINORSA | Técnica que impulsa">');
     expect(html).toContain(
-      '<meta property="og:description" content="Formalización minera y soluciones ambientales para una minería segura y sostenible.">',
+      '<meta property="og:title" content="Seguridad minera y consultoría mensual | COMINORSA">',
+    );
+    expect(html).toContain(
+      '<meta property="og:description" content="Planes de Seguridad y Salud Ocupacional.">',
     );
     expect(html).toContain(
       '<meta property="og:image" content="https://cominorsa.com/og.png">',
@@ -115,13 +120,13 @@ describe("renderDocument", () => {
     );
   });
 
-  test("sets complete Twitter card tags", () => {
+  test("sets complete Twitter card tags, with per-page title and description", () => {
     expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
     expect(html).toContain(
-      '<meta name="twitter:title" content="COMINORSA | Consultoría minera y ambiental">',
+      '<meta name="twitter:title" content="Seguridad minera y consultoría mensual | COMINORSA">',
     );
     expect(html).toContain(
-      '<meta name="twitter:description" content="Formalización, gestión ambiental y asistencia técnica minera.">',
+      '<meta name="twitter:description" content="Planes de Seguridad y Salud Ocupacional.">',
     );
     expect(html).toContain(
       '<meta name="twitter:image" content="https://cominorsa.com/og.png">',
@@ -182,6 +187,22 @@ describe("renderDocument", () => {
 // name="robots" content="noindex, follow">` and no `<link rel="canonical">`
 // at all (matching `app/not-found.tsx`'s own `robots: { index: false,
 // follow: true }` metadata, which Next serializes as "noindex, follow").
+describe("renderDocument for the site root", () => {
+  const homeHtml = renderDocument({
+    title: "COMINORSA | Consultoría minera y ambiental",
+    description: "Formalización minera.",
+    canonicalPath: "/",
+    cssHref: "/assets/globals-abc123.css",
+    fontsCssHref: "/assets/fonts-def456.css",
+    children: raw("<main></main>"),
+  });
+
+  test("the root canonical and og:url keep their single trailing slash", () => {
+    expect(homeHtml).toContain('<link rel="canonical" href="https://cominorsa.com/">');
+    expect(homeHtml).toContain('<meta property="og:url" content="https://cominorsa.com/">');
+  });
+});
+
 describe("renderDocument without canonicalPath (404 page)", () => {
   const notFoundHtml = renderDocument({
     title: "Página no encontrada",

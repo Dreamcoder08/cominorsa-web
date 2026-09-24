@@ -136,6 +136,28 @@ pnpm exec wrangler rollback --message "regresando a versión estable"
 > **HTTPS automático**: Cloudflare provisiona un cert Let's Encrypt en
 > segundos, sin pasos extra.
 
+### Redirección `www` → dominio raíz (301)
+
+`https://www.cominorsa.com/` responde **200** con el mismo contenido
+(verificado 2026-09-23 con `curl -sI https://www.cominorsa.com/`), así
+que existen dos copias del sitio para los buscadores. Las páginas ya
+declaran `<link rel="canonical">` hacia `https://cominorsa.com/…`, pero
+la corrección real es una regla de zona de Cloudflare, no código:
+
+1. Dashboard → zona **`cominorsa.com`** → **Rules** → **Redirect Rules**
+   → **Create rule** (o la plantilla *Redirect from WWW to root*).
+2. **If incoming requests match** → *Custom filter expression*:
+   `(http.host eq "www.cominorsa.com")`
+3. **Then** → *Dynamic*:
+   - Expression: `concat("https://cominorsa.com", http.request.uri.path)`
+   - Status code: **301**
+   - **Preserve query string**: activado.
+4. El registro DNS `www` debe seguir **proxied** (nube naranja): la regla
+   solo corre sobre tráfico que pasa por Cloudflare.
+5. Verificar:
+   `curl -sI "https://www.cominorsa.com/seguridad-minera?x=1"` →
+   `301` con `location: https://cominorsa.com/seguridad-minera?x=1`.
+
 ---
 
 ## Variables de entorno y secrets

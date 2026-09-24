@@ -53,7 +53,7 @@ describe("runStaticBuild", () => {
       expect(await Bun.file(join(outDir, "index.html")).exists()).toBe(true);
     }));
 
-  test("emits the homepage as index.html with its brand-first title, no canonical, and the consultation form", () =>
+  test("emits the homepage as index.html with its brand-first title, root canonical, and the consultation form", () =>
     withTempOutDir(async (outDir) => {
       await runStaticBuild(outDir);
       const html = await Bun.file(join(outDir, "index.html")).text();
@@ -62,8 +62,8 @@ describe("runStaticBuild", () => {
       expect(html).toContain(
         "<title>COMINORSA | Consultoría minera y ambiental</title>",
       );
-      expect(html).not.toContain('rel="canonical"');
-      expect(html).not.toContain('property="og:url"');
+      expect(html).toContain('<link rel="canonical" href="https://cominorsa.com/">');
+      expect(html).toContain('<meta property="og:url" content="https://cominorsa.com/">');
       expect(html).toContain('<span class="reveal-line">Técnica que impulsa.</span>');
       expect(html).toContain('<form class="consultation-form" id="consultation-form">');
       expect(html).toContain('href="/seguridad-minera"');
@@ -258,6 +258,106 @@ describe("runStaticBuild", () => {
           if (isModule) expect(body).toBe("");
         }
       }
+    }));
+
+  // P2 (audit P1-1, P1-2, P2-14): head completeness across the whole
+  // emitted site, read back from the real output files.
+  test("every indexable page has one canonical, og:url equal to it, unique og:title, and a unique description of at most 160 chars", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      const ogTitles: string[] = [];
+      const descriptions: string[] = [];
+      for (const route of PAGE_ROUTES) {
+        if (route.slug === "404") continue;
+        const label = route.slug || "index";
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        const canonicals = [...html.matchAll(/<link rel="canonical" href="([^"]+)">/g)].map((m) => m[1]);
+        expect(canonicals.length, `${label}: canonical count`).toBe(1);
+        const ogUrl = html.match(/<meta property="og:url" content="([^"]+)">/)?.[1];
+        expect(ogUrl, `${label}: og:url`).toBe(canonicals[0]!);
+        const ogTitle = html.match(/<meta property="og:title" content="([^"]+)">/)?.[1];
+        const title = html.match(/<title>([^<]+)<\/title>/)?.[1];
+        expect(ogTitle, `${label}: og:title`).toBe(title!);
+        ogTitles.push(ogTitle!);
+        const description = html.match(/<meta name="description" content="([^"]+)">/)?.[1];
+        expect(description, `${label}: description`).toBeDefined();
+        expect(description!.length, `${label}: description length`).toBeLessThanOrEqual(160);
+        expect(html).toContain(`<meta property="og:description" content="${description}">`);
+        expect(html).toContain(`<meta name="twitter:title" content="${title}">`);
+        expect(html).toContain(`<meta name="twitter:description" content="${description}">`);
+        descriptions.push(description!);
+      }
+      expect(new Set(ogTitles).size).toBe(ogTitles.length);
+      expect(new Set(descriptions).size).toBe(descriptions.length);
+    }));
+
+  // P3 (audit P1-4, P1-5, P1-6): landmark structure and heading text,
+  // checked on every emitted page.
+  test("every page: skip link first in <body> targeting main#contenido; header/footer outside <main>", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      for (const route of PAGE_ROUTES) {
+        const label = route.slug || "index";
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+
+        expect(html, `${label}: skip link first in body`).toMatch(
+          /<body><a class="skip-link" href="#contenido">Ir al contenido<\/a>/,
+        );
+        expect(html.match(/class="skip-link"/g)?.length, `${label}: skip link count`).toBe(1);
+        expect(html.match(/<main\b/g)?.length, `${label}: main count`).toBe(1);
+        expect(html.match(/id="contenido"/g)?.length, `${label}: #contenido count`).toBe(1);
+        expect(html, `${label}: main carries the target id`).toMatch(/<main id="contenido"/);
+
+        const mainStart = html.indexOf("<main");
+        const mainEnd = html.indexOf("</main>");
+        for (const tag of ['<header class="site-header">', "<footer>"]) {
+          const at = html.indexOf(tag);
+          if (at === -1) continue; // the 404 page renders no site chrome
+          expect(at < mainStart || at > mainEnd, `${label}: ${tag} inside <main>`).toBe(true);
+        }
+      }
+    }));
+
+  test("no heading's text content runs two words together", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir);
+      for (const route of PAGE_ROUTES) {
+        const label = route.slug || "index";
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        for (const [, inner] of html.matchAll(/<h[1-6]\b[^>]*>([\s\S]*?)<\/h[1-6]>/g)) {
+          const text = inner!.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ");
+          expect(text, `${label}: "${text}"`).not.toMatch(/[a-záéíóúñ][.,][A-ZÁÉÍÓÚ]/);
+          expect(text, `${label}: "${text}"`).not.toMatch(/[a-z]por\b/);
+        }
+      }
+    }));
+
+  // P1 (audit P0-2): one source of truth for "does this build have
+  // analytics": the GA measurement ID passed to runStaticBuild (defaults
+  // to NEXT_PUBLIC_GA_MEASUREMENT_ID). It both bakes into the consent
+  // bundle and decides whether pages render the preferences button and
+  // the GA paragraph of the privacy policy.
+  test("without a GA ID, no page renders the cookie-preferences button or GA copy", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir, { gaMeasurementId: "" });
+      for (const route of PAGE_ROUTES) {
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        expect(html, route.slug || "index").not.toContain("cookie-preferences-button");
+      }
+      const privacy = await Bun.file(join(outDir, "privacidad.html")).text();
+      expect(privacy).not.toContain("Google Analytics");
+    }));
+
+  test("with a GA ID, every page with a footer renders the preferences button and the policy describes GA4", () =>
+    withTempOutDir(async (outDir) => {
+      await runStaticBuild(outDir, { gaMeasurementId: "G-TEST123" });
+      for (const route of PAGE_ROUTES) {
+        if (route.slug === "404") continue; // standalone page, no SiteFooter
+        const html = await Bun.file(join(outDir, fileNameFor(route.slug))).text();
+        expect(html, route.slug || "index").toContain('id="cookie-preferences-button"');
+      }
+      const privacy = await Bun.file(join(outDir, "privacidad.html")).text();
+      expect(privacy).toContain("Google Analytics 4");
     }));
 
   // T8: sitemap.xml/robots.txt/manifest.webmanifest, generated from the

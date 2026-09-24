@@ -51,7 +51,9 @@ test.describe("static mobile nav", () => {
     await expect(toggle(page)).toBeFocused();
   });
 
-  test("Tab on the last focusable element wraps to the first (forward trap)", async ({ page }) => {
+  // P3 (audit P2-5): the trap cycle is [toggle, ...panel focusables],
+  // so the "Cerrar menú" toggle is reachable by keyboard.
+  test("Tab on the panel's last focusable element moves to the toggle, then back into the panel (forward trap)", async ({ page }) => {
     await page.goto("/");
     await toggle(page).click();
     const focusable = panel(page).locator('a[href], button:not([disabled])');
@@ -59,20 +61,37 @@ test.describe("static mobile nav", () => {
     await focusable.nth(count - 1).focus();
 
     await page.keyboard.press("Tab");
+    await expect(toggle(page)).toBeFocused();
+    await expect(toggle(page)).toHaveAttribute("aria-label", "Cerrar menú");
 
+    await page.keyboard.press("Tab");
     await expect(focusable.first()).toBeFocused();
   });
 
-  test("Shift+Tab on the first focusable element wraps to the last (backward trap)", async ({ page }) => {
+  test("Shift+Tab from the first link reaches the toggle, and Shift+Tab on the toggle wraps to the last focusable (backward trap)", async ({ page }) => {
     await page.goto("/");
     await toggle(page).click();
     const focusable = panel(page).locator('a[href], button:not([disabled])');
     await expect(focusable.first()).toBeFocused();
 
     await page.keyboard.press("Shift+Tab");
+    await expect(toggle(page)).toBeFocused();
 
+    await page.keyboard.press("Shift+Tab");
     const count = await focusable.count();
     await expect(focusable.nth(count - 1)).toBeFocused();
+  });
+
+  test("Enter on the focused toggle closes the panel", async ({ page }) => {
+    await page.goto("/");
+    await toggle(page).click();
+    await page.keyboard.press("Shift+Tab");
+    await expect(toggle(page)).toBeFocused();
+
+    await page.keyboard.press("Enter");
+
+    await expect(toggle(page)).toHaveAttribute("aria-expanded", "false");
+    await expect(panel(page)).toHaveAttribute("data-open", "false");
   });
 
   test("clicking a nav link closes the panel", async ({ page }) => {

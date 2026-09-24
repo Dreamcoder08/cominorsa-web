@@ -56,8 +56,16 @@ describe("SiteFooter", () => {
     expect(html).toContain('href="tel:+51987817100"');
   });
 
-  test("cookie-preferences button carries the #cookie-preferences-button hook for T7's enhancement script", () => {
-    expect(html).toContain(
+  // P1 (audit P0-2): the button only exists when the build has a GA ID
+  // — with no tracker there is no consent choice to reopen.
+  test("renders no cookie-preferences button by default (build without a GA ID)", () => {
+    expect(html).not.toContain("cookie-preferences-button");
+    expect(html).not.toContain("Preferencias de cookies");
+  });
+
+  test("renders the #cookie-preferences-button hook when analytics is enabled", () => {
+    const withAnalytics = render(SiteFooter({ basePath: "/", analyticsEnabled: true }));
+    expect(withAnalytics).toContain(
       '<button type="button" id="cookie-preferences-button">Preferencias de cookies</button>',
     );
   });

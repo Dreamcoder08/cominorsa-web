@@ -59,7 +59,7 @@ export const serviceGroups: ServiceGroup[] = [
     ],
     pageTitle: "Gestión ambiental minera — DIA y PAMA",
     pageDescription:
-      "Elaboración de la Declaración de Impacto Ambiental (DIA), el Programa de Adecuación y Manejo Ambiental (PAMA) e instrumentos de gestión ambiental para operaciones mineras.",
+      "Elaboración de la Declaración de Impacto Ambiental (DIA), el Programa de Adecuación y Manejo Ambiental (PAMA) y otros instrumentos para operaciones mineras.",
     intro:
       "Preparamos los instrumentos que conectan tu operación con el cumplimiento ambiental: la Declaración de Impacto Ambiental (DIA) para proyectos nuevos de impacto leve, el Programa de Adecuación y Manejo Ambiental (PAMA) para operaciones que ya vienen funcionando, y otros instrumentos de gestión ambiental según tu caso.",
     whatsappMessage:
@@ -116,7 +116,7 @@ export const serviceGroups: ServiceGroup[] = [
     ],
     pageTitle: "Seguridad minera y consultoría mensual",
     pageDescription:
-      "Planes de Seguridad y Salud Ocupacional, supervisión y asistencia técnica minera, y consultoría mensual para fortalecer la gestión preventiva de tu operación.",
+      "Planes de Seguridad y Salud Ocupacional, supervisión y asistencia técnica minera, y consultoría mensual para fortalecer la prevención en tu operación.",
     intro:
       "Si necesitas fortalecer tu seguridad operativa, te asistimos en la gestión preventiva y el desempeño técnico: planes de Seguridad y Salud Ocupacional, supervisión y asistencia técnica minera, y consultoría mensual para operaciones mineras.",
     whatsappMessage:

@@ -7,17 +7,11 @@
 // (see odd/tasks/bun-vanilla-migration.md, T4 verification notes, for
 // the diff and the documented, intentional differences).
 //
-// Design: only `title`, `description`, and `canonicalPath` vary by page
-// today — mirroring `app/services-data.ts`'s `generateServiceMetadata`,
-// which only overrides those three on top of the root layout's
-// `generateMetadata` (Next deep-merges child metadata over the parent's,
-// so OG/Twitter/icons/theme-color/applicationName/JSON-LD are identical
-// on every route right now, defined once at the root and never
-// overridden per page — confirmed by diffing the built `/` and
-// `/seguridad-minera` heads). So they're hardcoded here rather than
-// threaded through `DocumentProps` for every future page (T6); if a
-// future page ever needs a per-page OG image or JSON-LD type, that's a
-// `DocumentProps` extension for that task, not a speculative one now.
+// Design: `title`, `description` and `canonicalPath` vary by page, and
+// the OG/Twitter title+description are derived from them (P2, audit
+// P1-2 — the Next-era root layout shared one OG/Twitter copy across every
+// route, so every share preview looked identical). Image, icons,
+// theme-color, applicationName and JSON-LD stay site-wide.
 
 import { raw, render, type Child, type Html } from "../html/jsx-runtime";
 import { PRIMARY_WHATSAPP_NUMBER } from "../../app/constants";
@@ -26,15 +20,6 @@ import { SITE_URL } from "./site-config";
 const SITE_NAME = "COMINORSA";
 const SOCIAL_IMAGE = `${SITE_URL}/og.png`;
 const SOCIAL_IMAGE_ALT = "COMINORSA — Consultoría minera y soluciones ambientales";
-// Root layout's OG/Twitter title+description are their own copy,
-// distinct from the per-page <title>/description — that's the real
-// current behavior (verified against the built Next output), not an
-// oversight here.
-const OG_TITLE = "COMINORSA | Técnica que impulsa";
-const OG_DESCRIPTION =
-  "Formalización minera y soluciones ambientales para una minería segura y sostenible.";
-const TWITTER_TITLE = "COMINORSA | Consultoría minera y ambiental";
-const TWITTER_DESCRIPTION = "Formalización, gestión ambiental y asistencia técnica minera.";
 const THEME_COLOR = "#fbf8ef";
 
 // Verbatim from `app/layout.tsx`'s `jsonLd`, minus the per-request
@@ -161,16 +146,16 @@ function Document({
         <meta property="og:locale" content="es_PE" />
         <meta property="og:site_name" content={SITE_NAME} />
         {canonicalUrl ? <meta property="og:url" content={canonicalUrl} /> : null}
-        <meta property="og:title" content={OG_TITLE} />
-        <meta property="og:description" content={OG_DESCRIPTION} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
         <meta property="og:image" content={SOCIAL_IMAGE} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content={SOCIAL_IMAGE_ALT} />
 
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={TWITTER_TITLE} />
-        <meta name="twitter:description" content={TWITTER_DESCRIPTION} />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={SOCIAL_IMAGE} />
 
         <meta name="theme-color" content={THEME_COLOR} />

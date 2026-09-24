@@ -21,12 +21,15 @@
 // configured in T9 — noted here per T6a's scope (metadata/markup only).
 
 import { buildWhatsAppLink } from "../../app/constants";
+import { SkipLink } from "./site-shell";
 
 const WHATSAPP_HREF = buildWhatsAppLink("Hola, llegué a un enlace roto en su web");
 
 export function NotFoundPage() {
   return (
-    <main lang="es">
+    <>
+      <SkipLink />
+      <main id="contenido">
       <section className="legal-page">
         <div className="legal-page-header">
           <p>Error 404</p>
@@ -50,6 +53,7 @@ export function NotFoundPage() {
           </section>
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }

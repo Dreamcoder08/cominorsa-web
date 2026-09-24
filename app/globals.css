@@ -1799,6 +1799,19 @@ footer > .brand {
   line-height: 1.55;
 }
 
+/* P1: the consent notice's privacy link must read as a link — same
+   treatment as .legal-page-body a (--copper-ink on the form's --paper). */
+.form-disclaimer a {
+  color: var(--copper-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.form-disclaimer a:hover,
+.form-disclaimer a:focus-visible {
+  color: var(--ink);
+}
+
 .form-status {
   min-height: 1.1rem;
   color: var(--forest);

@@ -1,65 +1,29 @@
+// T11 cutover: this suite used to walk dist/client/_next/static/ (Next's
+// framework JS/CSS chunks) and time a per-request Worker render. Bundle
+// size budgets moved to tests/qa/bundle-budget.test.mjs (dist-static/assets/,
+// gzip-based, tightened to match this site's real ~5 KB JS output — see
+// that file's own header comment); this file keeps the checks that are
+// still meaningful against a real static page: overall HTML weight, that
+// the built module scripts are actually referenced, and that the built
+// stylesheet is linked.
+//
+// Dropped, not translated (superseded elsewhere, listed here so the
+// removal is traceable):
+//   - "worker render completes in under 3s" — timed a per-request SSR
+//     render; a static file read has no equivalent runtime cost to
+//     measure (real page-load performance now belongs to a Lighthouse/
+//     CDN-level check, out of this suite's scope).
+//   - "critical JS chunks are referenced from HTML" — checked for
+//     framework-*/vinext-*/index-*.js chunk names that no longer exist.
+//     Replaced below by a check for the real mobile-nav/consent module
+//     scripts, already covered at the bun-test layer too
+//     (src/build/build.test.ts).
+//   - "logo image is preload-hinted" — the static build never preloads
+//     the logo (only the critical Archivo font, T5); already covered by
+//     src/build/document.test.ts's "preloads only the critical font".
 import assert from "node:assert/strict";
-import { readdir, stat } from "node:fs/promises";
-import { extname } from "node:path";
 import test from "node:test";
 import { fetchHtml } from "./helpers.mjs";
-
-const CHUNKS_DIR = new URL(
-  "../../dist/client/_next/static/chunks/",
-  import.meta.url,
-);
-const CSS_DIR = new URL("../../dist/client/_next/static/css/", import.meta.url);
-
-async function totalBytes(dirUrl, ext) {
-  const dir = new URL(dirUrl);
-  let total = 0;
-  let count = 0;
-  for (const entry of await readdir(dir)) {
-    if (ext && extname(entry) !== ext) continue;
-    const s = await stat(new URL(entry, dir));
-    total += s.size;
-    count++;
-  }
-  return { total, count };
-}
-
-test("total JS bundle is under 600 KB", async () => {
-  const { total, count } = await totalBytes(CHUNKS_DIR, ".js");
-  const kb = Math.round(total / 1024);
-  console.log(`  JS: ${count} files, ${kb} KB total`);
-  assert.ok(total > 0, "should have JS chunks");
-  assert.ok(total < 600_000, `JS bundle too large: ${kb} KB`);
-});
-
-test("total CSS is under 50 KB", async () => {
-  const { total, count } = await totalBytes(CSS_DIR, ".css");
-  const kb = Math.round(total / 1024);
-  console.log(`  CSS: ${count} files, ${kb} KB total`);
-  assert.ok(total > 0, "should have CSS");
-  assert.ok(total < 50_000, `CSS too large: ${kb} KB`);
-});
-
-test("no single JS chunk exceeds 250 KB", async () => {
-  const dir = new URL(CHUNKS_DIR);
-  for (const entry of await readdir(dir)) {
-    if (extname(entry) !== ".js") continue;
-    const s = await stat(new URL(entry, dir));
-    const kb = Math.round(s.size / 1024);
-    assert.ok(
-      s.size < 250_000,
-      `chunk ${entry} is ${kb} KB - consider splitting`,
-    );
-  }
-});
-
-test("worker render completes in under 3s", async () => {
-  const t0 = performance.now();
-  const { status } = await fetchHtml();
-  const ms = performance.now() - t0;
-  console.log(`  Render: ${ms.toFixed(0)} ms (status ${status})`);
-  assert.equal(status, 200);
-  assert.ok(ms < 3000, `render took ${ms.toFixed(0)} ms`);
-});
 
 test("HTML response is under 100 KB", async () => {
   const { status, html } = await fetchHtml();
@@ -69,26 +33,25 @@ test("HTML response is under 100 KB", async () => {
   assert.ok(html.length < 100_000, `HTML too large: ${kb} KB`);
 });
 
-test("critical JS chunks are referenced from HTML", async () => {
-  const { html } = await fetchHtml();
-  assert.match(html, /\/chunks\/index-[^"]+\.js/);
-  assert.match(html, /\/chunks\/framework-[^"]+\.js/);
-  assert.match(html, /\/chunks\/vinext-[^"]+\.js/);
+test("the mobile-nav and consent module scripts are referenced from every page", async () => {
+  const { html } = await fetchHtml("/");
+  assert.match(html, /<script type="module" src="\/assets\/mobile-nav-entry-[^"]+\.js" defer><\/script>/);
+  assert.match(html, /<script type="module" src="\/assets\/consent-entry-[^"]+\.js" defer><\/script>/);
 });
 
-test("logo image is preload-hinted", async () => {
-  const { html } = await fetchHtml();
-  // Allow attribute order to vary; use a flexible pattern.
-  assert.match(
-    html,
-    /<link[^>]*\bhref=["']\/logo-44\.png["'][^>]*\bas=["']image["']/,
-  );
+test("only the homepage additionally references the consultation-form module script", async () => {
+  const [home, service] = await Promise.all([
+    fetchHtml("/"),
+    fetchHtml("/seguridad-minera"),
+  ]);
+  assert.match(home.html, /\/assets\/consultation-form-entry-[^"]+\.js/);
+  assert.doesNotMatch(service.html, /\/assets\/consultation-form-entry-/);
 });
 
 test("CSS stylesheet is linked", async () => {
   const { html } = await fetchHtml();
   assert.match(
     html,
-    /<link[^>]*\brel=["']stylesheet["'][^>]*\/_next\/static\/css\//,
+    /<link[^>]*\brel=["']stylesheet["'][^>]*\/assets\/globals-[^"']+\.css/,
   );
 });

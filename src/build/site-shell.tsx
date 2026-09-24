@@ -1,16 +1,17 @@
-/** @jsxImportSource ../html */
 // src/build/site-shell.tsx
 //
 // Ported from `app/SiteHeader.tsx` / `app/SiteFooter.tsx`. Markup and
 // Spanish copy are kept verbatim; only the interactive `"use client"`
 // widgets they render are simplified.
 //
-// T7 leftover: `MobileNavStatic` and `CookiePreferencesButtonStatic`
-// render the same DOM as the closed/idle state of the real `app/`
-// widgets (`MobileNav`, `CookiePreferencesButton`) but wire no
-// behavior — no open/close, no keyboard trap, no clearing consent.
-// That's progressive enhancement, T7's job; this static build has no
-// script tags yet.
+// `MobileNavStatic` and `CookiePreferencesButtonStatic` render the same
+// DOM as the closed/idle state of the real `app/` widgets (`MobileNav`,
+// `CookiePreferencesButton`) — no-JS baseline markup only. T7's
+// `src/client/dom/mobile-nav.ts` and `src/client/dom/cookie-consent.ts`
+// progressively enhance this exact markup at runtime (open/close,
+// keyboard trap, clearing consent), loaded via `document.tsx`'s
+// `scriptSrcs` on every route (`src/build/routes.ts`). The
+// `#cookie-preferences-button` id is that script's hook.
 
 import { WHATSAPP_INFORMATION } from "../../app/constants";
 import {
@@ -70,7 +71,11 @@ function MobileNavStatic({ basePath = "" }: { basePath?: string }) {
 }
 
 function CookiePreferencesButtonStatic() {
-  return <button type="button">Preferencias de cookies</button>;
+  return (
+    <button type="button" id="cookie-preferences-button">
+      Preferencias de cookies
+    </button>
+  );
 }
 
 export function SiteHeader({ basePath = "" }: { basePath?: string }) {

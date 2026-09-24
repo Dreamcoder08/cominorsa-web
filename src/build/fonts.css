@@ -1,0 +1,104 @@
+/* src/build/fonts.css
+ *
+ * Self-hosted @font-face declarations replacing `next/font/google`
+ * (T5). Sourced from the exact "latin"-subset woff2 files next/font
+ * itself downloaded for this project — see `public/fonts/README.md` for
+ * provenance and license (all three are SIL OFL 1.1).
+ *
+ * Resolves the same CSS custom properties `app/globals.css` already
+ * consumes (`--font-display`, `--font-editorial`, `--font-mono`), so no
+ * token/CSS value changes are needed there — this file is a separate
+ * stylesheet the static build links alongside globals.css, never
+ * imported into it (importing it there would also feed Next's own
+ * build, double-defining fonts Next already self-hosts via next/font).
+ *
+ * Only the Latin subset ships: this is a 100%-Spanish site, and every
+ * character used (including the Spanish diacritics: á é í ó ú ñ ü, and
+ * ¿ ¡) falls inside next/font's own "latin" unicode-range for these
+ * families. The "vietnamese"/"latin-ext"/"cyrillic*"/"symbols2" subsets
+ * next/font also ships would never be selected by a browser rendering
+ * this content, so shipping them would only add unused download weight.
+ *
+ * Archivo and Newsreader are variable fonts: next/font emits one
+ * @font-face per requested static weight (400/500/600/700/800 for
+ * Archivo; 400/500 italic for Newsreader), but empirically — verified by
+ * diffing a real `pnpm build` output — every one of those weights for a
+ * given subset points at the *same* file, proving the file itself
+ * carries the full weight axis. A single `font-weight: <min> <max>`
+ * range per family/style, referencing that one file, is therefore
+ * equivalent to next/font's five duplicate declarations and avoids
+ * repeating the same `src` five times. Geist Mono is only ever
+ * requested at a single static weight (400) on this site, so it keeps a
+ * fixed weight, same as next/font's own declaration.
+ */
+
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/fonts/archivo-latin-variable.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Archivo Fallback";
+  src: local("Arial");
+  ascent-override: 88.96%;
+  descent-override: 21.28%;
+  line-gap-override: 0%;
+  size-adjust: 98.7%;
+}
+
+@font-face {
+  font-family: "Newsreader";
+  font-style: italic;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url("/fonts/newsreader-italic-latin-variable.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Newsreader Fallback";
+  src: local("Times New Roman");
+  ascent-override: 69.68%;
+  descent-override: 25.12%;
+  line-gap-override: 0%;
+  size-adjust: 105.48%;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/geist-mono-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Geist Mono Fallback";
+  src: local("Arial");
+  ascent-override: 74.67%;
+  descent-override: 21.92%;
+  line-gap-override: 0%;
+  size-adjust: 134.59%;
+}
+
+/* Same fallback-chain shape next/font itself generates
+ * (`--font-display: 'Archivo', 'Archivo Fallback'`, etc.) — the
+ * metric-matched "Fallback" face keeps layout stable while the real
+ * webfont loads, then swaps in (font-display: swap). `app/globals.css`
+ * appends its own system-font stack after each var(), e.g.
+ * `font-family: var(--font-display), "Segoe UI", ...`, so it needs no
+ * changes here.
+ */
+:root {
+  --font-display: "Archivo", "Archivo Fallback";
+  --font-editorial: "Newsreader", "Newsreader Fallback";
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
+}

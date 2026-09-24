@@ -6,13 +6,14 @@
 // hash across runs; a real value change -> a different hash). No
 // separate `Bun.CryptoHasher` pass is needed on top of it.
 //
-// `app/globals.css` starts with `@import "tailwindcss";`. Bun's CSS
-// bundler resolves that import (inlining the Tailwind package's own
-// preflight/theme CSS) but doesn't understand Tailwind v4's `@theme`/
-// `@tailwind` at-rules — it emits a non-fatal warning and passes them
-// through verbatim. This is expected until T11 drops the Tailwind
-// dependency entirely; browsers discard unrecognized at-rule blocks
-// during parsing, so nothing renders incorrectly because of it.
+// Historical note (resolved at the T11 cutover): before T11,
+// `app/globals.css` started with `@import "tailwindcss";`, which Bun's
+// CSS bundler resolved (inlining the Tailwind package's own
+// preflight/theme CSS) but didn't fully understand (Tailwind v4's
+// `@theme`/`@tailwind` at-rules triggered a non-fatal warning, passed
+// through verbatim). T11 removed the Tailwind dependency entirely —
+// `app/globals.css` now starts with Tailwind's Preflight reset ported
+// in as plain CSS instead of an `@import`.
 
 import { describe, expect, test } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -20,8 +21,9 @@ import { join } from "node:path";
 import { buildCss } from "./css";
 
 async function fixture(cssSource: string): Promise<{ dir: string; entry: string }> {
-  // Must live under the repo (not /tmp) so the bare `"tailwindcss"`
-  // import resolves against this project's node_modules.
+  // Lives under the repo (not /tmp) for consistency with the other
+  // fixtures in this file, none of which strictly requires it anymore
+  // post-T11 (no more bare npm-package `@import` to resolve).
   const dir = await mkdtemp(join(process.cwd(), ".css-fixture-"));
   const entry = join(dir, "styles.css");
   await writeFile(entry, cssSource, "utf8");
@@ -68,6 +70,36 @@ describe("buildCss", () => {
     const dir = await mkdtemp(join(process.cwd(), ".css-fixture-"));
     try {
       await expect(buildCss(join(dir, "missing.css"), join(dir, "out"))).rejects.toThrow();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("leaves url() references matching `external` untouched instead of resolving them as local files", async () => {
+    // Bun's CSS bundler otherwise treats url(...) as a local-file import
+    // and fails with "Could not resolve" for a root-relative path like
+    // "/fonts/x.woff2" that only exists at runtime under the site's
+    // public root, not as a real filesystem path relative to the CSS
+    // entry. `external` (used by fonts.css, T5) tells it to pass such
+    // references through verbatim instead.
+    const { dir, entry } = await fixture(
+      '@font-face { font-family: "X"; src: url("/fonts/x.woff2") format("woff2"); }\n',
+    );
+    try {
+      const result = await buildCss(entry, join(dir, "out"), { external: ["/fonts/*"] });
+      const css = await Bun.file(join(dir, "out", result.fileName)).text();
+      expect(css).toContain("url(/fonts/x.woff2)");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("without `external`, the same root-relative url() fails to resolve", async () => {
+    const { dir, entry } = await fixture(
+      '@font-face { font-family: "X"; src: url("/fonts/x.woff2") format("woff2"); }\n',
+    );
+    try {
+      await expect(buildCss(entry, join(dir, "out"))).rejects.toThrow();
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

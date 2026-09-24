@@ -128,10 +128,27 @@ trust, speed and one obvious action — not WebGL or scroll-jacking.
         sheets at 1440/390: no visible seam, no content overlap.
       - Gotcha: `bun test src/` (build.test) recreates `dist-static/`
         and leaves a running `wrangler dev` answering 500 — restart it.
-- [ ] **T6 — CSS-only motion**: scroll-driven reveals
+- [x] **T6 — CSS-only motion**: scroll-driven reveals
       (`animation-timeline: view()`) and cross-document
       `@view-transition`, all under `prefers-reduced-motion:
       no-preference` and `@supports`.
+      - Commit `863a2b0`. Route: inline (CSS + its test). `rise-in`
+        reveal (opacity + `--space-5` rise) on section kickers/titles,
+        intros, about copy, principles, service cards, route stops,
+        consultation intro and contact blocks — never the hero, so the
+        LCP h1 is untouched; reveal classes exist only on the home page.
+        Range `entry 0% entry 200px` (fixed length: a percentage left
+        tall mobile cards half-transparent while read).
+        `@view-transition { navigation: auto }` + root cross-fade at
+        `--dur-slow`, header held still via
+        `view-transition-name: site-header`; all inside
+        `prefers-reduced-motion: no-preference` (reveals also inside
+        `@supports (animation-timeline: view())`).
+      - Evidence: RED 4 fail → GREEN; `bun test src/` 332/332,
+        `pnpm test` 195/195, typecheck ok; the minified CSS keeps
+        `@view-transition`; frames at 1440 show the mid-entry fade and
+        full opacity at rest; at 390 every service card (393–574 px
+        tall) is opacity 1.00 with its top at 60 % of the viewport.
 - [ ] **T7 — Visual QA & full checks**: screenshots 1440/390 of every
       changed page, contrast check of new pairs, `pnpm test`,
       `bun test src/`, `pnpm test:e2e`.

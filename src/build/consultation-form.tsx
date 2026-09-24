@@ -12,14 +12,18 @@
 // T7 hooks (documented here so the enhancement script has a stable
 // contract instead of guessing selectors):
 //   - `#consultation-form`         — the <form> element to bind to.
-//   - `#consultation-form-submit`  — the submit <button>; starts
-//     `disabled`, matching the real component's pre-hydration
-//     `disabled={!mounted}` state exactly. T7 removes `disabled` once
-//     it has attached its submit handler, the same moment React's own
-//     hydration does today.
+//   - `#consultation-form-submit`  — the submit <button>. P7 (audit
+//     P2-6): renders enabled (it used to start `disabled` until the
+//     script ran, so without JS the form was dead). The form is
+//     `method="post"` with no action: a submit that lands before the
+//     script attaches (or with JS off) never puts the visitor's data in
+//     a URL, browser history or access log — the static host answers
+//     405 and nothing is stored. With JS off, the <noscript> line
+//     offers the direct WhatsApp link instead.
 //   - `#consultation-form-status`  — the `aria-live="polite"` status
-//     paragraph; starts empty, T7 fills it with the "WhatsApp opened"
-//     message after building the wa.me link.
+//     paragraph; starts empty, T7 fills it after building the wa.me
+//     link, plus a fallback link to that URL (P7: a popup blocker can
+//     stop `window.open` and the page can't tell).
 // Field `name`s (`name`, `city`, `service`, `whatsapp`, `question`)
 // match `app/ConsultationForm.tsx`'s `FormData` keys exactly, so T7 can
 // reuse the same `new FormData(form)` reading code verbatim.
@@ -34,12 +38,13 @@
 import {
   PRIMARY_WHATSAPP_NUMBER,
   SECONDARY_WHATSAPP_NUMBER,
+  WHATSAPP_INFORMATION,
 } from "../../app/constants";
 import { consultationServiceOptions } from "../data/consultation-services";
 
 export function ConsultationForm() {
   return (
-    <form className="consultation-form" id="consultation-form">
+    <form className="consultation-form" id="consultation-form" method="post">
       <div className="form-row">
         <label>
           <span>Nombre completo</span>
@@ -48,7 +53,7 @@ export function ConsultationForm() {
             name="name"
             autocomplete="name"
             maxlength={120}
-            placeholder="Escribe tu nombre"
+            placeholder="Escribe tu nombre…"
             required
           />
         </label>
@@ -59,7 +64,7 @@ export function ConsultationForm() {
             name="city"
             autocomplete="address-level1"
             maxlength={120}
-            placeholder="Ej. Piura"
+            placeholder="Ej. Piura…"
             required
           />
         </label>
@@ -94,7 +99,7 @@ export function ConsultationForm() {
           rows={5}
           minlength={10}
           maxlength={2000}
-          placeholder="Cuéntanos brevemente qué necesitas resolver"
+          placeholder="Cuéntanos brevemente qué necesitas resolver…"
           required
         />
       </label>
@@ -117,11 +122,21 @@ export function ConsultationForm() {
           <strong>Consulta profesional</strong>
           <span>Te respondemos por WhatsApp</span>
         </div>
-        <button type="submit" id="consultation-form-submit" disabled>
+        <button type="submit" id="consultation-form-submit">
           Enviar por WhatsApp
           <span aria-hidden="true">↗</span>
         </button>
       </div>
+
+      <noscript>
+        <p className="form-noscript">
+          Este formulario necesita JavaScript para preparar tu mensaje.{" "}
+          <a href={WHATSAPP_INFORMATION} target="_blank" rel="noreferrer">
+            Escríbenos directamente por WhatsApp
+          </a>
+          .
+        </p>
+      </noscript>
 
       <p className="form-disclaimer form-consent">
         Al enviar, aceptas que COMINORSA use estos datos para responder tu

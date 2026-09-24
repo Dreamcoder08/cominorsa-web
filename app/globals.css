@@ -1770,14 +1770,17 @@ footer > .brand {
 .consultation-form select,
 .consultation-form textarea {
   width: 100%;
-  border: 1px solid rgba(11, 35, 24, 0.22);
+  /* P7 (audit P2-7): was rgba(11, 35, 24, 0.22) — 1.58:1 on --white, below
+     the 3:1 minimum for a field boundary (WCAG 1.4.11). --copper-ink:
+     9.51:1 on the field's --white, 8.94:1 on the form's --paper. */
+  border: 1px solid var(--copper-ink);
   border-radius: 0;
   padding: 0.95rem 1rem;
   background: var(--white);
   color: var(--ink);
   font: inherit;
   outline: 0;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition: border-color 160ms ease;
 }
 
 .consultation-form input,
@@ -1793,8 +1796,10 @@ footer > .brand {
 .consultation-form input:focus-visible,
 .consultation-form select:focus-visible,
 .consultation-form textarea:focus-visible {
-  border-color: var(--copper-ink);
-  box-shadow: 0 0 0 3px rgba(224, 184, 74, 0.16);
+  /* P7: the border is already --copper-ink, so focus adds a visible 2px
+     outline (--copper-ink on --paper, 8.94:1) instead of a faint glow. */
+  outline: 2px solid var(--copper-ink);
+  outline-offset: 2px;
 }
 
 .form-submit {
@@ -1871,6 +1876,28 @@ footer > .brand {
   color: var(--forest);
   font-size: 0.75rem;
   font-weight: 700;
+}
+
+/* P7: the fallback link to the prepared wa.me URL, and the <noscript>
+   direct link — same link treatment as .form-disclaimer a. */
+.form-status a,
+.form-noscript a {
+  color: var(--copper-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.form-status a:hover,
+.form-status a:focus-visible,
+.form-noscript a:hover,
+.form-noscript a:focus-visible {
+  color: var(--ink);
+}
+
+.form-noscript {
+  color: var(--ink);
+  font-size: var(--text-sm);
+  line-height: 1.55;
 }
 
 /* P4: honeypot wrapper (see src/build/consultation-form.tsx). Standard

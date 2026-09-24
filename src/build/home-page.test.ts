@@ -49,7 +49,7 @@ describe("HomePage", () => {
 
   test("embeds the consultation form inside the consulta section", () => {
     expect(html).toContain('id="consulta"');
-    expect(html).toContain('<form class="consultation-form" id="consultation-form">');
+    expect(html).toContain('<form class="consultation-form" id="consultation-form" method="post">');
   });
 
   test("renders the contact address and map link", () => {

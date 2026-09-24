@@ -66,7 +66,7 @@ describe("runStaticBuild", () => {
       expect(html).toContain('<link rel="canonical" href="https://cominorsa.com/">');
       expect(html).toContain('<meta property="og:url" content="https://cominorsa.com/">');
       expect(html).toContain('<span class="reveal-line">Técnica que impulsa.</span>');
-      expect(html).toContain('<form class="consultation-form" id="consultation-form">');
+      expect(html).toContain('<form class="consultation-form" id="consultation-form" method="post">');
       expect(html).toContain('href="/seguridad-minera"');
     }));
 

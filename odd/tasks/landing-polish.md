@@ -257,6 +257,15 @@ in Engram topic `odd/landing-polish/audit`.
   `feat/bun-vanilla-migration**`; slice PRs into `feat/landing-polish`
   get no CI — fix in P10 (trigger on `feat/**`).
 
+- Slice 2 (P4, P6, P8): PR #11 → tracker #12 → `main` (`0e8b5d6`),
+  deployed 2026-09-23. Rollback point before it:
+  `79193eec-0111-41dc-ace7-30a4737a5046`. Live: routes 200/404, `og.jpg`
+  200 (1-day cache), `og.png` 404, 404 copy without voseo, curl without
+  Origin → 403. **Chrome (real browser) same-origin POST with the
+  honeypot filled → 200 `{"ok":true}` on the preview and on production**
+  (proves real leads pass the origin gate; honeypot prevents a real CRM
+  record).
+
 ## Next step
 
 Slice 2 (P4, P6, P8) ready for PR into `feat/landing-polish`. Then

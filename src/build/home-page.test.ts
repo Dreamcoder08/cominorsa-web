@@ -40,6 +40,25 @@ describe("HomePage", () => {
     }
   });
 
+  test("separates every section with geological strata toward the next surface (landing-craft T5)", () => {
+    const order = [...html.matchAll(/strata strata--to-([a-z]+)"|<section class="([^"]+)"/g)].map(
+      (m) => (m[1] ? `strata:${m[1]}` : m[2]),
+    );
+    expect(order).toEqual([
+      "hero",
+      "strata:paper",
+      "section about",
+      "strata:ink",
+      "section services",
+      "strata:cream",
+      "section method",
+      "strata:deep",
+      "section consultation",
+      "strata:sand",
+      "contact",
+    ]);
+  });
+
   describe("formalization route (landing-craft T3)", () => {
     const method = html.slice(
       html.indexOf('id="metodo"'),

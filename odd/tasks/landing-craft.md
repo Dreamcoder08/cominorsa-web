@@ -111,8 +111,23 @@ trust, speed and one obvious action — not WebGL or scroll-jacking.
         `bun test src/` 323/323, `pnpm test` 195/195, typecheck ok;
         screenshots hero/contact 1440/390: 0 px overflow, 0 console
         errors, text legible over the lines.
-- [ ] **T5 — Geological strata**: section transitions as layered strata
+- [x] **T5 — Geological strata**: section transitions as layered strata
       in the forest → sand → cream palette.
+      - Commit `bea336b`. Route: inline. `src/build/strata.tsx`: inline
+        SVG (4 folded bands, `preserveAspectRatio="none"`, ~400 B),
+        colors only via CSS classes/custom properties. Five dividers on
+        the home page (`to` paper/ink/cream/deep/sand); each overlaps
+        the previous section's bottom padding (negative margin =
+        `--strata-h`, clamp 40–88 px) and ends in the next section's
+        surface token. Toward light: forest → copper vein → sand/cream;
+        toward dark: sand → vein → forest. `.consultation` gained a
+        solid `--ink-deep` top fade so its diagonal gradient meets the
+        strata without a seam.
+      - Evidence: RED (missing module + 3 fails) → GREEN; `bun test
+        src/` 328/328, `pnpm test` 195/195, typecheck ok; seam contact
+        sheets at 1440/390: no visible seam, no content overlap.
+      - Gotcha: `bun test src/` (build.test) recreates `dist-static/`
+        and leaves a running `wrangler dev` answering 500 — restart it.
 - [ ] **T6 — CSS-only motion**: scroll-driven reveals
       (`animation-timeline: view()`) and cross-document
       `@view-transition`, all under `prefers-reduced-motion:

@@ -916,6 +916,70 @@ blockquote {
   scroll-margin-top: var(--header-height);
 }
 
+/* landing-craft T5: geological strata between home sections
+   (src/build/strata.tsx). The divider overlaps the bottom padding of the
+   previous section; its last band is the next section's surface, so the
+   seam disappears. Going toward a light surface the bands read
+   forest → copper vein → sand; toward a dark one, sand → vein → forest. */
+.strata {
+  --strata-h: clamp(40px, 6vw, 88px);
+  --strata-1: var(--forest);
+  --strata-2: var(--copper);
+  --strata-3: var(--sand);
+  position: relative;
+  z-index: 1;
+  height: var(--strata-h);
+  margin-top: calc(-1 * var(--strata-h));
+  pointer-events: none;
+}
+
+.strata svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.strata .s1 {
+  fill: var(--strata-1);
+}
+
+.strata .s2 {
+  fill: var(--strata-2);
+}
+
+.strata .s3 {
+  fill: var(--strata-3);
+}
+
+.strata .s4 {
+  fill: var(--strata-to);
+}
+
+.strata--to-paper {
+  --strata-to: var(--paper);
+}
+
+.strata--to-cream {
+  --strata-to: var(--cream);
+}
+
+.strata--to-sand {
+  --strata-to: var(--sand);
+  --strata-3: var(--cream);
+}
+
+.strata--to-ink {
+  --strata-to: var(--ink);
+  --strata-1: var(--sand);
+  --strata-3: var(--forest);
+}
+
+.strata--to-deep {
+  --strata-to: var(--ink-deep);
+  --strata-1: var(--sand);
+  --strata-3: var(--forest);
+}
+
 .section-kicker {
   display: flex;
   align-items: center;
@@ -1719,8 +1783,11 @@ footer > .brand {
   grid-template-columns: minmax(0, 0.78fr) minmax(420px, 1.15fr);
   align-items: start;
   gap: clamp(4rem, 9vw, 9rem);
+  /* The vertical --ink-deep fade gives the section a solid top edge, so
+     the strata above it (T5) meet it without a seam. */
   background:
     repeating-radial-gradient(circle at 0 100%, transparent 0 48px, rgb(var(--copper-light-rgb) / 0.11) 49px 50px),
+    linear-gradient(var(--ink-deep), transparent 240px),
     linear-gradient(125deg, var(--ink-deep), var(--forest));
   color: var(--white);
 }

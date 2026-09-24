@@ -131,3 +131,23 @@ describe("real Piura contours as the site-wide thread (landing-craft T4)", () =>
     expect(ruleBody(".contact::before")).toContain(`mask-image: ${MASK}`);
   });
 });
+
+describe("geological strata (landing-craft T5)", () => {
+  test("each destination surface paints its last band with that section's token", () => {
+    for (const [variant, token] of [
+      ["paper", "--paper"],
+      ["ink", "--ink"],
+      ["cream", "--cream"],
+      ["deep", "--ink-deep"],
+      ["sand", "--sand"],
+    ]) {
+      expect(ruleBody(`.strata--to-${variant}`)).toContain(`--strata-to: var(${token});`);
+    }
+  });
+
+  test("the divider overlaps the previous section instead of adding height", () => {
+    const body = ruleBody(".strata");
+    expect(body).toContain("margin-top: calc(-1 * var(--strata-h));");
+    expect(body).toContain("pointer-events: none;");
+  });
+});

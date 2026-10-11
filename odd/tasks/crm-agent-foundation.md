@@ -47,13 +47,16 @@ imports or sensitive CSVs just to create a second repository.
   confirmed by the user's autonomous continuation on 2026-10-11. Publishing
   tracker/child PRs is not authorized by local implementation permission.
 - Branch point: `f5c2cc0`; working branch: `feat/crm-agent-foundation`.
-- Running committed authored line count: 1,404 (T1 274 + T2 690 + T3 440; generated HTML,
+- Running committed authored line count through T4: 1,769 (T1 274 + T2 690 + T3 440 +
+  T4 365; final closure-only bookkeeping excluded; generated HTML,
   receipts, screenshots and dependency lockfiles excluded).
 - Slice 1 / T1: `f5c2cc0..88cf2a5`, local documentation boundary; no PR published.
 - Slice 2 / T2: `88cf2a5..494f7be`, adapter/CLI boundary. Future PR slicing or
   explicit size exception remains necessary; no oversized PR was published.
 - Slice 3 / T3: `494f7be..511c107`, MCP protocol boundary; future PR-size handling
   remains pending before publishing. No code/test compression was used.
+- Slice 4 / T4: `511c107..17a87d0`, offline automation/Codex operation boundary.
+  No PR published; remote CI not executed.
 - RDD: clone-local OFF, observed via `gentle-ai review mode status`; do not enable.
   Delivery is disabled/unmanaged. Ordinary functional checks still apply.
 
@@ -115,8 +118,7 @@ imports or sensitive CSVs just to create a second repository.
   Bun 332/332 passed. Initial default six-worker E2E failed (cause unconfirmed);
   two-worker retry passed 58/58. Fresh empty-dependency frozen install and offline
   check passed independently. Parent spot check passed 38/38 + types/discovery.
-  Native risk high (CI shell boundary), RDD OFF, disabled/unmanaged. Commit: pending
-  work-unit creation. GitHub CI and live CRM have not been exercised.
+  Native risk high (CI shell boundary), RDD OFF, disabled/unmanaged. Commit: `17a87d0`. GitHub CI and live CRM have not been exercised.
 
 ## Acceptance criteria
 
@@ -137,7 +139,7 @@ Formal Archify perceptual receipt remains pending; initial six-worker E2E failed
 with unconfirmed cause despite a successful two-worker retry.
 
 Engram mirror topic: `odd/crm-agent-foundation/tasks`.
-Mirror resynchronization is performed at task closure after transport recovery.
+Full Engram mirror restored and read back after transport recovery.
 
 ## Work-unit evidence
 
@@ -153,3 +155,11 @@ Mirror resynchronization is performed at task closure after transport recovery.
   36/36 tests, strict typecheck, real stdio fixture invocation/discovery denial;
   independent check confirmed cached adapter preserves concurrent request cap.
   Pre-commit required checks passed with the same existing `.env` warning.
+
+- T4: `17a87d0` — `chore(crm): automate agent checks and Codex operation`.
+  Independent staged/snapshot hash match across 13 implementation files; fresh
+  frozen install and offline 38/38 checks passed. Landing Node 199/199, Bun
+  332/332, E2E 58/58 with two workers. Initial six-worker attempt failed with
+  unconfirmed cause. Root lint/typecheck/validate and parent spot check passed.
+  Pre-commit passed required checks with existing unread/unstaged `.env` warning.
+  Formal Archify perceptual receipt and remote CI/live CRM checks remain pending.

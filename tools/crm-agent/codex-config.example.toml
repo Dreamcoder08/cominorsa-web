@@ -1,0 +1,9 @@
+# Example only. Copy the relevant block into a trusted Codex config manually.
+# Do not put credential values in this file or pass them as command arguments.
+[mcp_servers.cominorsa_crm]
+command = "node"
+args = ["/absolute/path/to/COMINORSA-pagina-web/tools/crm-agent/src/mcp.ts"]
+env_vars = ["COMINORSA_CRM_URL", "COMINORSA_CRM_API_KEY", "COMINORSA_CRM_ALLOW_NETWORK"]
+startup_timeout_sec = 10
+tool_timeout_sec = 15
+enabled = true

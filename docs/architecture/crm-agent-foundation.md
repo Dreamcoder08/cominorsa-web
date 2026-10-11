@@ -1,14 +1,17 @@
 # CRM agent foundation
 
-Status: design for the local foundation; the CLI, MCP server, and read adapter
-shown below are **planned**, not deployed or presently usable. The existing
-Twenty CRM and website lead-capture flow remain operationally separate.
+Status: the local read-only CLI, MCP server, and Twenty adapter are implemented
+in `tools/crm-agent` and tested against fixtures. No live CRM has been
+configured or verified here. The existing Twenty CRM and website lead-capture
+flow remain operationally separate. See [the operator guide](../crm-agent.md).
 
 The [interactive architecture diagram](crm-agent-foundation.html) is generated
 from [its Archify specification](crm-agent-foundation.architecture.json). The
-solid upper path and dashed lower path distinguish current repository behavior
-from planned components; the cards state this boundary explicitly.
-No production deployment topology or unattended agent is claimed.
+solid upper path and dashed lower path distinguish the website behavior from
+the agent foundation **as planned when this diagram was frozen at T1**. The
+lower path is now implemented locally; the Archify artifact remains an
+unchanged design snapshot, not a live deployment map. No production deployment
+topology or unattended agent is claimed.
 
 ## Verified starting point
 
@@ -27,13 +30,13 @@ does not require access to any of them.
 ## Boundary and ownership decision
 
 Keep one Git repository for now, but establish a separate **package and process
-boundary** at `tools/crm-agent`. The package should own its dependency manifest,
-tests, configuration schema, CLI entry point, and MCP stdio server. It should
-not be imported by `src/worker`, `src/build`, `app/api`, or `docker/twenty`
-scripts. The existing Twenty deployment, database, lead route, imports, and
-operational scripts remain in place.
+boundary** at `tools/crm-agent`. The package owns its dependency manifest,
+tests, configuration gate, CLI entry point, and MCP stdio server. It is not
+imported by `src/worker`, `src/build`, `app/api`, or `docker/twenty` scripts.
+The existing Twenty deployment, database, lead route, imports, and operational
+scripts remain in place.
 
-The planned package uses ports and adapters:
+The local package uses ports and adapters:
 
 1. A narrow application layer exposes named, allowlisted **read-only** CRM use
    cases and defines input/output contracts. Neither CLI nor MCP embeds
@@ -43,7 +46,7 @@ The planned package uses ports and adapters:
    concurrency. It returns normalized records with stable identifiers and
    explicit source/provenance; it never guesses an absent field.
 3. A JSON CLI and a local MCP stdio transport invoke the same registry and
-   policy. MCP should use the official SDK/protocol, not a custom wire format.
+   policy. MCP uses the official SDK/protocol, not a custom wire format.
    The transport translates protocol errors; it does not grant capabilities.
 4. Configuration supplies a CRM URL and API credential at runtime, never via
    committed examples or the generated diagram. No ambient credential search
@@ -67,7 +70,7 @@ boundary is the safer intermediate step.
 
 ## Read contract and truthfulness
 
-Initial tools should answer bounded questions about existing records, not
+Initial tools answer bounded questions about existing records; they cannot
 create records, send messages, or execute CRM administration. A result should
 include its source system, record ID, observed field values, and a retrieval
 timestamp where useful. Empty, null, or inaccessible fields remain unknown;
@@ -94,7 +97,7 @@ from an agent would bypass the intended read-only boundary.
 | Stage | Scope | Human/operational boundary |
 | --- | --- | --- |
 | 0 — current | Website lead capture, Twenty operations and imports. | Existing behavior; not an agent platform. |
-| 1 — this foundation | Local package, fixture-tested Twenty reads, shared JSON CLI/MCP tool registry, reproducible setup. | Operator explicitly configures a target CRM. No write or outreach capability. |
+| 1 — implemented locally | Local package, fixture-tested Twenty reads, shared JSON CLI/MCP tool registry, reproducible setup. | Operator explicitly configures a target CRM. No write or outreach capability. No live instance verified. |
 | 2 — future proposal | Source-linked evidence collection and draft recommendations with confidence/unknowns. | Human reviews evidence; no automatic CRM mutation. Requires separate design and acceptance. |
 | 3 — future controlled action | Narrow write capabilities, approval records, idempotency keys, audit trail and recovery. | Explicit user authorization for each capability and target; no blanket approval from an agent prompt. |
 | 4 — future unattended workflows | Durable ingestion/scheduling, retries, observability, escalation, and incident/rollback controls. | Only after operating evidence and separate authorization. A local tool-access foundation is **not** an unattended agent. |
@@ -133,7 +136,8 @@ approval, audit, idempotency, conflict handling, and rollback before code or
 operational use. A new UI is unnecessary in this phase; the landing's token
 system and styles remain unchanged.
 
-For this passive design document there is no meaningful runnable RED. The
-Archify specification is validated and delivered separately from any future
-application test suite. Subsequent implementation tasks require observed
-fixture-based failures before code changes where deterministic tests apply.
+For the original passive design document there was no meaningful runnable RED.
+The frozen Archify specification was validated and delivered separately from
+the later fixture-based application tests. Implementation changes require
+observed fixture-based failures before code changes where deterministic tests
+apply.

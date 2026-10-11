@@ -41,17 +41,19 @@ imports or sensitive CSVs just to create a second repository.
 ## Delivery
 
 - Strategy: `ask-on-risk`.
-- Forecast: approximately 1,500 authored added/deleted lines; generated Archify
+- Forecast: approximately 1,900 authored added/deleted lines; generated Archify
   HTML excluded. This is an estimate, not a size cap or permission to omit tests.
 - Chain strategy: `feature-branch-chain`, the recommended local branch strategy
   confirmed by the user's autonomous continuation on 2026-10-11. Publishing
   tracker/child PRs is not authorized by local implementation permission.
 - Branch point: `f5c2cc0`; working branch: `feat/crm-agent-foundation`.
-- Running committed authored line count: 964 (T1 274 + T2 690; generated HTML,
+- Running committed authored line count: 1,404 (T1 274 + T2 690 + T3 440; generated HTML,
   receipts, screenshots and dependency lockfiles excluded).
 - Slice 1 / T1: `f5c2cc0..88cf2a5`, local documentation boundary; no PR published.
 - Slice 2 / T2: `88cf2a5..494f7be`, adapter/CLI boundary. Future PR slicing or
   explicit size exception remains necessary; no oversized PR was published.
+- Slice 3 / T3: `494f7be..511c107`, MCP protocol boundary; future PR-size handling
+  remains pending before publishing. No code/test compression was used.
 - RDD: clone-local OFF, observed via `gentle-ai review mode status`; do not enable.
   Delivery is disabled/unmanaged. Ordinary functional checks still apply.
 
@@ -98,12 +100,23 @@ imports or sensitive CSVs just to create a second repository.
   default. Root manifest/lock unchanged. Native high process-boundary risk;
   independent verification complete, RDD disabled/unmanaged. Commit recorded
   below after creation; no live CRM operation or global Codex config edit.
-- [ ] **T4 — Document and automate agent operation and extension.** Add a
+- [x] **T4 — Document and automate agent operation and extension.** Add a
   project skill for recurring tasks, reproducible checks and an explicit
   extension contract. Distinguish implemented capabilities from future evidence
   proposals, approval-controlled writes and durable ingestion. Route: delegated;
   multi-file workflow/docs. Checks: examples against fixtures, script exits,
-  clean install/dependency isolation and applicable full checks. Commit: pending.
+  clean install/dependency isolation and applicable full checks. Implementation
+  present: canonical Codex skill, operator guide/config example, offline check
+  script, package CI and narrow root TypeScript/ESLint exclusions. Writer observed
+  root-boundary RED/GREEN (3/3), script RED/GREEN, package check 38/38 + strict
+  typecheck/discovery, root lint/typecheck/validate and schema checks passing.
+  Independent verifier matched all 13 staged files by SHA-256 to the credential-free
+  snapshot: package 38/38, boundary 3/3, root lint/typecheck/validate, Node 199/199,
+  Bun 332/332 passed. Initial default six-worker E2E failed (cause unconfirmed);
+  two-worker retry passed 58/58. Fresh empty-dependency frozen install and offline
+  check passed independently. Parent spot check passed 38/38 + types/discovery.
+  Native risk high (CI shell boundary), RDD OFF, disabled/unmanaged. Commit: pending
+  work-unit creation. GitHub CI and live CRM have not been exercised.
 
 ## Acceptance criteria
 
@@ -116,11 +129,15 @@ imports or sensitive CSVs just to create a second repository.
 
 ## Progress and next step
 
-T1–T3 verified locally. Next: T4 Codex skill/setup, reproducible automation,
-root check isolation and applicable landing regression. Remote repository
-extraction and deployment remain deferred.
+T1–T4 verified locally. Read-only CLI/MCP foundation, canonical Codex skill,
+isolated CI and offline automation are implemented. Next capability stage is
+evidence-backed proposals and approval-controlled writes, not unattended actions.
+Remote repository extraction, live CRM setup and deployment remain deferred.
+Formal Archify perceptual receipt remains pending; initial six-worker E2E failed
+with unconfirmed cause despite a successful two-worker retry.
 
 Engram mirror topic: `odd/crm-agent-foundation/tasks`.
+Mirror resynchronization is performed at task closure after transport recovery.
 
 ## Work-unit evidence
 
@@ -131,4 +148,8 @@ Engram mirror topic: `odd/crm-agent-foundation/tasks`.
 - T2: `494f7be` — `feat(crm): add bounded read-only Twenty tools and CLI`.
   24/24 tests, strict typecheck, credential-free CLI listing; independent
   verification corrected root pagination and confirmed stream cancellation.
+  Pre-commit required checks passed with the same existing `.env` warning.
+- T3: `511c107` — `feat(crm): expose bounded read tools through MCP`.
+  36/36 tests, strict typecheck, real stdio fixture invocation/discovery denial;
+  independent check confirmed cached adapter preserves concurrent request cap.
   Pre-commit required checks passed with the same existing `.env` warning.

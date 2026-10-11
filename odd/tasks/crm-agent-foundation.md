@@ -47,9 +47,11 @@ imports or sensitive CSVs just to create a second repository.
   confirmed by the user's autonomous continuation on 2026-10-11. Publishing
   tracker/child PRs is not authorized by local implementation permission.
 - Branch point: `f5c2cc0`; working branch: `feat/crm-agent-foundation`.
-- Running committed authored line count: 274 (T1 authored JSON/Markdown/tracker;
-  generated HTML, receipts and screenshots excluded).
+- Running committed authored line count: 964 (T1 274 + T2 690; generated HTML,
+  receipts, screenshots and dependency lockfiles excluded).
 - Slice 1 / T1: `f5c2cc0..88cf2a5`, local documentation boundary; no PR published.
+- Slice 2 / T2: `88cf2a5..494f7be`, adapter/CLI boundary. Future PR slicing or
+  explicit size exception remains necessary; no oversized PR was published.
 - RDD: clone-local OFF, observed via `gentle-ai review mode status`; do not enable.
   Delivery is disabled/unmanaged. Ordinary functional checks still apply.
 
@@ -83,11 +85,19 @@ imports or sensitive CSVs just to create a second repository.
   to T4; no live CRM access. This coherent adapter/CLI/test unit exceeds the
   400-line heuristic; no tests or documentation were removed to shrink it.
   Commit: recorded in work-unit evidence after creation.
-- [ ] **T3 — Expose the same tools through MCP for Codex.** Use supported MCP
+- [x] **T3 — Expose the same tools through MCP for Codex.** Use supported MCP
   protocol/SDK rather than an ad hoc wire implementation; document local setup
   without modifying the user's global config. Route: delegated; transport/tests.
   Checks: real local protocol handshake and tool invocation against fixtures,
-  no credentials or live CRM access, no sensitive logging. Commit: pending.
+  no credentials or live CRM access, no sensitive logging. Outcome: official
+  MCP v2 server/client 2.3.1, strict schemas, shared CLI/MCP configuration and
+  lazily cached registry/adapter. Linked-client and real stdio RED/GREEN observed;
+  independent check reproduced then verified fix of per-call concurrency reset.
+  Writer, verifier and parent spot check: 36/36 package tests; strict typecheck
+  passes. Discovery requires no credentials; production calls deny network by
+  default. Root manifest/lock unchanged. Native high process-boundary risk;
+  independent verification complete, RDD disabled/unmanaged. Commit recorded
+  below after creation; no live CRM operation or global Codex config edit.
 - [ ] **T4 — Document and automate agent operation and extension.** Add a
   project skill for recurring tasks, reproducible checks and an explicit
   extension contract. Distinguish implemented capabilities from future evidence
@@ -106,8 +116,9 @@ imports or sensitive CSVs just to create a second repository.
 
 ## Progress and next step
 
-T1 and T2 verified locally. Next: T3 official-SDK MCP transport with fixture-backed
-protocol tests. Remote repository extraction and deployment remain deferred.
+T1–T3 verified locally. Next: T4 Codex skill/setup, reproducible automation,
+root check isolation and applicable landing regression. Remote repository
+extraction and deployment remain deferred.
 
 Engram mirror topic: `odd/crm-agent-foundation/tasks`.
 
@@ -117,3 +128,7 @@ Engram mirror topic: `odd/crm-agent-foundation/tasks`.
   Pre-commit `pnpm validate`: required checks passed; warning about an existing
   real `.env` file, whose contents were not read or staged. Archify/browser
   evidence is scoped to the generated diagram, not the product runtime.
+- T2: `494f7be` — `feat(crm): add bounded read-only Twenty tools and CLI`.
+  24/24 tests, strict typecheck, credential-free CLI listing; independent
+  verification corrected root pagination and confirmed stream cancellation.
+  Pre-commit required checks passed with the same existing `.env` warning.

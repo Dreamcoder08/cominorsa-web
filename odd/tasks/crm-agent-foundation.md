@@ -47,7 +47,9 @@ imports or sensitive CSVs just to create a second repository.
   confirmed by the user's autonomous continuation on 2026-10-11. Publishing
   tracker/child PRs is not authorized by local implementation permission.
 - Branch point: `f5c2cc0`; working branch: `feat/crm-agent-foundation`.
-- Running committed authored line count: 0. Slice boundaries: none yet.
+- Running committed authored line count: 274 (T1 authored JSON/Markdown/tracker;
+  generated HTML, receipts and screenshots excluded).
+- Slice 1 / T1: `f5c2cc0..88cf2a5`, local documentation boundary; no PR published.
 - RDD: clone-local OFF, observed via `gentle-ai review mode status`; do not enable.
   Delivery is disabled/unmanaged. Ordinary functional checks still apply.
 
@@ -66,11 +68,21 @@ imports or sensitive CSVs just to create a second repository.
   structural readback. Native assessment was unassessable due untracked files,
   treated as high: independent verification completed, RDD disabled/unmanaged.
   Commit: recorded in the work-unit evidence below after creation.
-- [ ] **T2 — Add a bounded read-only Twenty adapter and CLI.** Use documented
+- [x] **T2 — Add a bounded read-only Twenty adapter and CLI.** Use documented
   API contracts, injectable transport, timeouts, bounded results, secret-safe
   errors and a read-only tool allowlist. Route: delegated; non-trivial code/tests.
   Checks: observed mocked RED/GREEN, network-denial/write-denial tests, timeout,
-  pagination/limit tests and applicable existing regression checks. Commit: pending.
+  pagination/limit tests and applicable existing regression checks. Outcome:
+  four read-only id/name tools, isolated TypeScript package and JSON CLI. RED
+  observed for missing registry and official root pagination; corrected a
+  fixture-masked envelope bug and added response-stream cancellation on timeout.
+  Writer, independent verifier and parent spot check: 24/24 package tests pass;
+  writer/verifier strict typecheck and credential-free list-tools smoke pass.
+  Root manifest/lock unchanged. Native risk high (process boundary); RDD OFF,
+  independent check completed, disabled/unmanaged. Landing regression deferred
+  to T4; no live CRM access. This coherent adapter/CLI/test unit exceeds the
+  400-line heuristic; no tests or documentation were removed to shrink it.
+  Commit: recorded in work-unit evidence after creation.
 - [ ] **T3 — Expose the same tools through MCP for Codex.** Use supported MCP
   protocol/SDK rather than an ad hoc wire implementation; document local setup
   without modifying the user's global config. Route: delegated; transport/tests.
@@ -94,8 +106,14 @@ imports or sensitive CSVs just to create a second repository.
 
 ## Progress and next step
 
-T1 documentation verified; no CRM-agent product implementation exists yet.
-Next: T2 fixture-tested read-only adapter and CLI. Remote repository extraction
-and deployment remain deferred.
+T1 and T2 verified locally. Next: T3 official-SDK MCP transport with fixture-backed
+protocol tests. Remote repository extraction and deployment remain deferred.
 
 Engram mirror topic: `odd/crm-agent-foundation/tasks`.
+
+## Work-unit evidence
+
+- T1: `88cf2a5` — `docs(crm): define agent foundation and runtime boundaries`.
+  Pre-commit `pnpm validate`: required checks passed; warning about an existing
+  real `.env` file, whose contents were not read or staged. Archify/browser
+  evidence is scoped to the generated diagram, not the product runtime.

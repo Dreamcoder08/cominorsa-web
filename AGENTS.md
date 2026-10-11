@@ -3,6 +3,12 @@
 Project-specific skills for AI coding agents working on this repo. Each
 `SKILL.md` is the source of truth — this file only points to them.
 
+## Codex skill (`.agents/skills/`)
+
+- **cominorsa-crm-agent** — use `.agents/skills/cominorsa-crm-agent/SKILL.md`
+  for the local, read-only Twenty CLI/MCP package. It does not authorize live
+  CRM access; the separate `twenty-crm-ops` skill governs stack operations.
+
 ## Skills (`.claude/skills/`)
 
 - **cominorsa-run** — launch the dev server and verify a frontend change
